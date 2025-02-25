@@ -105,5 +105,19 @@ connection
 // Export models and connection
 module.exports = {
   connection,
+  User,
+  Place,
+  Event,
+  Rank,
+  Favorite,
+  Media,
+  Categorie,
+  Chat,
+  Advisor,
+  Citiria,
+  Review,
+  PlaceUser,
+  PlaceCategorie,
+  Blog
  
 };
