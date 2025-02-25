@@ -28,7 +28,8 @@ const defineAssociations = () => {
   // User relationships
   User.hasMany(Media, { foreignKey: "userId" });
   Media.belongsTo(User, { foreignKey: "userId" });
-  
+  User.hasMany(Review, { foreignKey: "userId" });
+  Review.belongsTo(User, { foreignKey: "userId" });
   User.hasOne(Advisor, { foreignKey: "userId" });
   Advisor.belongsTo(User, { foreignKey: "userId" });
 
@@ -94,16 +95,30 @@ connection
   });
 
 // Sync the database (uncomment to create tables)
-// connection
-//   .sync({ force: true }) // Use { force: true } to drop and recreate tables; remove in production
-//   .then(() => console.log("Tables are created"))
-//   .catch((err) => {
-//     console.error("Error syncing tables:", err);
-//     throw err;
-//   });
+connection
+  .sync({ force: true }) // Use { force: true } to drop and recreate tables; remove in production
+  .then(() => console.log("Tables are created"))
+  .catch((err) => {
+    console.error("Error syncing tables:", err);
+    throw err;
+  });
 
 // Export models and connection
 module.exports = {
   connection,
+  User,
+  Place,
+  Event,
+  Rank,
+  Favorite,
+  Media,
+  Categorie,
+  Chat,
+  Advisor,
+  Citiria,
+  Review,
+  PlaceUser,
+  PlaceCategorie,
+  Blog
  
 };
