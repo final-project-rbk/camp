@@ -1,227 +1,367 @@
+'use strict';
 const bcrypt = require('bcrypt');
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    // Users
-    const users = await queryInterface.bulkInsert('users', [
-      {
-        email: 'admin@example.com',
-        password: await bcrypt.hash('admin123', 10),
-        first_name: 'Admin',
-        last_name: 'User',
-        role: 'admin',
-        rank: 'platinum',
-        points: 1000,
-        profile_image: 'https://example.com/admin.jpg',
-        bio: 'System administrator',
-        created_at: new Date(),
-        updated_at: new Date()
-      },
-      {
-        email: 'advisor@example.com',
-        password: await bcrypt.hash('advisor123', 10),
-        first_name: 'Travel',
-        last_name: 'Advisor',
-        role: 'advisor',
-        rank: 'gold',
-        points: 750,
-        profile_image: 'https://example.com/advisor.jpg',
-        bio: 'Experienced travel advisor',
-        created_at: new Date(),
-        updated_at: new Date()
-      }
-    ], { returning: true });
+    const now = new Date();
+    try {
+      // Users
+      console.log('Seeding users...');
+      await queryInterface.bulkInsert('users', [
+        {
+          id: 1, // Explicitly set IDs
+          email: 'admin@example.com',
+          password: await bcrypt.hash('admin123', 10),
+          first_name: 'Admin',
+          last_name: 'User',
+          role: 'admin',
+          rank: 'platinum',
+          points: 1000,
+          profile_image: 'https://example.com/admin.jpg',
+          bio: 'System administrator',
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          id: 2,
+          email: 'advisor@example.com',
+          password: await bcrypt.hash('advisor123', 10),
+          first_name: 'Travel',
+          last_name: 'Advisor',
+          role: 'advisor',
+          rank: 'gold',
+          points: 750,
+          profile_image: 'https://example.com/advisor.jpg',
+          bio: 'Experienced travel advisor',
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          id: 3,
+          email: 'user@example.com',
+          password: await bcrypt.hash('user123', 10),
+          first_name: 'Regular',
+          last_name: 'User',
+          role: 'user',
+          rank: 'bronze',
+          points: 50,
+          profile_image: 'https://example.com/user.jpg',
+          bio: 'Travel enthusiast',
+          createdAt: now,
+          updatedAt: now
+        }
+      ]);
 
-    // Advisors
-    const advisors = await queryInterface.bulkInsert('advisors', [
-      {
-        userId: users[1].id,
-        isVerified: true,
-        currentRank: 'gold',
-        cin: 'AB123456',
-        points: 750,
-        created_at: new Date(),
-        updated_at: new Date()
-      }
-    ], { returning: true });
+      // Advisors
+      console.log('Seeding advisors...');
+      await queryInterface.bulkInsert('advisors', [
+        {
+          id: 1,
+          userId: 2, // Reference to advisor user
+          isVerified: true,
+          tokenVerification: 'VERIFIED_TOKEN_123',
+          currentRank: 'gold',
+          cin: 'AB123456',
+          points: 750,
+          createdAt: now,
+          updatedAt: now
+        }
+      ]);
 
-    // Categories
-    const categories = await queryInterface.bulkInsert('categories', [
-      {
-        name: 'Beaches',
-        icon: '🏖️',
-        created_at: new Date(),
-        updated_at: new Date()
-      },
-      {
-        name: 'Mountains',
-        icon: '⛰️',
-        created_at: new Date(),
-        updated_at: new Date()
-      }
-    ], { returning: true });
+      // Categories
+      console.log('Seeding categories...');
+      await queryInterface.bulkInsert('categories', [
+        {
+          id: 1,
+          name: 'Beaches',
+          icon: '🏖️',
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          id: 2,
+          name: 'Mountains',
+          icon: '⛰️',
+          createdAt: now,
+          updatedAt: now
+        }
+      ]);
 
-    // Places
-    const places = await queryInterface.bulkInsert('places', [
-      {
-        name: 'Beautiful Beach Resort',
-        description: 'A stunning beach resort with white sand',
-        location: 'Coastal City',
-        images: JSON.stringify(['beach1.jpg', 'beach2.jpg']),
-        status: 'approved',
-        created_at: new Date(),
-        updated_at: new Date()
-      }
-    ], { returning: true });
+      // Places
+      console.log('Seeding places...');
+      await queryInterface.bulkInsert('places', [
+        {
+          id: 1,
+          name: 'Beautiful Beach Resort',
+          description: 'A stunning beach resort with white sand',
+          location: 'Coastal City',
+          images: JSON.stringify(['beach1.jpg', 'beach2.jpg']),
+          status: 'approved',
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          id: 2,
+          name: 'Mountain Retreat',
+          description: 'A cozy retreat in the mountains',
+          location: 'Mountain Valley',
+          images: JSON.stringify(['mountain1.jpg']),
+          status: 'approved',
+          createdAt: now,
+          updatedAt: now
+        }
+      ]);
 
-    // Events
-    await queryInterface.bulkInsert('events', [
-      {
-        title: 'Beach Party',
-        description: 'Annual summer beach party',
-        date: new Date('2024-07-01'),
-        location: 'Beach Resort',
-        images: JSON.stringify(['party1.jpg']),
-        status: 'approved',
-        advisorId: advisors[0].id,
-        created_at: new Date(),
-        updated_at: new Date()
-      }
-    ]);
+      // Events
+      const events = await queryInterface.bulkInsert('events', [
+        {id:1,
+          title: 'Beach Party',
+          description: 'Annual summer beach party',
+          date: new Date('2025-07-01'),
+          location: 'Beach Resort',
+          images: JSON.stringify(['party1.jpg']),
+          status: 'approved',
+          advisorId: 1,
+          createdAt: now,
+          updatedAt: now
+        },
+        {id:2,
+          title: 'Mountain Hiking Event',
+          description: 'Group hiking in the mountains',
+          date: new Date('2025-08-15'),
+          location: 'Mountain Valley',
+          images: JSON.stringify(['hike1.jpg']),
+          status: 'pending',
+          advisorId: 1,
+          createdAt: now,
+          updatedAt: now
+        }
+      ], { returning: true });
 
-    // Blogs
-    await queryInterface.bulkInsert('blogs', [
-      {
-        title: 'Top 10 Beach Destinations',
-        content: 'Discover the most beautiful beaches...',
-        image: 'beach-blog.jpg',
-        likes: 150,
-        comments: JSON.stringify(['Great article!', 'Very helpful']),
-        userId: users[1].id,
-        created_at: new Date(),
-        updated_at: new Date()
-      }
-    ]);
+      // Blogs
+      await queryInterface.bulkInsert('blogs', [
+        {
+          title: 'Top 10 Beach Destinations',
+          content: 'Discover the most beautiful beaches...',
+          image: 'beach-blog.jpg',
+          likes: 150,
+          comments: JSON.stringify(['Great article!', 'Very helpful']),
+          userId: 2,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          title: 'Best Mountain Trails',
+          content: 'Explore the top mountain trails...',
+          image: 'mountain-blog.jpg',
+          likes: 75,
+          comments: JSON.stringify(['Amazing views!']),
+          userId: 3,
+          createdAt: now,
+          updatedAt: now
+        }
+      ]);
 
-    // Place-Category associations
-    await queryInterface.bulkInsert('placeCategories', [
-      {
-        placeId: places[0].id,
-        categorieId: categories[0].id,
-        created_at: new Date(),
-        updated_at: new Date()
-      }
-    ]);
+      // Place-Category associations
+      await queryInterface.bulkInsert('placeCategories', [
+        {
+          placeId: 1,
+          categorieId: 1,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          placeId: 2,
+          categorieId: 2,
+          createdAt: now,
+          updatedAt: now
+        }
+      ]);
 
-    // Reviews
-    await queryInterface.bulkInsert('reviews', [
-      {
-        rating: 5,
-        placeId: places[0].id,
-        userId: users[0].id,
-        created_at: new Date(),
-        updated_at: new Date()
-      }
-    ]);
+      // PlaceUser associations
+      await queryInterface.bulkInsert('placeUsers', [
+        {
+          placeId: 1,
+          userId: 1,
+          rating: 5,
 
-    // Media
-    await queryInterface.bulkInsert('media', [
-      {
-        url: 'https://example.com/beach-photo.jpg',
-        type: 'image',
-        userId: users[0].id,
-        placeId: places[0].id,
-        created_at: new Date(),
-        updated_at: new Date()
-      },
-      {
-        url: 'https://example.com/event-video.mp4',
-        type: 'video',
-        eventId: events[0].id,
-        created_at: new Date(),
-        updated_at: new Date()
-      }
-    ]);
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          placeId: 2,
+          userId: 3,
+          rating: 5,
 
-    // Chats
-    await queryInterface.bulkInsert('chats', [
-      {
-        message: 'Hello, I have a question about the beach resort.',
-        created_at: new Date()
-      },
-      {
-        message: 'Sure, I can help you with that!',
-        created_at: new Date()
-      }
-    ]);
+          createdAt: now,
+          updatedAt: now
+        }
+      ]);
 
-    // Criteria
-    await queryInterface.bulkInsert('critirias', [
-      {
-        name: 'Cleanliness',
-        purcent: 25,
-        created_at: new Date(),
-        updated_at: new Date()
-      },
-      {
-        name: 'Service',
-        purcent: 30,
-        created_at: new Date(),
-        updated_at: new Date()
-      },
-      {
-        name: 'Location',
-        purcent: 20,
-        created_at: new Date(),
-        updated_at: new Date()
-      }
-    ]);
+      // Reviews
+      await queryInterface.bulkInsert('reviews', [
+        {
+          rating: 5,
+          placeId: 1,
+          userId: 1,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          rating: 4,
+          placeId: 2,
+          userId: 3,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          rating: 5,
+          eventId: 2,
+          userId: 3,
+          createdAt: now,
+          updatedAt: now
+        }
+      ]);
 
-    // Favorites
-    await queryInterface.bulkInsert('favorites', [
-      {
-        userId: users[0].id,
-        placeId: places[0].id,
-        created_at: new Date(),
-        updated_at: new Date()
-      }
-    ]);
+      // Media
+      await queryInterface.bulkInsert('media', [
+        {
+          url: 'https://example.com/beach-photo.jpg',
+          type: 'image',
+          userId: 1,
+          placeId: 1,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          url: 'https://example.com/event-video.mp4',
+          type: 'video',
+          eventId: 1,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          url: 'https://example.com/mountain-photo.jpg',
+          type: 'image',
+          userId: 3,
+          placeId: 2,
+          createdAt: now,
+          updatedAt: now
+        }
+      ]);
 
-    // Ranks (Event Ratings)
-    await queryInterface.bulkInsert('event_ratings', [
-      {
-        name: 'Bronze',
-        targetPoints: 100,
-        totalPoints: 0,
-        advisorId: advisors[0].id,
-        created_at: new Date(),
-        updated_at: new Date()
-      },
-      {
-        name: 'Silver',
-        targetPoints: 500,
-        totalPoints: 250,
-        advisorId: advisors[0].id,
-        created_at: new Date(),
-        updated_at: new Date()
-      }
-    ]);
+      // Chats
+      await queryInterface.bulkInsert('chats', [
+        {
+          message: 'Hello, I have a question about the beach resort.',
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          message: 'Sure, I can help you with that!',
+          createdAt: now,
+          updatedAt: now
+        }
+      ]);
+
+      // Criteria
+      await queryInterface.bulkInsert('critiria', [
+        {
+          name: 'Cleanliness',
+          purcent: 25,
+          placeUserId: 1, // Assuming first PlaceUser record
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          name: 'Service',
+          purcent: 30,
+          placeUserId: 1,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          name: 'Location',
+          purcent: 20,
+          placeUserId: 2,
+          createdAt: now,
+          updatedAt: now
+        }
+      ]);
+
+      // Favorites
+      await queryInterface.bulkInsert('favorites', [
+        {
+          userId: 1,
+          placeId: 1,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          userId: 3,
+          placeId: 2,
+          createdAt: now,
+          updatedAt: now
+        }
+      ]);
+
+      // Ranks (Event Ratings)
+      await queryInterface.bulkInsert('event_ratings', [
+        {
+          name: 'Bronze',
+          targetPoints: 100,
+          totalPoints: 0,
+          advisorId: 1,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          name: 'Silver',
+          targetPoints: 500,
+          totalPoints: 250,
+          advisorId: 1,
+          createdAt: now,
+          updatedAt: now
+        }
+      ]);
+
+      console.log('✅ Seeding completed successfully!');
+    } catch (error) {
+      console.error('❌ Seeding failed:', error);
+      throw error;
+    }
   },
 
   down: async (queryInterface, Sequelize) => {
-    // Delete all seeded data in reverse order
-    await queryInterface.bulkDelete('event_ratings', null, {});
-    await queryInterface.bulkDelete('favorites', null, {});
-    await queryInterface.bulkDelete('critirias', null, {});
-    await queryInterface.bulkDelete('chats', null, {});
-    await queryInterface.bulkDelete('media', null, {});
-    await queryInterface.bulkDelete('reviews', null, {});
-    await queryInterface.bulkDelete('placeCategories', null, {});
-    await queryInterface.bulkDelete('blogs', null, {});
-    await queryInterface.bulkDelete('events', null, {});
-    await queryInterface.bulkDelete('places', null, {});
-    await queryInterface.bulkDelete('categories', null, {});
-    await queryInterface.bulkDelete('advisors', null, {});
-    await queryInterface.bulkDelete('users', null, {});
+    try {
+      console.log('Reverting seeds...');
+      // Delete in reverse order to handle foreign key constraints
+      const tables = [
+        'event_ratings',
+        'favorites',
+        'critiria',
+        'chats',
+        'media',
+        'reviews',
+        'placeUsers',
+        'placeCategories',
+        'blogs',
+        'events',
+        'places',
+        'categories',
+        'advisors',
+        'users'
+      ];
+
+      for (const table of tables) {
+        console.log(`Deleting ${table}...`);
+        await queryInterface.bulkDelete(table, null, {});
+      }
+      
+      console.log('✅ Seeds reverted successfully!');
+    } catch (error) {
+      console.error('❌ Seed reversion failed:', error);
+      throw error;
+    }
   }
-}; 
+};
