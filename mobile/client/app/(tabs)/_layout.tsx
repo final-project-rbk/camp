@@ -7,7 +7,7 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { TestButtons } from '@/components/TestButtons';
+
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -27,14 +27,7 @@ export default function TabLayout() {
           default: {},
         }),
       }}>
-      <Tabs.Screen
-        name="TestButtons"
-        component={TestButtons}
-        options={{
-          title: 'Test',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="star.fill" color={color} />,
-        }}
-      />
+     
       <Tabs.Screen
         name="index"
         options={{

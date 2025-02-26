@@ -1,4 +1,4 @@
-const { User, Advisor, Place, Event } = require('../models'); // Adjust the path as necessary
+const { User, Advisor, Place, Event,Review } = require('../models'); // Adjust the path as necessary
 
 // Migrate user to advisor
 module.exports.migrateUserToAdvisor = async (req, res) => {
@@ -256,29 +256,48 @@ module.exports.getAdvisorProfile = async (req, res) => {
   };
 // Update points dynamically (e.g., after a review or event completion)
 module.exports.updatePoints = async (req, res) => {
-    try {
-      const { advisorId, points } = req.body; // This can still be used for manual updates
-      const advisor = await Advisor.findByPk(advisorId);
-      if (!advisor) {
-        return res.status(404).json({ error: "Advisor not found" });
-      }
-  
-      const newPoints = advisor.points + points;
-      await advisor.update({ points: newPoints });
-  
-      // Update rank based on points
-      let newRank;
-      if (newPoints >= 500) newRank = "platinum";
-      else if (newPoints >= 250) newRank = "gold";
-      else if (newPoints >= 100) newRank = "silver";
-      else newRank = "bronze";
-  
-      await advisor.update({ currentRank: newRank });
-    //   await advisor.User.update({ points: newPoints, rank: newRank });
-  
-      return res.status(200).json({ message: "Points and rank updated", points: newPoints, rank: newRank });
-    } catch (error) {
-      console.error("Error updating points:", error);
-      return res.status(500).json({ error: "Internal server error" });
+  try {
+    const { advisorId, points } = req.body;
+    const advisor = await Advisor.findByPk(advisorId);
+    if (!advisor) {
+      return res.status(404).json({ error: "Advisor not found" });
     }
-  };
+
+    // Calculate new points
+    const newPoints = advisor.points + points;
+    await advisor.update({ points: newPoints });
+
+    // Fetch all ranks from EventRating (assuming it's the rank table)
+    const ranks = await sequelize.models.event_rating.findAll({
+      order: [['targetPoints', 'ASC']] // Order by targetPoints ascending
+    });
+
+    // Determine the new rank based on newPoints
+    let newRank = "bronze"; // Default to lowest rank
+    for (const rank of ranks) {
+      if (newPoints >= rank.targetPoints && (rank.totalPoints === null || newPoints <= rank.totalPoints)) {
+        newRank = rank.name;
+      } else if (newPoints > rank.totalPoints) {
+        // Continue to next rank if points exceed this rank's totalPoints
+        continue;
+      } else {
+        // Stop if points are below targetPoints of next rank
+        break;
+      }
+    }
+
+    // Update advisor's rank
+    await advisor.update({ currentRank: newRank });
+    // Optionally sync User model (commented out as per your latest code)
+    // await advisor.User.update({ points: newPoints, rank: newRank });
+
+    return res.status(200).json({
+      message: "Points and rank updated",
+      points: newPoints,
+      rank: newRank
+    });
+  } catch (error) {
+    console.error("Error updating points:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
