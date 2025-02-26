@@ -1,47 +1,64 @@
 import { Tabs } from 'expo-router';
-import React from 'react';
-import { Platform } from 'react-native';
-
-import { HapticTab } from '@/components/HapticTab';
-import { IconSymbol } from '@/components/ui/IconSymbol';
-import TabBarBackground from '@/components/ui/TabBarBackground';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
-
+import { Ionicons } from '@expo/vector-icons';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
-        tabBarButton: HapticTab,
-        tabBarBackground: TabBarBackground,
-        tabBarStyle: Platform.select({
-          ios: {
-            // Use a transparent background on iOS to show the blur effect
-            position: 'absolute',
-          },
-          default: {},
-        }),
-      }}>
-     
+        tabBarStyle: {
+          backgroundColor: '#0A192F',
+          borderTopColor: '#1D2D50',
+        },
+        tabBarActiveTintColor: '#64FFDA',
+        tabBarInactiveTintColor: '#8892B0',
+      }}
+    >
       <Tabs.Screen
-        name="index"
+      name="home"
+      options={{
+        title: 'Home',
+        tabBarIcon: ({ size, color }) => (
+          <Ionicons name="home" size={size} color={color} />
+          ),
+          }}
+          />
+      <Tabs.Screen
+        name="market"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: 'Market',
+          tabBarIcon: ({ size, color }) => (
+            <Ionicons name="cart" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="favorites"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'Favorites',
+          tabBarIcon: ({ size, color }) => (
+            <Ionicons name="heart" size={size} color={color} />
+          ),
         }}
       />
+      <Tabs.Screen
+        name="hints"
+        options={{
+          title: 'Hints',
+          tabBarIcon: ({ size, color }) => (
+            <Ionicons name="add" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+      name="setting"
+      options={{
+        title: 'Setting',
+        tabBarIcon: ({ size, color }) => (
+          <Ionicons name="settings" size={size} color={color} />
+        ),
+      }}
+    />
     </Tabs>
   );
 }
