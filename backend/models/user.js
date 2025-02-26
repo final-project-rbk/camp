@@ -5,7 +5,7 @@ module.exports = (sequelize, DataTypes) => {
       first_name: { type: DataTypes.STRING, allowNull: false },
       last_name: { type: DataTypes.STRING, allowNull: false },
       role: { type: DataTypes.ENUM('user', 'advisor', 'admin'), defaultValue: 'user' },
-      rank: { type: DataTypes.ENUM('bronze', 'silver', 'gold', 'platinum'), defaultValue: 'bronze' },
+     
       points: { type: DataTypes.INTEGER, defaultValue: 0 },
       profile_image: { type: DataTypes.STRING, allowNull: true },
       bio: { type: DataTypes.TEXT, allowNull: true },

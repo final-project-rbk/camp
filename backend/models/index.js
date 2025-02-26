@@ -1,4 +1,5 @@
 const { Sequelize, DataTypes } = require("sequelize");
+const critiria = require("./critiria");
 
 
 // Initialize Sequelize connection
@@ -22,14 +23,17 @@ const Review=require("./review")(connection,DataTypes)
 const PlaceUser=require("./PlaceUser")(connection,DataTypes)
 const PlaceCategorie = require("./PlaceCategorie")(connection,DataTypes)
 const Blog = require("./blog")(connection,DataTypes)
+const PlaceCitiria=require("./placeCritiria")(connection,DataTypes)
 
 // Define relationships
 const defineAssociations = () => {
   // User relationships
   User.hasMany(Media, { foreignKey: "userId" });
   Media.belongsTo(User, { foreignKey: "userId" });
+
   User.hasMany(Review, { foreignKey: "userId" });
   Review.belongsTo(User, { foreignKey: "userId" });
+
   User.hasOne(Advisor, { foreignKey: "userId" });
   Advisor.belongsTo(User, { foreignKey: "userId" });
 
@@ -71,9 +75,13 @@ Favorite.belongsTo(User, { foreignKey: "userId" });
 
 User.hasMany(Blog, { foreignKey: "userId" });
 Blog.belongsTo(User, { foreignKey: "userId" });
-  
-  
 
+// Place.belongsToMany(Citiria, { through: PlaceUser, foreignKey: "placeId" });
+// Citiria.belongsToMany(Place, { through: PlaceUser, foreignKey: "citiriaId" });
+  
+  
+Place.belongsToMany(Citiria, { through: PlaceCitiria, foreignKey: "placeId" });
+Citiria.belongsToMany(Place, { through: PlaceCitiria, foreignKey: "citiriaId" });
   
   
   
@@ -119,6 +127,7 @@ module.exports = {
   Review,
   PlaceUser,
   PlaceCategorie,
-  Blog
+  Blog,
+  PlaceCitiria
  
 };
