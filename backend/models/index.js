@@ -28,7 +28,10 @@ const defineAssociations = () => {
   // User relationships
   User.hasMany(Media, { foreignKey: "userId" });
   Media.belongsTo(User, { foreignKey: "userId" });
-  
+
+  User.hasMany(Review, { foreignKey: "userId" });
+  Review.belongsTo(User, { foreignKey: "userId" });
+
   User.hasOne(Advisor, { foreignKey: "userId" });
   Advisor.belongsTo(User, { foreignKey: "userId" });
 

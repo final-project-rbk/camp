@@ -5,24 +5,13 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false, 
       validate: { min: 1, max: 5 } 
     },
-   
+comment: { type: DataTypes.TEXT, allowNull: true },
     
     created_at: { 
       type: DataTypes.DATE, 
       defaultValue: DataTypes.NOW 
     },
-    advisorId: { 
-      type: DataTypes.INTEGER, 
-      allowNull: true 
-    },
-    eventId: { 
-      type: DataTypes.INTEGER, 
-      allowNull: true 
-    },
-    placeId: { 
-      type: DataTypes.INTEGER, 
-      allowNull: true 
-    }
+
   }, {
     hooks: {
       afterCreate: async (review, options) => {

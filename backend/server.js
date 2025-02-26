@@ -5,6 +5,7 @@ const advisorRoutes = require('./routes/advisor.routes');
 let app = express();
 const cors = require("cors");
 const db = require("./models/index");
+const blogRoutes = require('./routes/blogs.router');
 app.use(express.static(__dirname + '/../client/dist'));
 app.use(express.json())
 app.use(cors())
@@ -19,6 +20,7 @@ app.use('/api/advisor', advisorRoutes);
 app.get('/', (req, res) => {
   res.send('Server is running!');
 });
+app.use('/api/blogs', blogRoutes);
 
 let port = 3000;
 
