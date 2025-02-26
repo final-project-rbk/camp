@@ -95,13 +95,13 @@ connection
   });
 
 // Sync the database (uncomment to create tables)
-connection
-  .sync({ force: true }) // Use { force: true } to drop and recreate tables; remove in production
-  .then(() => console.log("Tables are created"))
-  .catch((err) => {
-    console.error("Error syncing tables:", err);
-    throw err;
-  });
+// connection
+//   .sync({ force: true }) // Use { force: true } to drop and recreate tables; remove in production
+//   .then(() => console.log("Tables are created"))
+//   .catch((err) => {
+//     console.error("Error syncing tables:", err);
+//     throw err;
+//   });
 
 // Export models and connection
 module.exports = {
