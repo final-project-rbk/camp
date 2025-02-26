@@ -1,6 +1,6 @@
 // blogController.js
 
-const { Blog } = require('../models/blog'); // Ensure correct model import
+const  {Blog} = require('../models'); // Ensure correct model import
 
 const blogController = {
     // Create a new blog post
@@ -22,8 +22,6 @@ const blogController = {
     // Get all blog posts
     getAllBlogs: async (req, res) => {
         try {
-            console.log(Blog,"blogggggggggggggggg");
-            
             const blogs = await Blog.findAll();
             res.status(200).json({ success: true, data: blogs, message: 'Blogs retrieved successfully' });
         } catch (error) {
