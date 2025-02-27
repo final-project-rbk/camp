@@ -139,24 +139,52 @@ module.exports = {
       ], { returning: true });
 
       // Blogs
-      await queryInterface.bulkInsert('blogs', [
+      const blogs = await queryInterface.bulkInsert('blogs', [
         {
+          id: 1,
           title: 'Top 10 Beach Destinations',
           content: 'Discover the most beautiful beaches...',
           image: 'beach-blog.jpg',
           likes: 150,
-          comments: JSON.stringify(['Great article!', 'Very helpful']),
           userId: 2,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 2,
           title: 'Best Mountain Trails',
           content: 'Explore the top mountain trails...',
           image: 'mountain-blog.jpg',
           likes: 75,
-          comments: JSON.stringify(['Amazing views!']),
           userId: 3,
+          createdAt: now,
+          updatedAt: now
+        }
+      ], { returning: true });
+
+      // Comments
+      await queryInterface.bulkInsert('comments', [
+        {
+          content: 'Great article!',
+          userId: 1,
+          blogId: 1,
+          created_at: now,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          content: 'Very helpful',
+          userId: 3,
+          blogId: 1,
+          created_at: now,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          content: 'Amazing views!',
+          userId: 2,
+          blogId: 2,
+          created_at: now,
           createdAt: now,
           updatedAt: now
         }
@@ -345,6 +373,7 @@ module.exports = {
         'reviews',
         'placeUsers',
         'placeCategories',
+        'comments',
         'blogs',
         'events',
         'places',

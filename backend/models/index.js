@@ -24,6 +24,7 @@ const PlaceUser=require("./PlaceUser")(connection,DataTypes)
 const PlaceCategorie = require("./PlaceCategorie")(connection,DataTypes)
 const Blog = require("./blog")(connection,DataTypes)
 const PlaceCitiria=require("./placeCritiria")(connection,DataTypes)
+const Comment = require("./Comment")(connection, DataTypes);
 
 // Define relationships
 const defineAssociations = () => {
@@ -75,6 +76,12 @@ Favorite.belongsTo(User, { foreignKey: "userId" });
 
 User.hasMany(Blog, { foreignKey: "userId" });
 Blog.belongsTo(User, { foreignKey: "userId" });
+
+Blog.hasMany(Comment, { foreignKey: "blogId" });
+Comment.belongsTo(Blog, { foreignKey: "blogId" });
+
+User.hasMany(Comment, { foreignKey: "userId" });
+Comment.belongsTo(User, { foreignKey: "userId" });
 
 // Place.belongsToMany(Citiria, { through: PlaceUser, foreignKey: "placeId" });
 // Citiria.belongsToMany(Place, { through: PlaceUser, foreignKey: "citiriaId" });
@@ -128,6 +135,6 @@ module.exports = {
   PlaceUser,
   PlaceCategorie,
   Blog,
-  PlaceCitiria
- 
+  PlaceCitiria,
+  Comment
 };

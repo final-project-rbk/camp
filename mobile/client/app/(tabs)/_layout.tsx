@@ -1,3 +1,4 @@
+import React from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -13,16 +14,23 @@ export default function TabLayout() {
         tabBarActiveTintColor: '#64FFDA',
         tabBarInactiveTintColor: '#8892B0',
       }}
+      initialRouteName="home"
     >
       <Tabs.Screen
-      name="home"
-      options={{
-        title: 'Home',
-        tabBarIcon: ({ size, color }) => (
-          <Ionicons name="home" size={size} color={color} />
+        name="index"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="home"
+        options={{
+          title: 'Home',
+          tabBarIcon: ({ size, color }) => (
+            <Ionicons name="home" size={size} color={color} />
           ),
-          }}
-          />
+        }}
+      />
       <Tabs.Screen
         name="market"
         options={{
@@ -46,19 +54,28 @@ export default function TabLayout() {
         options={{
           title: 'Hints',
           tabBarIcon: ({ size, color }) => (
-            <Ionicons name="add" size={size} color={color} />
+            <Ionicons name="bulb" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-      name="setting"
-      options={{
-        title: 'Setting',
-        tabBarIcon: ({ size, color }) => (
-          <Ionicons name="settings" size={size} color={color} />
-        ),
-      }}
-    />
+        name="setting"
+        options={{
+          title: 'Setting',
+          tabBarIcon: ({ size, color }) => (
+            <Ionicons name="settings" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="story"
+        options={{
+          title: 'Story',
+          tabBarIcon: ({ size, color }) => (
+            <Ionicons name="book" size={size} color={color} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }
