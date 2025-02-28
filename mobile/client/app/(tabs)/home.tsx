@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Sidebar from '../../components/Sidebar';
+import {  EXPO_PUBLIC_API_URL  } from '../../config';
 
 // Define navigation type
 type RootStackParamList = {
@@ -48,7 +49,7 @@ export default function DiscoverScreen() {
   const fetchPlaces = async () => {
     try {
       const limit = showAllPlaces ? '' : '5';
-      const response = await fetch(`http://192.168.11.49:3000/api/places?limit=${limit}`);
+      const response = await fetch(`${ EXPO_PUBLIC_API_URL }/api/places?limit=${limit}`);
       const data = await response.json();
       if (data.success) {
         if (showAllPlaces) {
@@ -203,29 +204,31 @@ export default function DiscoverScreen() {
               style={styles.destinationsScroll}
             >
               {filteredPlaces.map((place) => (
-                <Pressable
+                <Link
                   key={place.id}
-                  style={styles.destinationCard}
-                  onPress={() => {/* Handle navigation */}}
+                  href={`/place/${place.id}`}
+                  asChild
                 >
-                  <Image
-                    source={{ uri: place.image }}
-                    style={styles.destinationImage}
-                  />
-                  <View style={styles.destinationInfo}>
-                    <Text style={styles.destinationName}>{place.name}</Text>
-                    <View style={styles.destinationDetails}>
-                      <View style={styles.locationContainer}>
-                        <Ionicons name="location" size={14} color="#8892B0" />
-                        <Text style={styles.destinationLocation}>{place.location}</Text>
-                      </View>
-                      <View style={styles.ratingContainer}>
-                        <Ionicons name="star" size={14} color="#FFD700" />
-                        <Text style={styles.rating}>{place.rating}</Text>
+                  <Pressable style={styles.destinationCard}>
+                    <Image
+                      source={{ uri: place.image }}
+                      style={styles.destinationImage}
+                    />
+                    <View style={styles.destinationInfo}>
+                      <Text style={styles.destinationName}>{place.name}</Text>
+                      <View style={styles.destinationDetails}>
+                        <View style={styles.locationContainer}>
+                          <Ionicons name="location" size={14} color="#8892B0" />
+                          <Text style={styles.destinationLocation}>{place.location}</Text>
+                        </View>
+                        <View style={styles.ratingContainer}>
+                          <Ionicons name="star" size={14} color="#FFD700" />
+                          <Text style={styles.rating}>{place.rating}</Text>
+                        </View>
                       </View>
                     </View>
-                  </View>
-                </Pressable>
+                  </Pressable>
+                </Link>
               ))}
             </ScrollView>
           )}

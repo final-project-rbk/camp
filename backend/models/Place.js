@@ -10,5 +10,14 @@ module.exports = (sequelize, DataTypes) => {
       updated_at: { type: DataTypes.DATE, defaultValue: sequelize.literal('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP') }
     });
   
+    Place.associate = function(models) {
+      Place.hasMany(models.Media, { foreignKey: 'placeId' });
+      Place.hasMany(models.Review, { foreignKey: 'placeId' });
+      Place.belongsToMany(models.Categorie, { 
+        through: 'placeCategorie',
+        foreignKey: 'placeId'
+      });
+    };
+  
     return Place;
   };

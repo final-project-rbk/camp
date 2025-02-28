@@ -11,6 +11,8 @@ import {
 import { Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import {  EXPO_PUBLIC_API_URL  } from '../config';
+import { Link } from 'expo-router';
 
 interface Category {
   name: string;
@@ -34,7 +36,7 @@ export default function AllPlacesScreen() {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch('http://192.168.11.49:3000/api/categories');
+      const response = await fetch(`${ EXPO_PUBLIC_API_URL }/api/categories`);
       const data = await response.json();
       if (data.success) {
         setCategories(data.data);
@@ -48,7 +50,7 @@ export default function AllPlacesScreen() {
     try {
       setLoading(true);
       const queryParams = category ? `?category=${category}` : '';
-      const response = await fetch(`http://192.168.11.49:3000/api/places${queryParams}`);
+      const response = await fetch(`${ EXPO_PUBLIC_API_URL }/api/places${queryParams}`);
       const data = await response.json();
       if (data.success) {
         setPlaces(data.data);
@@ -69,17 +71,19 @@ export default function AllPlacesScreen() {
   }, [selectedCategory]);
 
   const renderPlace = ({ item }: { item: Place }) => (
-    <View style={styles.placeCard}>
-      <Image source={{ uri: item.image }} style={styles.placeImage} />
-      <View style={styles.placeInfo}>
-        <Text style={styles.placeName}>{item.name}</Text>
-        <Text style={styles.placeLocation}>{item.location}</Text>
-        <View style={styles.ratingContainer}>
-          <Ionicons name="star" size={16} color="#FFD700" />
-          <Text style={styles.rating}>{item.rating}</Text>
+    <Link href={`/place/${item.id}`} asChild>
+      <Pressable style={styles.placeCard}>
+        <Image source={{ uri: item.image }} style={styles.placeImage} />
+        <View style={styles.placeInfo}>
+          <Text style={styles.placeName}>{item.name}</Text>
+          <Text style={styles.placeLocation}>{item.location}</Text>
+          <View style={styles.ratingContainer}>
+            <Ionicons name="star" size={16} color="#FFD700" />
+            <Text style={styles.rating}>{item.rating}</Text>
+          </View>
         </View>
-      </View>
-    </View>
+      </Pressable>
+    </Link>
   );
 
   const renderCategoryFilter = ({ item }: { item: Category }) => (
