@@ -36,7 +36,7 @@ export default function AllPlacesScreen() {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch(`${ EXPO_PUBLIC_API_URL }/api/categories`);
+      const response = await fetch(`${ EXPO_PUBLIC_API_URL }categories`);
       const data = await response.json();
       if (data.success) {
         setCategories(data.data);
@@ -50,7 +50,7 @@ export default function AllPlacesScreen() {
     try {
       setLoading(true);
       const queryParams = category ? `?category=${category}` : '';
-      const response = await fetch(`${ EXPO_PUBLIC_API_URL }/api/places${queryParams}`);
+      const response = await fetch(`${ EXPO_PUBLIC_API_URL }places${queryParams}`);
       const data = await response.json();
       if (data.success) {
         setPlaces(data.data);
