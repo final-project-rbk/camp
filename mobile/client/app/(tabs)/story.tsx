@@ -7,6 +7,9 @@ import React from "react";
 import * as ImagePicker from 'expo-image-picker';
 import { Platform } from 'react-native';
 
+// Add this constant at the top of the file, after the imports
+const DEFAULT_PROFILE_IMAGE = 'https://johannesippen.com/img/blog/humans-not-users/header.jpg';
+
 // Add interface for blog type
 interface Comment {
     id: number;
@@ -28,7 +31,8 @@ interface Blog {
     liked: boolean;
     user: {
         first_name: string;
-        last_name?: string;
+        last_name: string;
+        profile_image: string;
     };
 }
 
@@ -357,14 +361,25 @@ export default function Story() {
             >
                 <View style={styles.content}>
                     {blogData.length > 0 ? (
-                        blogData.map((blog) => (
+                        sortBlogs(blogData).map((blog) => (
                             <TouchableOpacity 
                                 key={blog.id} 
                                 style={styles.blogCard}
                                 onPress={() => showBlogDetails(blog.id)}
                             >
                                 <View style={styles.cardHeader}>
-                                    <Text style={styles.title}>{blog.title}</Text>
+                                    <View style={styles.authorInfo}>
+                                        <Image 
+                                            source={{ uri: blog.user?.profile_image || DEFAULT_PROFILE_IMAGE }} 
+                                            style={styles.profileImage}
+                                        />
+                                        <View style={styles.authorTextContainer}>
+                                            <Text style={styles.title}>{blog.title}</Text>
+                                            <Text style={styles.authorText}>
+                                                By: {blog.user?.first_name || 'Anonymous'} {blog.user?.last_name || ''}
+                                            </Text>
+                                        </View>
+                                    </View>
                                     <TouchableOpacity 
                                         style={styles.menuButton}
                                         onPress={() => handleMenuPress(blog.id)}
@@ -411,9 +426,6 @@ export default function Story() {
                                         </TouchableOpacity>
                                     </View>
                                 )}
-                                <Text style={styles.authorText}>
-                                    By: {blog.user.first_name}{blog.user.last_name ? ` ${blog.user.last_name}` : ''}
-                                </Text>
                                 <Text style={styles.contentText}>{blog.content}</Text>
                                 <View style={styles.metaContainer}>
                                     <TouchableOpacity
@@ -663,11 +675,24 @@ const styles = StyleSheet.create({
         color: '#64FFDA',
         fontSize: 16,
     },
+    authorInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+    },
+    profileImage: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        marginRight: 10,
+    },
+    authorTextContainer: {
+        flex: 1,
+    },
     authorText: {
         color: '#8892B0',
-        fontSize: 16,
-        fontStyle: 'italic',
-        marginBottom: 10,
+        fontSize: 14,
+        marginTop: 2,
     },
     contentText: {
         color: '#8892B0',

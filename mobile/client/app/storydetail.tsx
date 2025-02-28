@@ -12,6 +12,7 @@ interface Comment {
     user: {
         first_name: string;
         last_name: string;
+        profile_image: string;
     };
 }
 
@@ -25,10 +26,13 @@ interface Blog {
     liked: boolean;
     user: {
         first_name: string;
-        last_name?: string;
+        last_name: string;
+        profile_image: string;
     };
     comments: Comment[];
 }
+
+const DEFAULT_PROFILE_IMAGE = 'https://johannesippen.com/img/blog/humans-not-users/header.jpg';
 
 export default function StoryDetail() {
     const router = useRouter();
@@ -184,9 +188,15 @@ export default function StoryDetail() {
             >
                 <View style={styles.content}>
                     <Text style={styles.title}>{blog.title}</Text>
-                    <Text style={styles.authorText}>
-                        By: {blog.user?.first_name || 'Anonymous'} {blog.user?.last_name || ''}
-                    </Text>
+                    <View style={styles.authorContainer}>
+                        <Image 
+                            source={{ uri: blog.user?.profile_image || DEFAULT_PROFILE_IMAGE }} 
+                            style={styles.authorImage}
+                        />
+                        <Text style={styles.authorText}>
+                            By: {blog.user?.first_name || 'Anonymous'} {blog.user?.last_name || ''}
+                        </Text>
+                    </View>
                     {blog.image && <Image source={{ uri: blog.image }} style={styles.blogImage} resizeMode="cover" />}
                     <Text style={styles.contentText}>{blog.content}</Text>
                     <View style={styles.metaContainer}>
@@ -216,9 +226,15 @@ export default function StoryDetail() {
                             .map((comment) => (
                             <View key={comment.id} style={styles.commentCard}>
                                 <View style={styles.commentHeaderRow}>
-                                    <Text style={styles.commentAuthor}>
-                                        {comment.user?.first_name || 'Anonymous'} {comment.user?.last_name || ''}
-                                    </Text>
+                                    <View style={styles.commentAuthorContainer}>
+                                        <Image 
+                                            source={{ uri: comment.user?.profile_image || DEFAULT_PROFILE_IMAGE }} 
+                                            style={styles.commentAuthorImage}
+                                        />
+                                        <Text style={styles.commentAuthor}>
+                                            {comment.user?.first_name || 'Anonymous'} {comment.user?.last_name || ''}
+                                        </Text>
+                                    </View>
                                     <TouchableOpacity onPress={() => showDropdown(comment.id, comment.content)}>
                                         <Icon name="more-vert" size={20} color="#64FFDA" />
                                     </TouchableOpacity>
@@ -252,7 +268,22 @@ const styles = StyleSheet.create({
     scrollView: { flex: 1 },
     content: { padding: 20 },
     title: { color: '#64FFDA', fontSize: 24, fontWeight: 'bold', marginBottom: 10 },
-    authorText: { color: '#8892B0', fontSize: 16, fontStyle: 'italic', marginBottom: 15 },
+    authorContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 15,
+    },
+    authorImage: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        marginRight: 10,
+    },
+    authorText: {
+        color: '#8892B0',
+        fontSize: 16,
+        fontStyle: 'italic',
+    },
     blogImage: { width: '100%', height: 200, borderRadius: 8, marginBottom: 15 },
     contentText: { color: '#CCD6F6', fontSize: 16, lineHeight: 24, marginBottom: 20 },
     metaContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
@@ -267,7 +298,21 @@ const styles = StyleSheet.create({
     submitButtonText: { color: '#0A192F', fontWeight: 'bold' },
     commentCard: { backgroundColor: '#112240', padding: 15, borderRadius: 8, marginBottom: 10 },
     commentHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    commentAuthor: { color: '#64FFDA', fontSize: 16, fontWeight: 'bold', marginBottom: 5 },
+    commentAuthorContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    commentAuthorImage: {
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        marginRight: 8,
+    },
+    commentAuthor: {
+        color: '#64FFDA',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
     commentContent: { color: '#CCD6F6', fontSize: 14, marginBottom: 5 },
     commentDate: { color: '#8892B0', fontSize: 12 },
     loadingText: { color: '#64FFDA', fontSize: 18, textAlign: 'center', marginTop: 20 },

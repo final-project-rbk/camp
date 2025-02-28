@@ -24,14 +24,14 @@ const blogController = {
                 include: [
                     {
                         model: User,
-                        attributes: ['first_name'] // Include the first name of the blog creator
+                        attributes: ['first_name', 'last_name', 'profile_image'] // Updated to include all three fields
                     },
                     {
                         model: Comment,
                         include: [
                             {
                                 model: User,
-                                attributes: ['first_name', 'last_name'] // Include user details for comments
+                                attributes: ['first_name', 'last_name', 'profile_image'] // Updated to include all three fields
                             }
                         ]
                     }
@@ -48,13 +48,19 @@ const blogController = {
     getBlogById: async (req, res) => {
         try {
             const blog = await Blog.findByPk(req.params.id, {
-                include: [{
-                    model: Comment,
-                    include: [{
+                include: [
+                    {
                         model: User,
-                        attributes: ['first_name', 'last_name']
-                    }]
-                }]
+                        attributes: ['first_name', 'last_name', 'profile_image']
+                    },
+                    {
+                        model: Comment,
+                        include: [{
+                            model: User,
+                            attributes: ['first_name', 'last_name', 'profile_image']
+                        }]
+                    }
+                ]
             });
             if (!blog) return res.status(404).json({ success: false, message: 'Blog post not found' });
             res.status(200).json({ success: true, data: blog, message: 'Blog retrieved successfully' });
@@ -147,13 +153,14 @@ const blogController = {
     // Get all comments for a specific blog
     getAllComments: async (req, res) => {
         try {
-            console.log('req.params:', req.params); // Add this to debug
+            console.log('req.params:', req.params); // Keep this for debugging
             const comments = await Comment.findAll({
                 where: {
-                    blogId: req.params.blogid                 },
+                    blogId: req.params.blogid
+                },
                 include: [{
                     model: User,
-                    attributes: ['first_name', 'last_name']
+                    attributes: ['first_name', 'last_name', 'profile_image'] // Added profile_image
                 }]
             });
             res.status(200).json({ 
