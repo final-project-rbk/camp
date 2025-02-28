@@ -1,44 +1,37 @@
 module.exports = (sequelize, DataTypes) => {
-  const Review = sequelize.define('Review', {  // Capitalized for consistency
+  const Review = sequelize.define('Review', {
     rating: { 
       type: DataTypes.INTEGER, 
       allowNull: false, 
       validate: { min: 1, max: 5 } 
     },
-comment: { type: DataTypes.TEXT, allowNull: true },
-    
+    comment: { type: DataTypes.TEXT, allowNull: true },
     created_at: { 
       type: DataTypes.DATE, 
       defaultValue: DataTypes.NOW 
     },
-
-  }, {
-    hooks: {
-      afterCreate: async (review, options) => {
-        // Calculate points based on rating
-        const pointsChange = calculatePoints(review.rating);
-        
-        // Find the associated advisor
-        let advisor;
-        if (review.advisorId) {
-          advisor = await sequelize.models.Advisor.findByPk(review.advisorId);
-        } else if (review.eventId) {
-          const event = await sequelize.models.Event.findByPk(review.eventId);
-          advisor = await sequelize.models.Advisor.findByPk(event.advisorId);
-        } else if (review.placeId) {
-          const place = await sequelize.models.Place.findByPk(review.placeId);
-          const event = await sequelize.models.Event.findOne({ where: { id: place.eventId } });
-          advisor = event ? await sequelize.models.Advisor.findByPk(event.advisorId) : null;
-        }
-
-        if (advisor) {
-          const newPoints = advisor.points + pointsChange;
-          await advisor.update({ points: newPoints });
-          await updateAdvisorRank(advisor, newPoints); // Update rank based on new points
-        }
+    userId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'users',
+        key: 'id'
+      }
+    },
+    placeId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'places',
+        key: 'id'
       }
     }
   });
+
+  Review.associate = function(models) {
+    Review.belongsTo(models.User, { foreignKey: 'userId' });
+    Review.belongsTo(models.Place, { foreignKey: 'placeId' });
+  };
 
   return Review;
 };
@@ -51,7 +44,7 @@ const calculatePoints = (rating) => {
     case 3: return 1;
     case 4: return 2;
     case 5: return 3;
-    default: return 0; // Shouldn’t happen due to validation
+    default: return 0; // Shouldn't happen due to validation
   }
 };
 
