@@ -49,7 +49,7 @@ export default function DiscoverScreen() {
   const fetchPlaces = async () => {
     try {
       const limit = showAllPlaces ? '' : '5';
-      const response = await fetch(`${ EXPO_PUBLIC_API_URL }/api/places?limit=${limit}`);
+      const response = await fetch(`${ EXPO_PUBLIC_API_URL }places?limit=${limit}`);
       const data = await response.json();
       if (data.success) {
         if (showAllPlaces) {
