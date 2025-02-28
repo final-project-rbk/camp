@@ -694,6 +694,20 @@ module.exports = {
           placeId: 2,
           createdAt: now,
           updatedAt: now
+        },
+        {
+          url: 'https://tse2.mm.bing.net/th?id=OIP.TQiLAuAmiDu9vN_svaZd1AHaEK&pid=Api&P=0&h=180',
+          type: 'image',
+          userId: 2,
+          placeId: 1,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          url: 'https://tse1.mm.bing.net/th?id=OIP.sK_mlnnnaIID4eSC1DiZAwHaFC&pid=Api&P=0&h=180',
+          type: 'image',
+          userId: 3,
+          placeId: 1,
         }
       ]);
 

@@ -44,3 +44,6 @@ next-env.d.ts
 
 expo-env.d.ts
 # @end expo-cli
+config.ts
+config
+/config.ts

@@ -2,7 +2,7 @@ import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, TextInput,
 import { useState, useEffect } from "react";
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { API_BASE_URL } from '../config';
+import { EXPO_PUBLIC_API_URL } from '../config';
 import React from "react";
 
 interface Comment {
@@ -48,7 +48,7 @@ export default function StoryDetail() {
 
     const fetchBlogDetails = async () => {
         try {
-            const response = await fetch(`${API_BASE_URL}blogs/${id}`);
+            const response = await fetch(`${EXPO_PUBLIC_API_URL}blogs/${id}`);
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const result = await response.json();
             if (result.success) setBlog(result.data);
@@ -66,7 +66,7 @@ export default function StoryDetail() {
             return;
         }
         try {
-            const response = await fetch(`${API_BASE_URL}blogs/comments/${id}`, {
+            const response = await fetch(`${EXPO_PUBLIC_API_URL}blogs/comments/${id}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
@@ -87,7 +87,7 @@ export default function StoryDetail() {
 
     const deleteComment = async (commentId: number) => {
         try {
-            const response = await fetch(`${API_BASE_URL}blogs/comments/${commentId}`, {
+            const response = await fetch(`${EXPO_PUBLIC_API_URL}blogs/comments/${commentId}`, {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
             });
@@ -106,7 +106,7 @@ export default function StoryDetail() {
             return;
         }
         try {
-            const response = await fetch(`${API_BASE_URL}blogs/comments/${commentId}`, {
+            const response = await fetch(`${EXPO_PUBLIC_API_URL}blogs/comments/${commentId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ content: editCommentText }),
@@ -126,7 +126,7 @@ export default function StoryDetail() {
     const toggleLike = async () => {
         if (!blog) return;
         try {
-            const response = await fetch(`${API_BASE_URL}blogs/${id}/like`, {
+            const response = await fetch(`${EXPO_PUBLIC_API_URL}blogs/${id}/like`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: 3, liked: !blog.liked }),

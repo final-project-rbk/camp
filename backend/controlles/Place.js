@@ -5,17 +5,8 @@ const placeController = {
   getAllPlaces: async (req, res) => {
     try {
       const { limit, category } = req.query;
-      console.log('Attempting to fetch places...');
       
-      // First, verify our models are properly imported
-      console.log('Models available:', {
-        Place: !!Place,
-        Media: !!Media,
-        Review: !!Review,
-        Categorie: !!Categorie
-      });
-
-      const queryOptions = {
+      const places = await Place.findAll({
         include: [
           {
             model: Media,
@@ -31,60 +22,141 @@ const placeController = {
             model: Categorie,
             through: { attributes: [] },
             attributes: ['name', 'icon'],
-            required: category ? true : false,
-            where: category ? { name: category } : undefined
+            required: false
           }
         ],
         where: {
           status: 'approved'
-        },
-        raw: false,
-        nest: true
-      };
+        }
+      });
 
-      const places = await Place.findAll(queryOptions);
+      const formattedPlaces = places.map(place => {
+        // Get image from Media or fallback to images field
+        let imageUrl = 'https://via.placeholder.com/400';
+        if (place.Media && place.Media.length > 0) {
+          imageUrl = place.Media[0].url;
+        } else if (place.images && Array.isArray(place.images) && place.images.length > 0) {
+          imageUrl = place.images[0];
+        } else if (place.images && typeof place.images === 'string') {
+          imageUrl = place.images;
+        }
 
-      console.log('Places fetched:', places.length);
-
-      // Format and sort places by rating
-      const formattedPlaces = places
-        .map(place => ({
+        return {
           id: place.id,
           name: place.name,
+          description: place.description,
           location: place.location,
-          image: place.images?.[0] || place.Media?.[0]?.url,
+          image: imageUrl,
           rating: Number(
-            (place.Reviews?.reduce((acc, rev) => acc + rev.rating, 0) / 
+            (place.Reviews?.reduce((acc, rev) => acc + (rev.rating || 0), 0) / 
              (place.Reviews?.length || 1)).toFixed(1)
           ),
           categories: place.Categories?.map(cat => ({
             name: cat.name,
             icon: cat.icon
-          })) || [],
-          status: place.status
-        }))
-        .filter(place => place.status === 'approved')
-        .sort((a, b) => b.rating - a.rating);
+          })) || []
+        };
+      });
 
-      // Return top 5 if limit is specified
       const limitedPlaces = limit ? formattedPlaces.slice(0, parseInt(limit)) : formattedPlaces;
-
-      console.log('Sending response with places:', limitedPlaces.length);
 
       res.status(200).json({
         success: true,
         data: limitedPlaces
       });
     } catch (error) {
-      console.error('Detailed error in getAllPlaces:', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      });
-      
+      console.error('Error in getAllPlaces:', error);
       res.status(500).json({
         success: false,
         error: 'Error fetching places',
+        details: error.message
+      });
+    }
+  },
+
+  // Get place by ID
+  getPlaceById: async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const place = await Place.findByPk(parseInt(id), {
+        include: [
+          {
+            model: Media,
+            attributes: ['url', 'type'],
+            required: false
+          },
+          {
+            model: Review,
+            attributes: ['id', 'rating', 'comment', 'created_at'],
+            required: false
+          },
+          {
+            model: Categorie,
+            through: { attributes: [] },
+            attributes: ['name', 'icon'],
+            required: false
+          }
+        ]
+      });
+
+      if (!place) {
+        return res.status(404).json({
+          success: false,
+          error: 'Place not found'
+        });
+      }
+
+      // Handle images from both Media and images field
+      let images = ['https://via.placeholder.com/400'];
+      if (place.Media && place.Media.length > 0) {
+        images = place.Media.map(media => media.url);
+      } else if (place.images) {
+        if (Array.isArray(place.images)) {
+          images = place.images;
+        } else if (typeof place.images === 'string') {
+          images = [place.images];
+        }
+      }
+
+      const formattedPlace = {
+        id: place.id,
+        name: place.name,
+        description: place.description,
+        location: place.location,
+        images: images,
+        rating: Number(
+          (place.Reviews?.reduce((acc, rev) => acc + (rev.rating || 0), 0) / 
+           (place.Reviews?.length || 1)).toFixed(1)
+        ) || 0,
+        reviews: place.Reviews?.map(review => ({
+          id: review.id,
+          rating: review.rating,
+          comment: review.comment || '',
+          created_at: review.created_at,
+          user: {
+            name: 'Anonymous',
+            avatar: 'https://via.placeholder.com/40'
+          }
+        })) || [],
+        categories: place.Categories?.map(cat => ({
+          name: cat.name,
+          icon: cat.icon || '🏷️'
+        })) || []
+      };
+
+      console.log('Sending place with images:', formattedPlace.images);
+
+      res.status(200).json({
+        success: true,
+        data: formattedPlace
+      });
+
+    } catch (error) {
+      console.error('Error in getPlaceById:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error',
         details: error.message
       });
     }

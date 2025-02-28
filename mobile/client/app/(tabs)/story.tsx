@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Modal, TextInput, Button, Alert, RefreshControl } from "react-native";
 import { useState, useEffect } from "react";
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { API_BASE_URL } from '../../config';
+import { EXPO_PUBLIC_API_URL } from '../../config';
 import { useRouter } from 'expo-router';
 import React from "react";
 import * as ImagePicker from 'expo-image-picker';
@@ -64,7 +64,7 @@ export default function Story() {
     // Fetch blogs
     const fetchBlogData = async () => {
         try {
-            const response = await fetch(`${API_BASE_URL}blogs/`);
+            const response = await fetch(`${EXPO_PUBLIC_API_URL}blogs/`);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -146,7 +146,7 @@ export default function Story() {
                 userId: 3,
             };
 
-            const response = await fetch(`${API_BASE_URL}blogs/`, {
+            const response = await fetch(`${EXPO_PUBLIC_API_URL}blogs/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -174,7 +174,7 @@ export default function Story() {
     // Delete blog
     const deleteBlog = async (blogId: number) => {
         try {
-            const response = await fetch(`${API_BASE_URL}blogs/${blogId}`, {
+            const response = await fetch(`${EXPO_PUBLIC_API_URL}blogs/${blogId}`, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
@@ -216,7 +216,7 @@ export default function Story() {
             const newLikedState = !blog?.liked;
 
             // Make API call to update likes
-            const response = await fetch(`${API_BASE_URL}blogs/${blogId}/like`, {
+            const response = await fetch(`${EXPO_PUBLIC_API_URL}blogs/${blogId}/like`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -284,7 +284,7 @@ export default function Story() {
                 }
             }
 
-            const response = await fetch(`${API_BASE_URL}blogs/${blogToUpdate.id}`, {
+            const response = await fetch(`${EXPO_PUBLIC_API_URL}blogs/${blogToUpdate.id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
