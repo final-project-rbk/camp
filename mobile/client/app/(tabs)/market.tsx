@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, RefreshCon
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
-import {API_BASE_URL} from '../../config';
+import {EXPO_PUBLIC_API_URL} from '../../config';
 
 
 
@@ -13,6 +13,7 @@ interface Category {
 }
 
 interface MarketplaceItem {
+  imageURL: string;
   id: number;
   title: string;
   description: string;
@@ -50,8 +51,8 @@ export default function Market() {
     try {
       setError(null);
       const url = categoryId && categoryId !== 'all' 
-        ? `${API_BASE_URL}/marketplace/category/${categoryId}`
-        : `${API_BASE_URL}/marketplace/items`;
+        ? `${EXPO_PUBLIC_API_URL}marketplace/category/${categoryId}`
+        : `${EXPO_PUBLIC_API_URL}marketplace/items`;
       
       const response = await axios.get(url);
       setItems(Array.isArray(response.data) ? response.data : []);
@@ -72,7 +73,7 @@ export default function Market() {
     try {
       setIsSearching(true);
       setError(null);
-      const response = await axios.get(`${API_BASE_URL}/marketplace/search?name=${encodeURIComponent(query)}`);
+      const response = await axios.get(`${EXPO_PUBLIC_API_URL}marketplace/search?name=${encodeURIComponent(query)}`);
       if (response.data) {
         setItems([response.data]); // Wrap single item in array since our UI expects an array
       } else {
@@ -186,7 +187,7 @@ export default function Market() {
             onPress={() => router.push(`/market/${item.id}` as any)}
           >
             <Image 
-              source={{ uri: item.images?.[0] || 'https://via.placeholder.com/150' }}
+              source={{ uri: item.imageURL || 'https://m.media-amazon.com/images/I/812wCS-IKuL.jpg' }}
               style={styles.itemImage}
             />
             <View style={styles.itemInfo}>

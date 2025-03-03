@@ -2,6 +2,7 @@
 module.exports = (sequelize, DataTypes) => {
     const MarketplaceItem = sequelize.define('marketplace_item', {
       title: { type: DataTypes.STRING, allowNull: false },
+      imageURL: { type: DataTypes.STRING, allowNull: true },
       description: { type: DataTypes.TEXT, allowNull: true },
       price: { type: DataTypes.DECIMAL(10, 2), allowNull: false }, // e.g., 29.99
       status: { type: DataTypes.ENUM('available', 'sold', 'pending'), defaultValue: 'available' },
