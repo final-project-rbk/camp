@@ -498,7 +498,7 @@ module.exports = {
           updatedAt: now
         },
         {
-          content: 'Can’t wait to try these stargazing spots',
+          content: 'Can t wait to try these stargazing spots',
           userId: 3,
           blogId: 10,
           created_at: now,
@@ -562,7 +562,7 @@ module.exports = {
           updatedAt: now
         },
         {
-          content: 'Perfect for my dog’s first camping trip',
+          content: 'Perfect for my dog s first camping trip',
           userId: 1,
           blogId: 15,
           created_at: now,
@@ -570,7 +570,7 @@ module.exports = {
           updatedAt: now
         },
         {
-          content: 'Can’t wait to try the campfire stew',
+          content: 'Can t wait to try the campfire stew',
           userId: 4,
           blogId: 12,
           created_at: now,
@@ -646,11 +646,13 @@ module.exports = {
       ]);
 
       // Reviews
+      console.log('Seeding reviews...');
       await queryInterface.bulkInsert('reviews', [
         {
           rating: 5,
           placeId: 1,
           userId: 1,
+          eventId: null,
           createdAt: now,
           updatedAt: now
         },
@@ -658,13 +660,7 @@ module.exports = {
           rating: 4,
           placeId: 2,
           userId: 3,
-          createdAt: now,
-          updatedAt: now
-        },
-        {
-          rating: 5,
-          eventId: 2,
-          userId: 3,
+          eventId: null,
           createdAt: now,
           updatedAt: now
         }
@@ -676,7 +672,7 @@ module.exports = {
           url: 'https://example.com/beach-photo.jpg',
           type: 'image',
           userId: 1,
-          placeId: 1,
+          placeId: 1, // Valid placeId
           createdAt: now,
           updatedAt: now
         },
@@ -684,6 +680,7 @@ module.exports = {
           url: 'https://example.com/event-video.mp4',
           type: 'video',
           eventId: 1,
+          placeId: 1, // Add a valid placeId here
           createdAt: now,
           updatedAt: now
         },
@@ -691,23 +688,9 @@ module.exports = {
           url: 'https://example.com/mountain-photo.jpg',
           type: 'image',
           userId: 3,
-          placeId: 2,
+          placeId: 2, // Valid placeId
           createdAt: now,
           updatedAt: now
-        },
-        {
-          url: 'https://tse2.mm.bing.net/th?id=OIP.TQiLAuAmiDu9vN_svaZd1AHaEK&pid=Api&P=0&h=180',
-          type: 'image',
-          userId: 2,
-          placeId: 1,
-          createdAt: now,
-          updatedAt: now
-        },
-        {
-          url: 'https://tse1.mm.bing.net/th?id=OIP.sK_mlnnnaIID4eSC1DiZAwHaFC&pid=Api&P=0&h=180',
-          type: 'image',
-          userId: 3,
-          placeId: 1,
         }
       ]);
 
