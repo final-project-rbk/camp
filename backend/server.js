@@ -8,11 +8,15 @@ const db = require("./models/index");
 const blogRoutes = require('./routes/blogs.router');
 app.use(express.static(__dirname + '/../client/dist'));
 app.use(express.json())
-app.use(cors())
+app.use(cors({
+  origin: '*', // In production, replace with your specific domain
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.urlencoded({extended: true}))
 
 // Connect all our routes to our application
-app.use('/api/advisor', advisorRoutes);
+app.use('/api', advisorRoutes);
 
 
 

@@ -136,124 +136,58 @@ module.exports.deletePlace = async (req, res) => {
   }
 };
 
-// Add a camping event
-module.exports.addEvent = async (req, res) => {
+// Get advisor profile with related data
+module.exports.getAdvisorProfile = async (req, res) => {
   try {
-    const { title, date, description, location, images, exclusive_details, advisorId } = req.body;
-    if (!advisorId) {
-      return res.status(400).json({ error: "Advisor ID is required" });
-    }
-
-    const advisor = await Advisor.findByPk(advisorId);
-    if (!advisor) {
-      return res.status(404).json({ error: "Advisor not found" });
-    }
-
-    const event = await Event.create({
-      title,
-      date,
-      description,
-      location,
-      images,
-      exclusive_details,
-      advisorId,
+    const advisorId = req.params.id;
+    const advisor = await Advisor.findOne({
+      where: { id: advisorId },
+      include: [
+        {
+          model: User,
+          attributes: ['first_name', 'last_name', 'bio', 'experience', 'points']
+        },
+        {
+          model: Event,
+          include: [{ model: Review }]
+        },
+        {
+          model: Review,
+          attributes: ['rating', 'comment'],
+          include: [{
+            model: User,
+            attributes: ['first_name', 'last_name']
+          }]
+        }
+      ]
     });
 
-    return res.status(201).json(event);
+    if (!advisor) {
+      return res.status(404).json({ message: 'Advisor not found' });
+    }
+
+    // Format reviews to match the expected interface
+    const formattedReviews = advisor.Reviews.map(review => ({
+      rating: review.rating,
+      comment: review.comment,
+      reviewer: `${review.User.first_name} ${review.User.last_name}`
+    }));
+
+    const response = {
+      advisorId: advisor.id,
+      user: advisor.User,
+      currentRank: advisor.currentRank,
+      events: advisor.Events,
+      reviews: formattedReviews
+    };
+
+    res.json(response);
   } catch (error) {
-    console.error("Error adding event:", error);
-    return res.status(500).json({ error: "Internal server error" });
+    console.error('Error fetching advisor profile:', error);
+    res.status(500).json({ message: 'Error fetching advisor profile' });
   }
 };
 
-// Update a camping event
-module.exports.updateEvent = async (req, res) => {
-  try {
-    const event = await Event.findByPk(req.params.id);
-    if (!event) {
-      return res.status(404).json({ error: "Event not found" });
-    }
-
-    await event.update(req.body);
-    return res.status(200).json(event);
-  } catch (error) {
-    console.error("Error updating event:", error);
-    return res.status(500).json({ error: "Internal server error" });
-  }
-};
-
-// Delete a camping event
-module.exports.deleteEvent = async (req, res) => {
-  try {
-    const event = await Event.findByPk(req.params.id);
-    if (!event) {
-      return res.status(404).json({ error: "Event not found" });
-    }
-
-    await event.destroy();
-    return res.status(200).json({ message: "Event deleted successfully" });
-  } catch (error) {
-    console.error("Error deleting event:", error);
-    return res.status(500).json({ error: "Internal server error" });
-  }
-};
-
-// Get advisor profile with reviews and points
-module.exports.getAdvisorProfile = async (req, res) => {
-    try {
-      const advisor = await Advisor.findByPk(req.params.id, {
-        include: [
-          { 
-            model: User, 
-            attributes: ["first_name", "last_name", "bio", "experience", "points", "rank"] 
-          },
-          { 
-            model: Event, 
-            attributes: ["title", "date", "status"],
-            include: [{ model: Review, attributes: ["rating", "comment", "created_at"] }]
-          },
-          { 
-            model: Review, 
-            attributes: ["rating", "comment", "created_at"],
-            include: [{ model: User, attributes: ["first_name", "last_name"] }]
-          },
-        ],
-      });
-  
-      if (!advisor) {
-        return res.status(404).json({ error: "Advisor not found" });
-      }
-  
-      // Build the profile response
-      const profile = {
-        advisorId: advisor.id,
-        user: advisor.User,
-        events: advisor.Events.map(event => ({
-          title: event.title,
-          date: event.date,
-          status: event.status,
-          reviews: event.Reviews.map(review => ({
-            rating: review.rating,
-            comment: review.comment || "No comment provided",
-            created_at: review.created_at,
-          })),
-        })),
-        points: advisor.points, // Use advisor.points only, since User.points is synced
-        rank: advisor.currentRank,
-        reviews: advisor.Reviews.map(review => ({
-          rating: review.rating,
-          comment: review.comment || "No comment provided",
-          reviewer: `${review.User.first_name} ${review.User.last_name}`,
-          created_at: review.created_at,
-        })),
-      };
-  
-      return res.status(200).json(profile);
-    } catch (error) {
-      console.error("Error fetching advisor profile:", error);
-      return res.status(500).json({ error: "Internal server error" });
-    }
-  };
 // Update points dynamically (e.g., after a review or event completion)
 module.exports.updatePoints = async (req, res) => {
   try {
@@ -300,4 +234,66 @@ module.exports.updatePoints = async (req, res) => {
     console.error("Error updating points:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
+};
+
+// Add new event
+module.exports.addEvent = async (req, res) => {
+  try {
+    const { title, date, description, location } = req.body;
+    const advisorId = req.body.advisorId || 1; // Default to 1 for testing, should come from auth
+
+    // Validate required fields
+    if (!title || !date || !description || !location) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    const event = await Event.create({
+      title,
+      date,
+      description,
+      location,
+      advisorId,
+      status: 'pending'
+    });
+
+    res.status(201).json(event);
+  } catch (error) {
+    console.error('Error creating event:', error);
+    res.status(500).json({ message: 'Error creating event' });
+  }
+};
+
+// Delete event
+module.exports.deleteEvent = async (req, res) => {
+  try {
+    const eventId = req.params.id;
+    const result = await Event.destroy({ where: { id: eventId } });
+
+    if (result === 0) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    res.json({ message: 'Event deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting event:', error);
+    res.status(500).json({ message: 'Error deleting event' });
+  }
+};
+
+// Update event
+module.exports.updateEvent = async (req, res) => {
+    try {
+        const eventId = req.params.id;
+        const event = await Event.findByPk(eventId);
+
+        if (!event) {
+            return res.status(404).json({ message: 'Event not found' });
+        }
+
+        await event.update(req.body);
+        res.json(event);
+    } catch (error) {
+        console.error('Error updating event:', error);
+        res.status(500).json({ message: 'Error updating event' });
+    }
 };

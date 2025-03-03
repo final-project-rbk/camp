@@ -97,23 +97,30 @@ export default function DiscoverScreen() {
           <Text style={styles.greeting}>Good Morning</Text>
           <Text style={styles.location}>Ariana, Tunisia</Text>
         </View>
-        <View style={styles.weatherContainer}>
-          {loading ? (
-            <ActivityIndicator color="#64FFDA" />
-          ) : weatherData['Ariana'] ? (
-            <>
-              <Image 
-                source={{ uri: `https:${weatherData['Ariana'].condition.icon}` }}
-                style={{ width: 24, height: 24 }}
-              />
-              <Text style={styles.temperature}>{Math.round(weatherData['Ariana'].temp_c)}°</Text>
-            </>
-          ) : (
-            <>
-              <Ionicons name="sunny" size={24} color="#64FFDA" />
-              <Text style={styles.temperature}>--°</Text>
-            </>
-          )}
+        <View style={styles.headerRight}>
+          <View style={styles.weatherContainer}>
+            {loading ? (
+              <ActivityIndicator color="#64FFDA" />
+            ) : weatherData['Ariana'] ? (
+              <>
+                <Image 
+                  source={{ uri: `https:${weatherData['Ariana'].condition.icon}` }}
+                  style={{ width: 24, height: 24 }}
+                />
+                <Text style={styles.temperature}>{Math.round(weatherData['Ariana'].temp_c)}°</Text>
+              </>
+            ) : (
+              <>
+                <Ionicons name="sunny" size={24} color="#64FFDA" />
+                <Text style={styles.temperature}>--°</Text>
+              </>
+            )}
+          </View>
+          <Link href="/advisor-profile" asChild>
+            <Pressable style={styles.profileButton}>
+              <Ionicons name="person-circle-outline" size={32} color="#64FFDA" />
+            </Pressable>
+          </Link>
         </View>
       </View>
 
@@ -186,6 +193,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     paddingTop: 60,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
   },
   greeting: {
     fontSize: 16,
@@ -325,5 +337,8 @@ const styles = StyleSheet.create({
   discoveryTemp: {
     color: '#CCD6F6',
     fontSize: 14,
+  },
+  profileButton: {
+    padding: 4,
   },
 });

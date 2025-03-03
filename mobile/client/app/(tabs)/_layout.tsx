@@ -58,6 +58,16 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="advisor-profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ size, color }) => (
+            <Ionicons name="person" size={size} color={color} />
+          ),
+          href: '/advisor-profile',
+        }}
+      />
+      <Tabs.Screen
         name="setting"
         options={{
           title: 'Setting',

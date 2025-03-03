@@ -98,7 +98,7 @@ connection
     console.log("Database is connected 👌✅");
   })
   .catch((err) => {
-    console.error("Unable to connect to the database ❌", err);
+    console.error("Unable to connect to the database ❌:", err);
     throw err;
   });
 
