@@ -5,8 +5,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon server.js",
-    "db:seed": "npx sequelize-cli db:seed:all --debug",
-    "db:seed:undo": "npx sequelize-cli db:seed:undo:all"
+    "db:seed": "node scripts/seed.js",
+    "db:seed:undo": "node scripts/seed.js undo"
   },
   "keywords": [],
   "author": "",
