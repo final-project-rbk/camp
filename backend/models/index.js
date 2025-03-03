@@ -1,15 +1,17 @@
 const { Sequelize, DataTypes } = require("sequelize");
+require('dotenv').config();
 const critiria = require("./critiria");
 
 
 // Initialize Sequelize connection
 const connection = new Sequelize(process.env.Database, process.env.User, process.env.Password, {
-  host: process.env.Host,
+  host: process.env.HOST,
   dialect: "mysql",
+  logging: false
 });
 
 // Import all models
-const User = require("./user")(connection, DataTypes);
+const User = require("./User")(connection, DataTypes);
 const Place = require("./Place")(connection, DataTypes);
 const Event = require("./Event")(connection, DataTypes);
 const Rank = require("./rank")(connection, DataTypes);
@@ -24,8 +26,7 @@ const PlaceUser=require("./PlaceUser")(connection,DataTypes)
 const PlaceCategorie = require("./PlaceCategorie")(connection,DataTypes)
 const Blog = require("./blog")(connection,DataTypes)
 const PlaceCitiria=require("./placeCritiria")(connection,DataTypes)
-const MarketplaceItem = require("./marcketPlaceItem")(connection, DataTypes);
-const MarketplaceItemCategorie = require("./marcketPlaceItemCategorie")(connection, DataTypes);
+
 // Define relationships
 const defineAssociations = () => {
   // User relationships
@@ -83,34 +84,7 @@ Blog.belongsTo(User, { foreignKey: "userId" });
   
 Place.belongsToMany(Citiria, { through: PlaceCitiria, foreignKey: "placeId" });
 Citiria.belongsToMany(Place, { through: PlaceCitiria, foreignKey: "citiriaId" });
-
-// In defineAssociations function
-User.hasMany(MarketplaceItem, { foreignKey: 'sellerId', as: 'itemsSold' });
-MarketplaceItem.belongsTo(User, { foreignKey: 'sellerId', as: 'seller' });
-
-User.hasMany(MarketplaceItem, { foreignKey: 'buyerId', as: 'itemsBought' });
-MarketplaceItem.belongsTo(User, { foreignKey: 'buyerId', as: 'buyer' });
-
-// Leverage existing Chat model for negotiations
-User.hasMany(Chat, { foreignKey: 'userId' });
-Chat.belongsTo(User, { foreignKey: 'userId' });
-
-// Optionally link chats to marketplace items
-MarketplaceItem.hasMany(Chat, { foreignKey: 'itemId' });
-Chat.belongsTo(MarketplaceItem, { foreignKey: 'itemId' });
-
-MarketplaceItem.belongsToMany(Categorie, { 
-  through: 'marketplace_item_categorie', 
-  as: 'categories', 
-  foreignKey: 'marketplaceItemId' 
-});
-
-Categorie.belongsToMany(MarketplaceItem, { 
-  through: 'marketplace_item_categorie', 
-  as: 'items', 
-  foreignKey: 'categorieId' 
-});
-
+  
   
   
 
@@ -156,8 +130,6 @@ module.exports = {
   PlaceUser,
   PlaceCategorie,
   Blog,
-  PlaceCitiria,
-  MarketplaceItem,
-  MarketplaceItemCategorie
+  PlaceCitiria
  
 };
