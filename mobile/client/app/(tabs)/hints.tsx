@@ -18,5 +18,9 @@ export default function Hints() {
         color: '#64FFDA',
         fontSize: 20,
     },
+<<<<<<< HEAD
     });
     
+=======
+    });
+>>>>>>> 79d943a85b7794025c20a754b58d76aad04e0cdf

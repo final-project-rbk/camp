@@ -56,7 +56,7 @@ export default function AllPlacesScreen() {
         setPlaces(data.data);
       }
     } catch (error) {
-      console.error('Error fetching places:', error);
+    throw error
     } finally {
       setLoading(false);
     }

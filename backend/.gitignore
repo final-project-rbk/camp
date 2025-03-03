@@ -1,5 +1,6 @@
 dependencies
 node_modules
+
 /.pnp
 .pnp.*
 .yarn/*
@@ -8,6 +9,8 @@ node_modules
 !.yarn/releases
 !.yarn/versions
 .env
+.config/config.json
+
 testing
 /coverage
 node_modules
@@ -39,4 +42,4 @@ typescript
 *.tsbuildinfo
 next-env.d.ts
 
-config.json
+
