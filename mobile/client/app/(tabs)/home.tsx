@@ -35,6 +35,14 @@ interface WeatherData {
   };
 }
 
+interface MarketplacePreview {
+  id: string;
+  title: string;
+  price: number;
+  image: string;
+  seller: string;
+}
+
 export default function DiscoverScreen() {
   const [places, setPlaces] = useState<Place[]>([]);
   const [weatherData, setWeatherData] = useState<{ [key: string]: WeatherData }>({});
@@ -421,5 +429,34 @@ const styles = StyleSheet.create({
   discoveryTemp: {
     color: '#CCD6F6',
     fontSize: 14,
+  },
+  marketplaceCard: {
+    width: 200,
+    marginRight: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  marketplaceImage: {
+    width: '100%',
+    height: 150,
+    resizeMode: 'cover',
+  },
+  marketplaceInfo: {
+    padding: 12,
+  },
+  marketplaceTitle: {
+    fontSize: 16,
+    color: '#CCD6F6',
+    fontWeight: 'bold',
+  },
+  marketplacePrice: {
+    fontSize: 16,
+    color: '#64FFDA',
+    marginVertical: 4,
+  },
+  marketplaceSeller: {
+    fontSize: 14,
+    color: '#8892B0',
   },
 });

@@ -4,24 +4,13 @@ const express = require('express');
 const advisorRoutes = require('./routes/advisor.routes');
 const cors = require('cors');
 const db = require("./models/index");
-const blogRoutes = require('./routes/blogs.router');
-const placeRoutes = require('./routes/Place');
+const blogRoutes = require('./routes/blogs.routes');
+const marcketPlaceRoutes = require('./routes/marchetPlace.routes');
+const placeRoutes = require('./routes/Place.routes');
 const app = express();
 
 // Configure CORS
-app.use(cors({
-  origin: [
-    'http://localhost:19006', 
-    'http://localhost:19000', 
-    'http://localhost:8081',
-    'http://192.168.11.49',
-    'http://192.168.11.49:19006',
-    'http://192.168.11.49:19000',
-    'http://192.168.11.49:8081'
-  ],
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(cors());
 
 app.use(express.static(__dirname + '/../client/dist'));
 app.use(express.json())
@@ -29,6 +18,7 @@ app.use(express.urlencoded({extended: true}))
 
 // Connect all our routes to our application
 app.use('/api/advisor', advisorRoutes);
+app.use('/api/marketplace', marcketPlaceRoutes);
 
 // Test database connection
 db.connection.authenticate()
@@ -45,7 +35,7 @@ app.get('/', (req, res) => {
 });
 app.use('/api/blogs', blogRoutes);
 app.use('/api/places', placeRoutes);
-app.use('/api/categories', require('./routes/categorie')); 
+app.use('/api/categories', require('./routes/categorie.routes')); 
 
 const port = process.env.PORT || 3000;
 
