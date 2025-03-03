@@ -50,7 +50,6 @@ export default function PlaceDetailsScreen() {
       setLoading(true);
       console.log('Fetching place details for ID:', id);
       
-      // Make sure the URL is properly formatted
       const apiUrl = `${EXPO_PUBLIC_API_URL}places/${id}`;
       console.log('Fetching from URL:', apiUrl);
 
