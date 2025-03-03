@@ -81,23 +81,23 @@ export default function AdvisorProfile() {
       <View style={styles.header}>
         <Image
           source={{ 
-            uri: data.user.profile_image || 'https://cdn.pixabay.com/photo/2021/07/02/04/48/user-6380868_1280.png',
+            uri: data.user?.profile_image || 'https://cdn.pixabay.com/photo/2021/07/02/04/48/user-6380868_1280.png',
             width: 120,
             height: 120
           }}
           style={styles.profileImage}
         />
-        <Text style={styles.name}>{`${data.user.first_name} ${data.user.last_name}`}</Text>
+        <Text style={styles.name}>{`${data.user?.first_name || ''} ${data.user?.last_name || ''}`}</Text>
         <View style={styles.rankBadge}>
           <IconSymbol name="star.fill" size={16} color="#64FFDA" />
           <Text style={styles.rankText}>{data.currentRank}</Text>
         </View>
-        <Text style={styles.points}>{`${data.user.points} points`}</Text>
+        <Text style={styles.points}>{`${data.user?.points} points`}</Text>
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Bio</Text>
-        <Text style={styles.bio}>{data.user.bio || 'No bio available'}</Text>
+        <Text style={styles.bio}>{data.user?.bio || 'No bio available'}</Text>
       </View>
 
       <View style={styles.section}>

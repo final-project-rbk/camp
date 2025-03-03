@@ -64,7 +64,7 @@ export default function TabLayout() {
           tabBarIcon: ({ size, color }) => (
             <Ionicons name="person" size={size} color={color} />
           ),
-          href: '/advisor-profile',
+          // href: '/advisor-profile',
         }}
       />
       <Tabs.Screen

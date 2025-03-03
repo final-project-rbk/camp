@@ -1,34 +1,31 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, Pressable, ActivityIndicator } from 'react-native';
-import { Link } from 'expo-router';
+import { View, Text, StyleSheet, ScrollView, Image, Pressable, ActivityIndicator, TextInput } from 'react-native';
+import { Link, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Sidebar from '../../components/Sidebar';
+import {  EXPO_PUBLIC_API_URL  } from '../../config';
 
-const popularDestinations = [
-  {
-    id: '1',
-    name: 'Ghabet Lbondak',
-    location: 'Nabeul',
-    image: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?q=80&w=1920',
-    rating: 4.5,
-    temperature: 15,
-  },
-  {
-    id: '2',
-    name: 'Ain Drahem',
-    location: 'Jendouba',
-    image: 'https://images.unsplash.com/photo-1508873696983-2dfd5898f08b?q=80&w=1920',
-    rating: 4.8,
-    temperature: 18,
-  },
-  {
-    id: '3',
-    name: 'Camp Mars',
-    location: 'Douz',
-    image: 'https://images.unsplash.com/photo-1517823382935-51bfcb0ec6bc?q=80&w=1920',
-    rating: 4.6,
-    temperature: 22,
-  },
-];
+// Define navigation type
+type RootStackParamList = {
+  'all-places': undefined;
+  // Add other screen names here
+};
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+interface Place {
+  id: string;
+  name: string;
+  location: string;
+  image: string;
+  rating: number;
+  categories: Array<{
+    name: string;
+    icon: string;
+  }>;
+}
 
 interface WeatherData {
   temp_c: number;
@@ -38,9 +35,43 @@ interface WeatherData {
   };
 }
 
+interface MarketplacePreview {
+  id: string;
+  title: string;
+  price: number;
+  image: string;
+  seller: string;
+}
+
 export default function DiscoverScreen() {
+  const [places, setPlaces] = useState<Place[]>([]);
   const [weatherData, setWeatherData] = useState<{ [key: string]: WeatherData }>({});
   const [loading, setLoading] = useState(true);
+  const [placesLoading, setPlacesLoading] = useState(true);
+  const [showAllPlaces, setShowAllPlaces] = useState(false);
+  const navigation = useNavigation();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredPlaces, setFilteredPlaces] = useState<Place[]>([]);
+  const [isSidebarVisible, setSidebarVisible] = useState(false);
+
+  const fetchPlaces = async () => {
+    try {
+      const limit = showAllPlaces ? '' : '5';
+      const response = await fetch(`${ EXPO_PUBLIC_API_URL }places?limit=${limit}`);
+      const data = await response.json();
+      if (data.success) {
+        if (showAllPlaces) {
+          console.log('Navigate to all places screen');
+        } else {
+          setPlaces(data.data.slice(0, 5));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching places:', error);
+    } finally {
+      setPlacesLoading(false);
+    }
+  };
 
   const fetchWeather = async (location: string) => {
     try {
@@ -62,16 +93,23 @@ export default function DiscoverScreen() {
   };
 
   useEffect(() => {
+    fetchPlaces();
+  }, [showAllPlaces]);
+
+  useEffect(() => {
     const loadWeatherData = async () => {
       setLoading(true);
-      const locations = ['Ariana,Tunisia', ...popularDestinations.map(d => `${d.location},Tunisia`)];
+      const locations = ['Ariana,Tunisia', ...places.map(p => `${p.location},Tunisia`)];
+      console.log('Fetching weather for locations:', locations);
       const weatherPromises = locations.map(location => fetchWeather(location));
       const results = await Promise.all(weatherPromises);
       
       const weatherMap: { [key: string]: WeatherData } = {};
       locations.forEach((location, index) => {
         if (results[index]) {
-          weatherMap[location.split(',')[0]] = results[index]!;
+          const cityName = location.split(',')[0];
+          weatherMap[cityName] = results[index]!;
+          console.log(`Weather for ${cityName}:`, results[index]);
         }
       });
       
@@ -80,7 +118,19 @@ export default function DiscoverScreen() {
     };
 
     loadWeatherData();
-  }, []);
+  }, [places]);
+
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredPlaces(places);
+    } else {
+      const filtered = places.filter(place => 
+        place.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        place.location.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredPlaces(filtered);
+    }
+  }, [searchQuery, places]);
 
   const getWeatherIcon = (condition: string) => {
     // Map weather conditions to Ionicons
@@ -90,14 +140,25 @@ export default function DiscoverScreen() {
     return 'partly-sunny';
   };
 
+  const handleSeeAllPress = () => {
+    navigation.navigate('all-places' as never);
+  };
+
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>Good Morning</Text>
-          <Text style={styles.location}>Ariana, Tunisia</Text>
-        </View>
-        <View style={styles.headerRight}>
+    <>
+      <Sidebar 
+        isVisible={isSidebarVisible} 
+        onClose={() => setSidebarVisible(false)} 
+      />
+      <ScrollView style={styles.container}>
+        <View style={styles.header}>
+          <Pressable onPress={() => setSidebarVisible(true)}>
+            <Ionicons name="menu" size={24} color="#64FFDA" />
+          </Pressable>
+          <View>
+            <Text style={styles.greeting}>Good Morning</Text>
+            <Text style={styles.location}>Ariana, Tunisia</Text>
+          </View>
           <View style={styles.weatherContainer}>
             {loading ? (
               <ActivityIndicator color="#64FFDA" />
@@ -116,69 +177,99 @@ export default function DiscoverScreen() {
               </>
             )}
           </View>
-          <Link href="/advisor-profile" asChild>
-            <Pressable style={styles.profileButton}>
-              <Ionicons name="person-circle-outline" size={32} color="#64FFDA" />
+        </View>
+
+        <Pressable 
+          style={styles.searchContainer}
+          onPress={() => {/* Handle search press */}}
+        >
+          <View style={styles.searchContent}>
+            <Ionicons name="search" size={20} color="#8892B0" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search destinations..."
+              placeholderTextColor="#8892B0"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
+        </Pressable>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Popular Destinations</Text>
+            <Pressable onPress={handleSeeAllPress}>
+              <Text style={styles.seeAllText}>See All</Text>
             </Pressable>
-          </Link>
+          </View>
+          
+          {placesLoading ? (
+            <ActivityIndicator color="#64FFDA" />
+          ) : (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.destinationsScroll}
+            >
+              {filteredPlaces.map((place) => (
+                <Link
+                  key={place.id}
+                  href={`/place/${place.id}`}
+                  asChild
+                >
+                  <Pressable style={styles.destinationCard}>
+                    <Image
+                      source={{ uri: place.image }}
+                      style={styles.destinationImage}
+                    />
+                    <View style={styles.destinationInfo}>
+                      <Text style={styles.destinationName}>{place.name}</Text>
+                      <View style={styles.destinationDetails}>
+                        <View style={styles.locationContainer}>
+                          <Ionicons name="location" size={14} color="#8892B0" />
+                          <Text style={styles.destinationLocation}>{place.location}</Text>
+                        </View>
+                        <View style={styles.ratingContainer}>
+                          <Ionicons name="star" size={14} color="#FFD700" />
+                          <Text style={styles.rating}>{place.rating}</Text>
+                        </View>
+                      </View>
+                    </View>
+                  </Pressable>
+                </Link>
+              ))}
+            </ScrollView>
+          )}
         </View>
-      </View>
 
-      <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color="#8892B0" />
-        <Text style={styles.searchPlaceholder}>Search destinations...</Text>
-      </View>
-
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Popular Destinations</Text>
-        </View>
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.destinationsScroll}>
-          {popularDestinations.map((destination) => (
-            <Pressable key={destination.id} style={styles.destinationCard}>
-              <Image source={{ uri: destination.image }} style={styles.destinationImage} />
-              <View style={styles.destinationInfo}>
-                <Text style={styles.destinationName}>{destination.name}</Text>
-                <View style={styles.destinationDetails}>
-                  <View style={styles.locationContainer}>
-                    <Ionicons name="location" size={14} color="#8892B0" />
-                    <Text style={styles.destinationLocation}>{destination.location}</Text>
-                  </View>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Latest Discoveries</Text>
+          {filteredPlaces.map((place) => (
+            <View key={place.id} style={styles.discoveryCard}>
+              <Image source={{ uri: place.image }} style={styles.discoveryImage} />
+              <View style={styles.discoveryInfo}>
+                <Text style={styles.discoveryName}>{place.name}</Text>
+                <Text style={styles.discoveryLocation}>{place.location}</Text>
+                <View style={styles.discoveryDetails}>
                   <View style={styles.ratingContainer}>
                     <Ionicons name="star" size={14} color="#64FFDA" />
-                    <Text style={styles.rating}>{destination.rating}</Text>
+                    <Text style={styles.rating}>{place.rating}</Text>
                   </View>
-                </View>
-              </View>
-            </Pressable>
-          ))}
-        </ScrollView>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Latest Discoveries</Text>
-        {popularDestinations.map((destination) => (
-          <View key={destination.id} style={styles.discoveryCard}>
-            <Image source={{ uri: destination.image }} style={styles.discoveryImage} />
-            <View style={styles.discoveryInfo}>
-              <Text style={styles.discoveryName}>{destination.name}</Text>
-              <Text style={styles.discoveryLocation}>{destination.location}</Text>
-              <View style={styles.discoveryDetails}>
-                <View style={styles.ratingContainer}>
-                  <Ionicons name="star" size={14} color="#64FFDA" />
-                  <Text style={styles.rating}>{destination.rating}</Text>
-                </View>
-                <View style={styles.weatherInfo}>
-                  <Ionicons name="thermometer" size={14} color="#64FFDA" />
-                  <Text style={styles.discoveryTemp}>{destination.temperature}°</Text>
+                  <View style={styles.weatherInfo}>
+                    <Ionicons name="thermometer" size={14} color="#64FFDA" />
+                    <Text style={styles.discoveryTemp}>
+                      {weatherData[place.location.split(',')[0]]?.temp_c 
+                        ? `${Math.round(weatherData[place.location.split(',')[0]].temp_c)}°` 
+                        : '--°'}
+                    </Text>
+                  </View>
                 </View>
               </View>
             </View>
-          </View>
-        ))}
-      </View>
-    </ScrollView>
+          ))}
+        </View>
+      </ScrollView>
+    </>
   );
 }
 
@@ -225,11 +316,20 @@ const styles = StyleSheet.create({
     margin: 20,
     padding: 12,
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(100, 255, 218, 0.1)',
+  },
+  searchContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
-  searchPlaceholder: {
-    color: '#8892B0',
+  searchInput: {
+    flex: 1,
+    color: '#CCD6F6',
     fontSize: 16,
+    padding: 0,
   },
   section: {
     padding: 20,
@@ -244,9 +344,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: '#CCD6F6',
     fontWeight: 'bold',
-  },
-  seeAllLink: {
-    padding: 8,
   },
   seeAllText: {
     color: '#64FFDA',
@@ -338,7 +435,33 @@ const styles = StyleSheet.create({
     color: '#CCD6F6',
     fontSize: 14,
   },
-  profileButton: {
-    padding: 4,
+  marketplaceCard: {
+    width: 200,
+    marginRight: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  marketplaceImage: {
+    width: '100%',
+    height: 150,
+    resizeMode: 'cover',
+  },
+  marketplaceInfo: {
+    padding: 12,
+  },
+  marketplaceTitle: {
+    fontSize: 16,
+    color: '#CCD6F6',
+    fontWeight: 'bold',
+  },
+  marketplacePrice: {
+    fontSize: 16,
+    color: '#64FFDA',
+    marginVertical: 4,
+  },
+  marketplaceSeller: {
+    fontSize: 14,
+    color: '#8892B0',
   },
 });

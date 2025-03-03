@@ -8,6 +8,7 @@ dependencies
 !.yarn/releases
 !.yarn/versions
 .env
+config.ts
 testing
 /coverage
 node_modules
@@ -44,3 +45,6 @@ next-env.d.ts
 
 expo-env.d.ts
 # @end expo-cli
+config.ts
+config
+/config.ts

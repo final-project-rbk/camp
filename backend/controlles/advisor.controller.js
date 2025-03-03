@@ -145,7 +145,7 @@ module.exports.getAdvisorProfile = async (req, res) => {
       include: [
         {
           model: User,
-          attributes: ['first_name', 'last_name', 'bio', 'experience', 'points']
+          attributes: ['first_name', 'last_name', 'email', 'bio', 'experience', 'points', 'profile_image']
         },
         {
           model: Event,
@@ -166,19 +166,25 @@ module.exports.getAdvisorProfile = async (req, res) => {
       return res.status(404).json({ message: 'Advisor not found' });
     }
 
-    // Format reviews to match the expected interface
-    const formattedReviews = advisor.Reviews.map(review => ({
-      rating: review.rating,
-      comment: review.comment,
-      reviewer: `${review.User.first_name} ${review.User.last_name}`
-    }));
-
+    // Format the response to match the frontend expected structure
     const response = {
       advisorId: advisor.id,
-      user: advisor.User,
+      user: {
+        first_name: advisor.User.first_name,
+        last_name: advisor.User.last_name,
+        email: advisor.User.email,
+        profile_image: advisor.User.profile_image || null,
+        bio: advisor.User.bio || '',
+        points: advisor.User.points || 0,
+        experience: advisor.User.experience || ''
+      },
       currentRank: advisor.currentRank,
-      events: advisor.Events,
-      reviews: formattedReviews
+      events: advisor.Events || [],
+      reviews: advisor.Reviews ? advisor.Reviews.map(review => ({
+        rating: review.rating,
+        comment: review.comment || '',
+        reviewer: review.User ? `${review.User.first_name} ${review.User.last_name}` : 'Anonymous'
+      })) : []
     };
 
     res.json(response);

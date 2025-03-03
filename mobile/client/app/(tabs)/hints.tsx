@@ -3,7 +3,7 @@ import { View, Text, StyleSheet } from "react-native";
 export default function Hints() {
     return (
         <View style={styles.container}>
-        <Text style={styles.text}>Hints</Text>
+        <Text style={styles.text}>hints</Text>
         </View>
     );
     }
@@ -19,4 +19,3 @@ export default function Hints() {
         fontSize: 20,
     },
     });
-    
