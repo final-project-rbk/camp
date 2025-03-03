@@ -8,6 +8,7 @@ dependencies
 !.yarn/releases
 !.yarn/versions
 .env
+config.ts
 testing
 /coverage
 node_modules

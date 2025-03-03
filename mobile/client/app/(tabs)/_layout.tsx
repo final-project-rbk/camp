@@ -13,16 +13,23 @@ export default function TabLayout() {
         tabBarActiveTintColor: '#64FFDA',
         tabBarInactiveTintColor: '#8892B0',
       }}
+      initialRouteName="home"
     >
       <Tabs.Screen
-      name="home"
-      options={{
-        title: 'Home',
-        tabBarIcon: ({ size, color }) => (
-          <Ionicons name="home" size={size} color={color} />
+        name="index"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="home"
+        options={{
+          title: 'Home',
+          tabBarIcon: ({ size, color }) => (
+            <Ionicons name="home" size={size} color={color} />
           ),
-          }}
-          />
+        }}
+      />
       <Tabs.Screen
         name="market"
         options={{
@@ -51,14 +58,14 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-      name="setting"
-      options={{
-        title: 'Setting',
-        tabBarIcon: ({ size, color }) => (
-          <Ionicons name="settings" size={size} color={color} />
-        ),
-      }}
-    />
+        name="setting"
+        options={{
+          title: 'Setting',
+          tabBarIcon: ({ size, color }) => (
+            <Ionicons name="settings" size={size} color={color} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }

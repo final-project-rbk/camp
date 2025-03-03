@@ -9,13 +9,12 @@ module.exports = {
       console.log('Seeding users...');
       await queryInterface.bulkInsert('users', [
         {
-          id: 1, // Explicitly set IDs
+          id: 1,
           email: 'admin@example.com',
           password: await bcrypt.hash('admin123', 10),
           first_name: 'Admin',
           last_name: 'User',
           role: 'admin',
-          // rank: 'platinum',
           points: 1000,
           profile_image: 'https://example.com/admin.jpg',
           bio: 'System administrator',
@@ -29,7 +28,6 @@ module.exports = {
           first_name: 'Travel',
           last_name: 'Advisor',
           role: 'advisor',
-          // rank: 'gold',
           points: 750,
           profile_image: 'https://example.com/advisor.jpg',
           bio: 'Experienced travel advisor',
@@ -43,7 +41,6 @@ module.exports = {
           first_name: 'Regular',
           last_name: 'User',
           role: 'user',
-          // rank: 'bronze',
           points: 50,
           profile_image: 'https://example.com/user.jpg',
           bio: 'Travel enthusiast',
@@ -57,7 +54,7 @@ module.exports = {
       await queryInterface.bulkInsert('advisors', [
         {
           id: 1,
-          userId: 2, // Reference to advisor user
+          userId: 2,
           isVerified: true,
           tokenVerification: 'VERIFIED_TOKEN_123',
           currentRank: 'gold',
@@ -71,20 +68,11 @@ module.exports = {
       // Categories
       console.log('Seeding categories...');
       await queryInterface.bulkInsert('categories', [
-        {
-          id: 1,
-          name: 'Beaches',
-          icon: '🏖️',
-          createdAt: now,
-          updatedAt: now
-        },
-        {
-          id: 2,
-          name: 'Mountains',
-          icon: '⛰️',
-          createdAt: now,
-          updatedAt: now
-        }
+        { id: 1, name: 'Beaches', icon: '🏖️', createdAt: now, updatedAt: now },
+        { id: 2, name: 'Mountains', icon: '⛰️', createdAt: now, updatedAt: now },
+        { id: 3, name: 'Tents', icon: '⛺', createdAt: now, updatedAt: now },
+        { id: 4, name: 'Cooking Gear', icon: '🍳', createdAt: now, updatedAt: now },
+        { id: 5, name: 'Sleeping Gear', icon: '🛌', createdAt: now, updatedAt: now }
       ]);
 
       // Places
@@ -113,8 +101,10 @@ module.exports = {
       ]);
 
       // Events
-      const events = await queryInterface.bulkInsert('events', [
-        {id:1,
+      console.log('Seeding events...');
+      await queryInterface.bulkInsert('events', [
+        {
+          id: 1,
           title: 'Beach Party',
           description: 'Annual summer beach party',
           date: new Date('2025-07-01'),
@@ -125,7 +115,8 @@ module.exports = {
           createdAt: now,
           updatedAt: now
         },
-        {id:2,
+        {
+          id: 2,
           title: 'Mountain Hiking Event',
           description: 'Group hiking in the mountains',
           date: new Date('2025-08-15'),
@@ -139,6 +130,7 @@ module.exports = {
       ], { returning: true });
 
       // Blogs
+      console.log('Seeding blogs...');
       await queryInterface.bulkInsert('blogs', [
         {
           title: 'Top 10 Beach Destinations',
@@ -162,167 +154,125 @@ module.exports = {
         }
       ]);
 
-      // Place-Category associations
-      await queryInterface.bulkInsert('placeCategories', [
+      // Marketplace Items
+      console.log('Seeding marketplace_items...');
+      await queryInterface.bulkInsert('marketplace_items', [
         {
-          placeId: 1,
-          categorieId: 1,
+          id: 1,
+          title: 'Two-Person Camping Tent',
+          description: 'Lightweight tent, perfect for backpacking',
+          price: 49.99,
+          status: 'available',
+          sellerId: 3,
+          buyerId: null,
+          location: 'Portland, OR',
           createdAt: now,
           updatedAt: now
         },
         {
-          placeId: 2,
-          categorieId: 2,
+          id: 2,
+          title: 'Sleeping Bag (0°C)',
+          description: 'Warm sleeping bag for cold nights',
+          price: 29.50,
+          status: 'sold',
+          sellerId: 2,
+          buyerId: 1,
+          location: 'Seattle, WA',
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          id: 3,
+          title: 'Portable Camping Stove',
+          description: 'Compact stove for outdoor cooking',
+          price: 19.99,
+          status: 'pending',
+          sellerId: 3,
+          buyerId: 2,
+          location: 'Bend, OR',
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          id: 4,
+          title: 'Camping Lantern',
+          description: 'Bright LED lantern with long battery life',
+          price: 15.00,
+          status: 'available',
+          sellerId: 2,
+          buyerId: null,
+          location: 'Boise, ID',
           createdAt: now,
           updatedAt: now
         }
       ]);
 
-      // PlaceUser associations
+      // Marketplace Item Categories
+      console.log('Seeding marketplace_item_categories...');
+      await queryInterface.bulkInsert('marketplace_item_categories', [
+        { marketplaceItemId: 1, categorieId: 3, createdAt: now, updatedAt: now },
+        { marketplaceItemId: 2, categorieId: 5, createdAt: now, updatedAt: now },
+        { marketplaceItemId: 3, categorieId: 4, createdAt: now, updatedAt: now },
+        { marketplaceItemId: 4, categorieId: 4, createdAt: now, updatedAt: now }
+      ]);
+
+      // Place-Category Associations
+      console.log('Seeding placeCategories...');
+      await queryInterface.bulkInsert('placeCategories', [
+        { placeId: 1, categorieId: 1, createdAt: now, updatedAt: now },
+        { placeId: 2, categorieId: 2, createdAt: now, updatedAt: now }
+      ]);
+
+      // PlaceUser Associations
+      console.log('Seeding placeUsers...');
       await queryInterface.bulkInsert('placeUsers', [
-        {
-          placeId: 1,
-          userId: 1,
-          rating: 5,
-
-          createdAt: now,
-          updatedAt: now
-        },
-        {
-          placeId: 2,
-          userId: 3,
-          rating: 5,
-
-          createdAt: now,
-          updatedAt: now
-        }
+        { placeId: 1, userId: 1, rating: 5, createdAt: now, updatedAt: now },
+        { placeId: 2, userId: 3, rating: 5, createdAt: now, updatedAt: now }
       ]);
 
       // Reviews
+      console.log('Seeding reviews...');
       await queryInterface.bulkInsert('reviews', [
-        {
-          rating: 5,
-          placeId: 1,
-          userId: 1,
-          createdAt: now,
-          updatedAt: now
-        },
-        {
-          rating: 4,
-          placeId: 2,
-          userId: 3,
-          createdAt: now,
-          updatedAt: now
-        },
-        {
-          rating: 5,
-          eventId: 2,
-          userId: 3,
-          createdAt: now,
-          updatedAt: now
-        }
+        { rating: 5, placeId: 1, userId: 1, createdAt: now, updatedAt: now },
+        { rating: 4, placeId: 2, userId: 3, createdAt: now, updatedAt: now },
+        { rating: 5, eventId: 2, userId: 3, createdAt: now, updatedAt: now }
       ]);
 
       // Media
+      console.log('Seeding media...');
       await queryInterface.bulkInsert('media', [
-        {
-          url: 'https://example.com/beach-photo.jpg',
-          type: 'image',
-          userId: 1,
-          placeId: 1,
-          createdAt: now,
-          updatedAt: now
-        },
-        {
-          url: 'https://example.com/event-video.mp4',
-          type: 'video',
-          eventId: 1,
-          createdAt: now,
-          updatedAt: now
-        },
-        {
-          url: 'https://example.com/mountain-photo.jpg',
-          type: 'image',
-          userId: 3,
-          placeId: 2,
-          createdAt: now,
-          updatedAt: now
-        }
+        { url: 'https://example.com/beach-photo.jpg', type: 'image', userId: 1, placeId: 1, createdAt: now, updatedAt: now },
+        { url: 'https://example.com/event-video.mp4', type: 'video', eventId: 1, createdAt: now, updatedAt: now },
+        { url: 'https://example.com/mountain-photo.jpg', type: 'image', userId: 3, placeId: 2, createdAt: now, updatedAt: now }
       ]);
 
       // Chats
+      console.log('Seeding chats...');
       await queryInterface.bulkInsert('chats', [
-        {
-          message: 'Hello, I have a question about the beach resort.',
-          createdAt: now,
-          updatedAt: now
-        },
-        {
-          message: 'Sure, I can help you with that!',
-          createdAt: now,
-          updatedAt: now
-        }
+        { message: 'Hello, I have a question about the beach resort.', createdAt: now, updatedAt: now },
+        { message: 'Sure, I can help you with that!', createdAt: now, updatedAt: now }
       ]);
 
-      // Criteria
+      // Criteria (using original table name 'critiria')
+      console.log('Seeding critiria...');
       await queryInterface.bulkInsert('critiria', [
-        {
-          name: 'Cleanliness',
-          purcent: 25,
-          placeUserId: 1, // Assuming first PlaceUser record
-          createdAt: now,
-          updatedAt: now
-        },
-        {
-          name: 'Service',
-          purcent: 30,
-          placeUserId: 1,
-          createdAt: now,
-          updatedAt: now
-        },
-        {
-          name: 'Location',
-          purcent: 20,
-          placeUserId: 2,
-          createdAt: now,
-          updatedAt: now
-        }
+        { name: 'Cleanliness', purcent: 25, placeUserId: 1, createdAt: now, updatedAt: now },
+        { name: 'Service', purcent: 30, placeUserId: 1, createdAt: now, updatedAt: now },
+        { name: 'Location', purcent: 20, placeUserId: 2, createdAt: now, updatedAt: now }
       ]);
 
       // Favorites
+      console.log('Seeding favorites...');
       await queryInterface.bulkInsert('favorites', [
-        {
-          userId: 1,
-          placeId: 1,
-          createdAt: now,
-          updatedAt: now
-        },
-        {
-          userId: 3,
-          placeId: 2,
-          createdAt: now,
-          updatedAt: now
-        }
+        { userId: 1, placeId: 1, createdAt: now, updatedAt: now },
+        { userId: 3, placeId: 2, createdAt: now, updatedAt: now }
       ]);
 
-      // Ranks (Event Ratings)
+      // Event Ratings
+      console.log('Seeding event_ratings...');
       await queryInterface.bulkInsert('event_ratings', [
-        {
-          name: 'Bronze',
-          targetPoints: 100,
-          totalPoints: 0,
-          advisorId: 1,
-          createdAt: now,
-          updatedAt: now
-        },
-        {
-          name: 'Silver',
-          targetPoints: 500,
-          totalPoints: 250,
-          advisorId: 1,
-          createdAt: now,
-          updatedAt: now
-        }
+        { name: 'Bronze', targetPoints: 100, totalPoints: 0, advisorId: 1, createdAt: now, updatedAt: now },
+        { name: 'Silver', targetPoints: 500, totalPoints: 250, advisorId: 1, createdAt: now, updatedAt: now }
       ]);
 
       console.log('✅ Seeding completed successfully!');
@@ -335,16 +285,17 @@ module.exports = {
   down: async (queryInterface, Sequelize) => {
     try {
       console.log('Reverting seeds...');
-      // Delete in reverse order to handle foreign key constraints
       const tables = [
         'event_ratings',
         'favorites',
-        'critiria',
+        'critiria', // Reverted to original name
         'chats',
         'media',
         'reviews',
         'placeUsers',
         'placeCategories',
+        'marketplace_item_categories',
+        'marketplace_items',
         'blogs',
         'events',
         'places',
@@ -357,7 +308,7 @@ module.exports = {
         console.log(`Deleting ${table}...`);
         await queryInterface.bulkDelete(table, null, {});
       }
-      
+
       console.log('✅ Seeds reverted successfully!');
     } catch (error) {
       console.error('❌ Seed reversion failed:', error);

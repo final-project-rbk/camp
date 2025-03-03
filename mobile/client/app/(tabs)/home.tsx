@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, Pressable, ActivityIndicator } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 const popularDestinations = [
@@ -38,7 +38,16 @@ interface WeatherData {
   };
 }
 
+interface MarketplacePreview {
+  id: string;
+  title: string;
+  price: number;
+  image: string;
+  seller: string;
+}
+
 export default function DiscoverScreen() {
+  const router = useRouter();
   const [weatherData, setWeatherData] = useState<{ [key: string]: WeatherData }>({});
   const [loading, setLoading] = useState(true);
 
@@ -89,6 +98,24 @@ export default function DiscoverScreen() {
     if (condition.toLowerCase().includes('rain')) return 'rainy';
     return 'partly-sunny';
   };
+
+  // Add this sample data (later replace with API call)
+  const featuredItems: MarketplacePreview[] = [
+    {
+      id: '1',
+      title: 'Camping Tent',
+      price: 199.99,
+      image: 'https://images.unsplash.com/photo-1478827536114-da961b7f86d2?q=80&w=1000',
+      seller: 'John Doe'
+    },
+    {
+      id: '2',
+      title: 'Sleeping Bag',
+      price: 89.99,
+      image: 'https://images.unsplash.com/photo-1520095972714-909e91b038e5?q=80&w=1000',
+      seller: 'Jane Smith'
+    },
+  ];
 
   return (
     <ScrollView style={styles.container}>
@@ -143,6 +170,38 @@ export default function DiscoverScreen() {
                     <Text style={styles.rating}>{destination.rating}</Text>
                   </View>
                 </View>
+              </View>
+            </Pressable>
+          ))}
+        </ScrollView>
+      </View>
+
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Camping Gear</Text>
+          <Link href="/market" asChild>
+            <Pressable style={styles.seeAllLink}>
+              <Text style={styles.seeAllText}>See All</Text>
+            </Pressable>
+          </Link>
+        </View>
+
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false} 
+          style={styles.destinationsScroll}
+        >
+          {featuredItems.map((item) => (
+            <Pressable 
+              key={item.id} 
+              style={styles.marketplaceCard}
+              onPress={() => router.push(`/market/${item.id}` as any)}
+            >
+              <Image source={{ uri: item.image }} style={styles.marketplaceImage} />
+              <View style={styles.marketplaceInfo}>
+                <Text style={styles.marketplaceTitle}>{item.title}</Text>
+                <Text style={styles.marketplacePrice}>${item.price}</Text>
+                <Text style={styles.marketplaceSeller}>{item.seller}</Text>
               </View>
             </Pressable>
           ))}
@@ -325,5 +384,34 @@ const styles = StyleSheet.create({
   discoveryTemp: {
     color: '#CCD6F6',
     fontSize: 14,
+  },
+  marketplaceCard: {
+    width: 200,
+    marginRight: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  marketplaceImage: {
+    width: '100%',
+    height: 150,
+    resizeMode: 'cover',
+  },
+  marketplaceInfo: {
+    padding: 12,
+  },
+  marketplaceTitle: {
+    fontSize: 16,
+    color: '#CCD6F6',
+    fontWeight: 'bold',
+  },
+  marketplacePrice: {
+    fontSize: 16,
+    color: '#64FFDA',
+    marginVertical: 4,
+  },
+  marketplaceSeller: {
+    fontSize: 14,
+    color: '#8892B0',
   },
 });

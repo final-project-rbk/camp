@@ -2,6 +2,7 @@ require('dotenv').config();
 
 const express = require('express');
 const advisorRoutes = require('./routes/advisor.routes');
+const marcketPlaceRoutes = require('./routes/marchetPlace.routes');
 let app = express();
 const cors = require("cors");
 const db = require("./models/index");
@@ -13,6 +14,7 @@ app.use(express.urlencoded({extended: true}))
 
 // Connect all our routes to our application
 app.use('/api/advisor', advisorRoutes);
+app.use('/api/marketplace', marcketPlaceRoutes);
 
 
 
