@@ -94,9 +94,17 @@ Comment.belongsTo(User, { foreignKey: "userId" });
   
 Place.belongsToMany(Citiria, { through: PlaceCitiria, foreignKey: "placeId" });
 Citiria.belongsToMany(Place, { through: PlaceCitiria, foreignKey: "citiriaId" });
+
+User.hasMany(MarketplaceItem, { foreignKey: 'userId' });
+MarketplaceItem.belongsTo(User, { foreignKey: 'userId' });
+
   
   
   
+
+  // Chat relationships
+  Chat.belongsTo(MarketplaceItem, { foreignKey: "itemId", onDelete: "CASCADE" });
+  MarketplaceItem.hasMany(Chat, { foreignKey: "itemId" });
 
 };
 
@@ -140,6 +148,9 @@ module.exports = {
   PlaceUser,
   PlaceCategorie,
   Blog,
-  PlaceCitiria
+  PlaceCitiria,
+  Comment,
+  MarketplaceItem,
+  MarketplaceItemCategorie
  
 };

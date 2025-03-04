@@ -1,97 +1,12 @@
 'use strict';
 const bcrypt = require('bcrypt');
+const { PlaceCategorie } = require('../models');
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
     const now = new Date();
     try {
-      // Users
-      console.log('Seeding users...');
-      await queryInterface.bulkInsert('users', [
-        {
-          id: 1,
-          email: 'admin@example.com',
-          password: await bcrypt.hash('admin123', 10),
-          first_name: 'Admin',
-          last_name: 'User',
-          role: 'admin',
-          points: 1000,
-          profile_image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTDJzEaxLN-jGRYYUO65pWu7Q9GXoNt4LUSSA&s',
-          bio: 'System administrator',
-          createdAt: now,
-          updatedAt: now
-        },
-        {
-          id: 2,
-          email: 'advisor@example.com',
-          password: await bcrypt.hash('advisor123', 10),
-          first_name: 'Travel',
-          last_name: 'Advisor',
-          role: 'advisor',
-          points: 750,
-          profile_image: 'https://plus.unsplash.com/premium_photo-1683121366070-5ceb7e007a97?fm=jpg&q=60&w=3000&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8dXNlcnxlbnwwfHwwfHx8MA%3D%3D',
-          bio: 'Experienced travel advisor',
-          createdAt: now,
-          updatedAt: now
-        },
-        {
-          id: 3,
-          email: 'user@example.com',
-          password: await bcrypt.hash('user123', 10),
-          first_name: 'Regular',
-          last_name: 'User',
-          role: 'user',
-          points: 50,
-          profile_image: null,
-          bio: 'Travel enthusiast',
-          createdAt: now,
-          updatedAt: now
-        },
-        {
-          id: 4,
-          email: 'sarah@example.com',
-          password: await bcrypt.hash('sarah123', 10),
-          first_name: 'Sarah',
-          last_name: 'Smith',
-          role: 'user',
-          points: 200,
-          profile_image: 'https://wac-cdn.atlassian.com/dam/jcr:ba03a215-2f45-40f5-8540-b2015223c918/Max-R_Headshot%20(1).jpg?cdnVersion=2582',
-          bio: 'Adventure seeker and photographer',
-          createdAt: now,
-          updatedAt: now
-        },
-        {
-          id: 5,
-          email: 'mike@example.com',
-          password: await bcrypt.hash('mike123', 10),
-          first_name: 'Mike',
-          last_name: 'Johnson',
-          role: 'user',
-          points: 150,
-          profile_image: null,
-          bio: 'Nature enthusiast',
-          createdAt: now,
-          updatedAt: now
-        }
-      ]);
-
-      // Advisors
-      console.log('Seeding advisors...');
-      await queryInterface.bulkInsert('advisors', [
-        {
-          id: 1,
-          userId: 2,
-          isVerified: true,
-          tokenVerification: 'VERIFIED_TOKEN_123',
-          currentRank: 'gold',
-          cin: 'AB123456',
-          points: 750,
-          createdAt: now,
-          updatedAt: now
-        }
-      ]);
-
-      // Categories
+      // Categories first
       console.log('Seeding categories...');
       await queryInterface.bulkInsert('categories', [
         { id: 1, name: 'Beaches', icon: '🏖️', createdAt: now, updatedAt: now },
@@ -101,7 +16,7 @@ module.exports = {
         { id: 5, name: 'Sleeping Gear', icon: '🛌', createdAt: now, updatedAt: now }
       ]);
 
-      // Places
+      // Places next
       console.log('Seeding places...');
       await queryInterface.bulkInsert('places', [
         {
@@ -201,6 +116,101 @@ module.exports = {
           location: 'Bizerte',
           images: JSON.stringify(['https://example.com/bizerte-lakes-1.jpg']),
           status: 'approved',
+          createdAt: now,
+          updatedAt: now
+        }
+      ]);
+
+      // Then seed placeCategories
+      console.log('Seeding placeCategories...');
+      await queryInterface.bulkInsert('placeCategories', [
+        { placeId: 1, categorieId: 1, createdAt: now, updatedAt: now },
+        { placeId: 1, categorieId: 3, createdAt: now, updatedAt: now },
+        { placeId: 2, categorieId: 2, createdAt: now, updatedAt: now },
+        { placeId: 2, categorieId: 3, createdAt: now, updatedAt: now }
+      ]);
+
+      // Users
+      console.log('Seeding users...');
+      await queryInterface.bulkInsert('users', [
+        {
+          id: 1,
+          email: 'admin@example.com',
+          password: await bcrypt.hash('admin123', 10),
+          first_name: 'Admin',
+          last_name: 'User',
+          role: 'admin',
+          points: 1000,
+          profile_image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTDJzEaxLN-jGRYYUO65pWu7Q9GXoNt4LUSSA&s',
+          bio: 'System administrator',
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          id: 2,
+          email: 'advisor@example.com',
+          password: await bcrypt.hash('advisor123', 10),
+          first_name: 'Travel',
+          last_name: 'Advisor',
+          role: 'advisor',
+          points: 750,
+          profile_image: 'https://plus.unsplash.com/premium_photo-1683121366070-5ceb7e007a97?fm=jpg&q=60&w=3000&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8dXNlcnxlbnwwfHwwfHx8MA%3D%3D',
+          bio: 'Experienced travel advisor',
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          id: 3,
+          email: 'user@example.com',
+          password: await bcrypt.hash('user123', 10),
+          first_name: 'Regular',
+          last_name: 'User',
+          role: 'user',
+          points: 50,
+          profile_image: null,
+          bio: 'Travel enthusiast',
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          id: 4,
+          email: 'sarah@example.com',
+          password: await bcrypt.hash('sarah123', 10),
+          first_name: 'Sarah',
+          last_name: 'Smith',
+          role: 'user',
+          points: 200,
+          profile_image: 'https://wac-cdn.atlassian.com/dam/jcr:ba03a215-2f45-40f5-8540-b2015223c918/Max-R_Headshot%20(1).jpg?cdnVersion=2582',
+          bio: 'Adventure seeker and photographer',
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          id: 5,
+          email: 'mike@example.com',
+          password: await bcrypt.hash('mike123', 10),
+          first_name: 'Mike',
+          last_name: 'Johnson',
+          role: 'user',
+          points: 150,
+          profile_image: null,
+          bio: 'Nature enthusiast',
+          createdAt: now,
+          updatedAt: now
+        }
+      ]);
+
+      // Advisors
+      console.log('Seeding advisors...');
+      await queryInterface.bulkInsert('advisors', [
+        {
+          id: 1,
+          userId: 2,
+          isVerified: true,
+          tokenVerification: 'VERIFIED_TOKEN_123',
+          currentRank: 'gold',
+          cin: 'AB123456',
+          points: 750,
           createdAt: now,
           updatedAt: now
         }
@@ -457,13 +467,6 @@ module.exports = {
         { marketplaceItemId: 4, categorieId: 4, createdAt: now, updatedAt: now }
       ]);
 
-      // Place-Category Associations
-      console.log('Seeding placeCategories...');
-      await queryInterface.bulkInsert('placeCategories', [
-        { placeId: 1, categorieId: 1, createdAt: now, updatedAt: now },
-        { placeId: 2, categorieId: 2, createdAt: now, updatedAt: now }
-      ]);
-
       // PlaceUser Associations
       console.log('Seeding placeUsers...');
       await queryInterface.bulkInsert('placeUsers', [
@@ -477,59 +480,6 @@ module.exports = {
         { rating: 5, placeId: 1, userId: 1, createdAt: now, updatedAt: now },
         { rating: 4, placeId: 2, userId: 3, createdAt: now, updatedAt: now },
         { rating: 5, placeId: 2, userId: 3, createdAt: now, updatedAt: now }
-      ]);
-
-      // PlaceCategories
-      console.log('Seeding placeCategories...');
-      await queryInterface.bulkInsert('placeCategories', [
-        { placeId: 1, categorieId: 1, createdAt: now, updatedAt: now }, // Sidi El Barrak - Beaches
-        { placeId: 1, categorieId: 3, createdAt: now, updatedAt: now }, // Sidi El Barrak - Tents
-        { placeId: 2, categorieId: 2, createdAt: now, updatedAt: now }, // Ain Draham - Mountains
-        { placeId: 2, categorieId: 3, createdAt: now, updatedAt: now }, // Ain Draham - Tents
-        { placeId: 3, categorieId: 1, createdAt: now, updatedAt: now }, // Cap Serrat - Beaches
-        { placeId: 3, categorieId: 3, createdAt: now, updatedAt: now }, // Cap Serrat - Tents
-        { placeId: 4, categorieId: 2, createdAt: now, updatedAt: now }, // Zaghouan - Mountains
-        { placeId: 4, categorieId: 5, createdAt: now, updatedAt: now }, // Zaghouan - Sleeping Gear
-        { placeId: 5, categorieId: 1, createdAt: now, updatedAt: now }, // El Haouaria - Beaches
-        { placeId: 5, categorieId: 3, createdAt: now, updatedAt: now }, // El Haouaria - Tents
-        { placeId: 6, categorieId: 2, createdAt: now, updatedAt: now }, // Ichkeul - Mountains
-        { placeId: 6, categorieId: 4, createdAt: now, updatedAt: now }, // Ichkeul - Cooking Gear
-        { placeId: 7, categorieId: 1, createdAt: now, updatedAt: now }, // Tabarka - Beaches
-        { placeId: 7, categorieId: 3, createdAt: now, updatedAt: now }, // Tabarka - Tents
-        { placeId: 8, categorieId: 2, createdAt: now, updatedAt: now }, // Beni Mtir - Mountains
-        { placeId: 8, categorieId: 4, createdAt: now, updatedAt: now }, // Beni Mtir - Cooking Gear
-        { placeId: 9, categorieId: 2, createdAt: now, updatedAt: now }, // Djebel Ressas - Mountains
-        { placeId: 9, categorieId: 5, createdAt: now, updatedAt: now }, // Djebel Ressas - Sleeping Gear
-        { placeId: 10, categorieId: 1, createdAt: now, updatedAt: now }, // Bizerte Lakes - Beaches
-        { placeId: 10, categorieId: 4, createdAt: now, updatedAt: now } // Bizerte Lakes - Cooking Gear
-      ]);
-
-      // PlaceUser Associations
-      console.log('Seeding placeUsers...');
-      await queryInterface.bulkInsert('placeUsers', [
-        { placeId: 1, userId: 1, rating: 5, createdAt: now, updatedAt: now },
-        { placeId: 2, userId: 3, rating: 5, createdAt: now, updatedAt: now }
-      ]);
-
-      // Reviews
-      console.log('Seeding reviews...');
-      await queryInterface.bulkInsert('Reviews', [
-        { 
-          rating: 5, 
-          comment: 'Great place!',
-          placeId: 1, 
-          userId: 1, 
-          createdAt: now, 
-          updatedAt: now 
-        },
-        { 
-          rating: 4, 
-          comment: 'Nice location',
-          placeId: 2, 
-          userId: 3, 
-          createdAt: now, 
-          updatedAt: now 
-        }
       ]);
 
       // Media
@@ -602,6 +552,220 @@ module.exports = {
         { name: 'Silver', targetPoints: 500, totalPoints: 250, advisorId: 1, createdAt: now, updatedAt: now }
       ]);
 
+      // Comments for blogs
+      console.log('Seeding comments...');
+      await queryInterface.bulkInsert('comments', [
+        {
+          content: 'Great article!',
+          userId: 1,
+          blogId: 1,
+          created_at: now,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          content: 'Very helpful',
+          userId: 3,
+          blogId: 1,
+          created_at: now,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          content: 'Amazing views!',
+          userId: 2,
+          blogId: 2,
+          created_at: now,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          content: 'This desert guide saved my trip!',
+          userId: 4,
+          blogId: 3,
+          created_at: now,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          content: 'Thanks for the gear recommendations',
+          userId: 5,
+          blogId: 4,
+          created_at: now,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          content: 'I visited one of these hidden spots - amazing!',
+          userId: 1,
+          blogId: 5,
+          created_at: now,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          content: 'Great tips for beginners',
+          userId: 3,
+          blogId: 4,
+          created_at: now,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          content: 'Planning to visit next month',
+          userId: 2,
+          blogId: 5,
+          created_at: now,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          content: 'Perfect guide for my first camping trip!',
+          userId: 4,
+          blogId: 6,
+          created_at: now,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          content: 'Saw amazing birds thanks to this!',
+          userId: 5,
+          blogId: 7,
+          created_at: now,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          content: 'Love the eco-friendly tips',
+          userId: 1,
+          blogId: 8,
+          created_at: now,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          content: 'These winter tips are spot on',
+          userId: 2,
+          blogId: 9,
+          created_at: now,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          content: 'Can’t wait to try these stargazing spots',
+          userId: 3,
+          blogId: 10,
+          created_at: now,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          content: 'Really helpful sustainability advice',
+          userId: 4,
+          blogId: 8,
+          created_at: now,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          content: 'The wildlife safety tips were great',
+          userId: 5,
+          blogId: 7,
+          created_at: now,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          content: 'Adding these to my camping list!',
+          userId: 1,
+          blogId: 10,
+          created_at: now,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          content: 'My kids loved the ideas in this post!',
+          userId: 2,
+          blogId: 11,
+          created_at: now,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          content: 'These recipes are a game-changer',
+          userId: 3,
+          blogId: 12,
+          created_at: now,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          content: 'Solo camping feels less daunting now',
+          userId: 4,
+          blogId: 13,
+          created_at: now,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          content: 'Got some amazing shots thanks to this!',
+          userId: 5,
+          blogId: 14,
+          created_at: now,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          content: 'Perfect for my dog’s first camping trip',
+          userId: 1,
+          blogId: 15,
+          created_at: now,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          content: 'Can’t wait to try the campfire stew',
+          userId: 4,
+          blogId: 12,
+          created_at: now,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          content: 'Great advice for family outings',
+          userId: 5,
+          blogId: 11,
+          created_at: now,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          content: 'These photo tips are awesome',
+          userId: 2,
+          blogId: 14,
+          created_at: now,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          content: 'Feeling more confident going solo',
+          userId: 1,
+          blogId: 13,
+          created_at: now,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          content: 'My cat will love this trip!',
+          userId: 3,
+          blogId: 15,
+          created_at: now,
+          createdAt: now,
+          updatedAt: now
+        }
+      ]);
+
+
       console.log('✅ Seeding completed successfully!');
     } catch (error) {
       console.error('❌ Seeding failed:', error);
@@ -618,9 +782,12 @@ module.exports = {
         'critiria',
         'chats',
         'media',
-        'Reviews',
+        'reviews',
         'placeUsers',
         'placeCategories',
+        'marketplace_item_categories',
+        'marketplace_items',
+        'comments',
         'blogs',
         'events',
         'places',
