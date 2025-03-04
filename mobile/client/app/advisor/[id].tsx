@@ -44,6 +44,7 @@ export default function AdvisorProfileScreen() {
   const { id } = useLocalSearchParams();
   const [advisor, setAdvisor] = useState<AdvisorProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
 
   const fetchAdvisorProfile = async () => {
     try {
@@ -129,10 +130,21 @@ export default function AdvisorProfileScreen() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Image
-          source={{ uri: advisor.user.profile_image || 'https://via.placeholder.com/150' }}
-          style={styles.profileImage}
-        />
+        <View style={styles.profileImageContainer}>
+          <Image
+            source={{ 
+              uri: !imageError ? (advisor.user.profile_image || 'https://via.placeholder.com/150') 
+                              : 'https://via.placeholder.com/150'
+            }}
+            style={styles.profileImage}
+            onError={() => setImageError(true)}
+          />
+          {loading && (
+            <View style={styles.imageLoadingOverlay}>
+              <ActivityIndicator size="large" color="#64FFDA" />
+            </View>
+          )}
+        </View>
         <View style={styles.headerInfo}>
           <Text style={styles.name}>{`${advisor.user.first_name} ${advisor.user.last_name}`}</Text>
           <Text style={styles.bio}>{advisor.user.bio}</Text>
@@ -181,11 +193,40 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#1D2D50',
   },
-  profileImage: {
+  profileImageContainer: {
+    position: 'relative',
     width: 120,
     height: 120,
     borderRadius: 60,
     marginBottom: 10,
+    backgroundColor: '#1D2D50',
+    overflow: 'hidden',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  profileImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 60,
+  },
+  imageLoadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(29, 45, 80, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerInfo: {
+    alignItems: 'center',
   },
   name: {
     fontSize: 24,
