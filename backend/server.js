@@ -17,7 +17,7 @@ app.use(express.json())
 app.use(express.urlencoded({extended: true}))
 
 // Connect all our routes to our application
-app.use('/api/advisor', advisorRoutes);
+app.use('/api/', advisorRoutes);
 app.use('/api/marketplace', marcketPlaceRoutes);
 
 // Test database connection

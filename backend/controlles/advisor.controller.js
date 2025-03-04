@@ -200,60 +200,78 @@ module.exports.deleteEvent = async (req, res) => {
 
 // Get advisor profile with reviews and points
 module.exports.getAdvisorProfile = async (req, res) => {
-    try {
-      const advisor = await Advisor.findByPk(req.params.id, {
-        include: [
-          { 
-            model: User, 
-            attributes: ["first_name", "last_name", "bio", "experience", "points", "rank"] 
-          },
-          { 
-            model: Event, 
-            attributes: ["title", "date", "status"],
-            include: [{ model: Review, attributes: ["rating", "comment", "created_at"] }]
-          },
-          { 
-            model: Review, 
-            attributes: ["rating", "comment", "created_at"],
-            include: [{ model: User, attributes: ["first_name", "last_name"] }]
-          },
-        ],
-      });
-  
-      if (!advisor) {
-        return res.status(404).json({ error: "Advisor not found" });
-      }
-  
-      // Build the profile response
-      const profile = {
-        advisorId: advisor.id,
-        user: advisor.User,
-        events: advisor.Events.map(event => ({
-          title: event.title,
-          date: event.date,
-          status: event.status,
-          reviews: event.Reviews.map(review => ({
-            rating: review.rating,
-            comment: review.comment || "No comment provided",
-            created_at: review.created_at,
-          })),
-        })),
-        points: advisor.points, // Use advisor.points only, since User.points is synced
-        rank: advisor.currentRank,
-        reviews: advisor.Reviews.map(review => ({
+  try {
+    const { id } = req.params;
+
+    const advisor = await Advisor.findOne({
+      where: { id },
+      include: [
+        {
+          model: User,
+          as: 'User', // Explicitly use the alias defined in the association
+          required: true,
+          attributes: ["email", "first_name", "last_name", "bio", "experience", "profile_image"]
+        },
+        {
+          model: Event,
+          as: 'Events', // Match the alias from association (if defined)
+          attributes: ["title", "date", "status"],
+          include: [{ model: Review, as: 'Reviews', attributes: ["rating", "comment", "created_at"] }]
+        },
+        {
+          model: Review,
+          as: 'Reviews', // Match the alias from association (if defined)
+          attributes: ["rating", "comment", "created_at"],
+          include: [{ model: User, as: 'User', attributes: ["first_name", "last_name"] }]
+        }
+      ]
+    });
+
+    // Add debugging
+    console.log("Raw advisor data:", JSON.stringify(advisor, null, 2));
+
+    if (!advisor) {
+      return res.status(404).json({ error: `Advisor with ID ${id} not found` });
+    }
+
+    const profile = {
+      advisorId: advisor.id,
+      user: advisor.User
+        ? {
+            email: advisor.User.email,
+            first_name: advisor.User.first_name,
+            last_name: advisor.User.last_name,
+            bio: advisor.User.bio,
+            experience: advisor.User.experience || null, // Handle missing experience
+            profile_image: advisor.User.profile_image
+          }
+        : null,
+      events: advisor.Events?.map(event => ({
+        title: event.title,
+        date: event.date,
+        status: event.status,
+        reviews: event.Reviews?.map(review => ({
           rating: review.rating,
           comment: review.comment || "No comment provided",
-          reviewer: `${review.User.first_name} ${review.User.last_name}`,
           created_at: review.created_at,
-        })),
-      };
-  
-      return res.status(200).json(profile);
-    } catch (error) {
-      console.error("Error fetching advisor profile:", error);
-      return res.status(500).json({ error: "Internal server error" });
-    }
-  };
+        })) || [],
+      })) || [],
+      points: advisor.points,
+      rank: advisor.currentRank,
+      reviews: advisor.Reviews?.map(review => ({
+        rating: review.rating,
+        comment: review.comment || "No comment provided",
+        reviewer: review.User ? `${review.User.first_name} ${review.User.last_name}` : "Anonymous",
+        created_at: review.created_at,
+      })) || [],
+    };
+
+    return res.status(200).json(profile);
+  } catch (error) {
+    console.error(`Error fetching advisor profile for ID ${req.params.id}:`, error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
 // Update points dynamically (e.g., after a review or event completion)
 module.exports.updatePoints = async (req, res) => {
   try {
