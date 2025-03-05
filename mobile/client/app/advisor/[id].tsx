@@ -133,8 +133,7 @@ export default function AdvisorProfileScreen() {
         <View style={styles.profileImageContainer}>
           <Image
             source={{ 
-              uri: !imageError ? (advisor.user.profile_image || 'https://via.placeholder.com/150') 
-                              : 'https://via.placeholder.com/150'
+              uri: advisor.user.profile_image
             }}
             style={styles.profileImage}
             onError={() => setImageError(true)}
@@ -174,10 +173,10 @@ export default function AdvisorProfileScreen() {
         ))}
       </View>
 
-      <View style={styles.section}>
+      {/* <View style={styles.section}>
         <Text style={styles.sectionTitle}>Reviews</Text>
         {advisor.reviews.map(review => renderReview({ item: review }))}
-      </View>
+      </View> */}
     </ScrollView>
   );
 }
