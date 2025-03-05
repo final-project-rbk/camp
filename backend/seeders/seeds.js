@@ -404,67 +404,91 @@ module.exports = {
       console.log('Seeding marketplace_items...');
       await queryInterface.bulkInsert('marketplace_items', [
         {
-            id: 1,
-            title: 'Two-Person Camping Tent',
-            description: 'Lightweight tent, perfect for backpacking',
-            imageURL: 'https://images.unsplash.com/photo-1506748686214-e9df14d4d9d0',
-            price: 49.99,
-            status: 'available',
-            sellerId: 3,
-            buyerId: null,
-            location: 'Portland, OR',
-            createdAt: new Date(),
-            updatedAt: new Date()
+          id: 1,
+          title: 'Two-Person Camping Tent',
+          description: 'Lightweight and durable tent, perfect for backpacking in the mountains or beaches.',
+          imageURL: 'https://example.com/tent.jpg',
+          price: 49.99,
+          status: 'available',
+          sellerId: 3, // Regular User
+          buyerId: null,
+          location: 'Bizerte',
+          createdAt: now,
+          updatedAt: now
         },
         {
-            id: 2,
-            title: 'Sleeping Bag (0°C)',
-            description: 'Warm sleeping bag for cold nights',
-            imageURL: 'https://images.unsplash.com/photo-1587809166987-75f3602f32c7',
-            price: 29.50,
-            status: 'sold',
-            sellerId: 2,
-            buyerId: 1,
-            location: 'Seattle, WA',
-            createdAt: new Date(),
-            updatedAt: new Date()
+          id: 2,
+          title: 'Portable Camping Stove',
+          description: 'Compact gas stove with wind protection, ideal for outdoor cooking.',
+          imageURL: 'https://example.com/stove.jpg',
+          price: 29.50,
+          status: 'sold',
+          sellerId: 2, // Travel Advisor
+          buyerId: 1, // Admin
+          location: 'Ain Draham, Jendouba',
+          createdAt: now,
+          updatedAt: now
         },
         {
-            id: 3,
-            title: 'Portable Camping Stove',
-            description: 'Compact stove for outdoor cooking',
-            imageURL: 'https://images.unsplash.com/photo-1626636691511-d84f3d3df855',
-            price: 19.99,
-            status: 'pending',
-            sellerId: 3,
-            buyerId: 2,
-            location: 'Bend, OR',
-            createdAt: new Date(),
-            updatedAt: new Date()
+          id: 3,
+          title: 'Sleeping Bag (-5°C)',
+          description: 'Warm and cozy sleeping bag for cold mountain nights.',
+          imageURL: 'https://example.com/sleeping-bag.jpg',
+          price: 39.99,
+          status: 'pending',
+          sellerId: 3, // Regular User
+          buyerId: 2, // Travel Advisor
+          location: 'Zaghouan',
+          createdAt: now,
+          updatedAt: now
         },
         {
-            id: 4,
-            title: 'Camping Lantern',
-            description: 'Bright LED lantern with long battery life',
-            imageURL: 'https://images.unsplash.com/photo-1513279922455-bd37e2b7aa9b',
-            price: 15.00,
-            status: 'available',
-            sellerId: 2,
-            buyerId: null,
-            location: 'Boise, ID',
-            createdAt: new Date(),
-            updatedAt: new Date()
+          id: 4,
+          title: 'Camping Cookware Set',
+          description: 'Lightweight aluminum cookware set including pots and pans.',
+          imageURL: 'https://example.com/cookware.jpg',
+          price: 25.00,
+          status: 'available',
+          sellerId: 1, // Admin
+          buyerId: null,
+          location: 'Tabarka, Jendouba',
+          createdAt: now,
+          updatedAt: now
         }
-    ]);
-    
+      ]);
 
       // Marketplace Item Categories
       console.log('Seeding marketplace_item_categories...');
       await queryInterface.bulkInsert('marketplace_item_categories', [
-        { marketplaceItemId: 1, categorieId: 3, createdAt: now, updatedAt: now },
-        { marketplaceItemId: 2, categorieId: 5, createdAt: now, updatedAt: now },
-        { marketplaceItemId: 3, categorieId: 4, createdAt: now, updatedAt: now },
-        { marketplaceItemId: 4, categorieId: 4, createdAt: now, updatedAt: now }
+        { marketplaceItemId: 1, categorieId: 3, createdAt: now, updatedAt: now }, // Tent -> Tents
+        { marketplaceItemId: 2, categorieId: 4, createdAt: now, updatedAt: now }, // Stove -> Cooking Gear
+        { marketplaceItemId: 3, categorieId: 5, createdAt: now, updatedAt: now }, // Sleeping Bag -> Sleeping Gear
+        { marketplaceItemId: 4, categorieId: 4, createdAt: now, updatedAt: now }  // Cookware -> Cooking Gear
+      ]);
+
+      // PlaceCategories
+      console.log('Seeding placeCategories...');
+      await queryInterface.bulkInsert('placeCategories', [
+        { placeId: 1, categorieId: 1, createdAt: now, updatedAt: now }, // Sidi El Barrak - Beaches
+        { placeId: 1, categorieId: 3, createdAt: now, updatedAt: now }, // Sidi El Barrak - Tents
+        { placeId: 2, categorieId: 2, createdAt: now, updatedAt: now }, // Ain Draham - Mountains
+        { placeId: 2, categorieId: 3, createdAt: now, updatedAt: now }, // Ain Draham - Tents
+        { placeId: 3, categorieId: 1, createdAt: now, updatedAt: now }, // Cap Serrat - Beaches
+        { placeId: 3, categorieId: 3, createdAt: now, updatedAt: now }, // Cap Serrat - Tents
+        { placeId: 4, categorieId: 2, createdAt: now, updatedAt: now }, // Zaghouan - Mountains
+        { placeId: 4, categorieId: 5, createdAt: now, updatedAt: now }, // Zaghouan - Sleeping Gear
+        { placeId: 5, categorieId: 1, createdAt: now, updatedAt: now }, // El Haouaria - Beaches
+        { placeId: 5, categorieId: 3, createdAt: now, updatedAt: now }, // El Haouaria - Tents
+        { placeId: 6, categorieId: 2, createdAt: now, updatedAt: now }, // Ichkeul - Mountains
+        { placeId: 6, categorieId: 4, createdAt: now, updatedAt: now }, // Ichkeul - Cooking Gear
+        { placeId: 7, categorieId: 1, createdAt: now, updatedAt: now }, // Tabarka - Beaches
+        { placeId: 7, categorieId: 3, createdAt: now, updatedAt: now }, // Tabarka - Tents
+        { placeId: 8, categorieId: 2, createdAt: now, updatedAt: now }, // Beni Mtir - Mountains
+        { placeId: 8, categorieId: 4, createdAt: now, updatedAt: now }, // Beni Mtir - Cooking Gear
+        { placeId: 9, categorieId: 2, createdAt: now, updatedAt: now }, // Djebel Ressas - Mountains
+        { placeId: 9, categorieId: 5, createdAt: now, updatedAt: now }, // Djebel Ressas - Sleeping Gear
+        { placeId: 10, categorieId: 1, createdAt: now, updatedAt: now }, // Bizerte Lakes - Beaches
+        { placeId: 10, categorieId: 4, createdAt: now, updatedAt: now } // Bizerte Lakes - Cooking Gear
       ]);
 
       // PlaceUser Associations
@@ -522,20 +546,9 @@ module.exports = {
       // Criteria
       console.log('Seeding critiria...');
       await queryInterface.bulkInsert('critiria', [
-        { 
-          name: 'Cleanliness', 
-          purcent: 25, 
-          placeUserId: 1, 
-          createdAt: now, 
-          updatedAt: now 
-        },
-        { 
-          name: 'Service', 
-          purcent: 30, 
-          placeUserId: 1, 
-          createdAt: now, 
-          updatedAt: now 
-        }
+        { name: 'Cleanliness', purcent: 25, createdAt: now, updatedAt: now },
+        { name: 'Service', purcent: 30, createdAt: now, updatedAt: now },
+        { name: 'Location', purcent: 20, createdAt: now, updatedAt: now }
       ]);
 
       // Favorites

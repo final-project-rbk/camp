@@ -41,7 +41,8 @@ const userController = {
         last_name,
         email,
         phone_number,
-        profile_image
+        profile_image,
+        bio
       } = req.body;
 
       const user = await User.findByPk(id);
@@ -58,7 +59,8 @@ const userController = {
         last_name: last_name || user.last_name,
         email: email || user.email,
         phone_number: phone_number || user.phone_number,
-        profile_image: profile_image || user.profile_image
+        profile_image: profile_image || user.profile_image,
+        bio: bio || user.bio
       });
 
       // Exclude sensitive data from response
