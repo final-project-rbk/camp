@@ -33,6 +33,7 @@ export default function Sidebar({ isVisible, onClose }: SidebarProps) {
     { icon: 'home', label: 'Home', route: '/(tabs)/home' },
     { icon: 'compass', label: 'Explore', route: '/(tabs)/market' },
     { icon: 'heart', label: 'Favorites', route: '/(tabs)/favorites' },
+    { icon: 'person-circle', label: 'Advisor Profile', route: '/advisor/1' },
     { icon: 'help-circle', label: 'Help', route: '/(tabs)/hints' },
     { icon: 'settings', label: 'Settings', route: '/setting' },
   ];
@@ -66,7 +67,7 @@ export default function Sidebar({ isVisible, onClose }: SidebarProps) {
               style={styles.menuItem}
               onPress={() => {
                 onClose();
-                router.push(item.route);
+                router.push(item.route as any);
               }}
             >
               <Ionicons name={item.icon as any} size={24} color="#64FFDA" />

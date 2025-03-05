@@ -49,7 +49,7 @@ export default function AdvisorProfileScreen() {
   const fetchAdvisorProfile = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${EXPO_PUBLIC_API_URL}/advisor/${id}`);
+      const response = await fetch(`${EXPO_PUBLIC_API_URL}advisor/${id}`);
       const data = await response.json();
       setAdvisor(data);
     } catch (error) {
