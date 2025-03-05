@@ -1,10 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { migrateUserToAdvisor, getAllPlaces, getAllEvents,updateAdvisorProfile,updatePlace,deletePlace,updateEvent,deleteEvent,addPlace,addEvent,getAdvisorProfile,updatePoints } = require('../controlles/advisor.controller');
+const { migrateUserToAdvisor, getAllPlaces, getAllEvents,updateAdvisorProfile,updatePlace,deletePlace,updateEvent,deleteEvent,addPlace,addEvent,getAdvisorProfile,updatePoints,getUpcomingEvents } = require('../controlles/advisor.controller');
 
 
 router.get('/places', getAllPlaces);
 router.get('/events', getAllEvents);
+router.get('/events/upcoming', getUpcomingEvents);
 router.put('/advisor/:id', updateAdvisorProfile);
 router.put('/place/:id', updatePlace);
 router.delete('/place/:id', deletePlace);

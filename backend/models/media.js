@@ -14,9 +14,17 @@ module.exports = (sequelize, DataTypes) => {
       },
       placeId: {
         type: DataTypes.INTEGER,
-        allowNull: false,
+        allowNull: true,
         references: {
           model: 'places',
+          key: 'id'
+        }
+      },
+      eventId: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        references: {
+          model: 'events',
           key: 'id'
         }
       }
@@ -25,6 +33,10 @@ module.exports = (sequelize, DataTypes) => {
     Media.associate = function(models) {
       Media.belongsTo(models.Place, { 
         foreignKey: 'placeId',
+        onDelete: 'CASCADE'
+      });
+      Media.belongsTo(models.Event, {
+        foreignKey: 'eventId',
         onDelete: 'CASCADE'
       });
     };

@@ -1,4 +1,5 @@
-const { User, Advisor, Place, Event,Review } = require('../models'); // Adjust the path as necessary
+const { User, Advisor, Place, Event,Review, Media } = require('../models'); // Adjust the path as necessary
+const { sequelize } = require('../models'); // Assuming sequelize is imported from models
 
 // Migrate user to advisor
 module.exports.migrateUserToAdvisor = async (req, res) => {
@@ -43,14 +44,101 @@ module.exports.getAllPlaces = async (req, res) => {
 module.exports.getAllEvents = async (req, res) => {
   try {
     const advisorId = req.query.advisorId; // Optional filter by advisor
-    const where = advisorId ? { advisorId } : {};
+    const upcoming = req.query.upcoming === 'true'; // Filter for upcoming events
+    
+    let where = {};
+    if (advisorId) {
+      where.advisorId = advisorId;
+    }
+    
+    // If upcoming is true, only get events with dates in the future
+    if (upcoming) {
+      where.date = {
+        [sequelize.Op.gte]: new Date()
+      };
+    }
+    
     const events = await Event.findAll({
       where,
-      include: [{ model: Advisor, include: [User] }], // Include advisor and user details
+      include: [{ 
+        model: Advisor, 
+        include: [User] 
+      }],
+      order: [['date', 'ASC']], // Order by date ascending
     });
-    return res.status(200).json(events);
+    
+    return res.status(200).json({
+      success: true,
+      data: events
+    });
   } catch (error) {
     console.error("Error fetching events:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// Get upcoming events
+module.exports.getUpcomingEvents = async (req, res) => {
+  try {
+    const events = await Event.findAll({
+      where: {
+        date: {
+          [sequelize.Op.gte]: new Date() // Only get events with dates in the future
+        },
+        status: 'approved' // Only get approved events
+      },
+      include: [{ 
+        model: Advisor,
+        include: [User]
+      },
+      {
+        model: Media,
+        attributes: ['url', 'type'],
+        required: false
+      }],
+      order: [['date', 'ASC']], // Order by date ascending
+      limit: req.query.limit ? parseInt(req.query.limit) : undefined // Optional limit
+    });
+    
+    const formattedEvents = events.map(event => {
+      // Handle images from both Media and images field
+      let images = ['https://via.placeholder.com/400'];
+      if (event.Media && event.Media.length > 0) {
+        images = event.Media.map(media => media.url);
+      } else if (event.images) {
+        if (Array.isArray(event.images)) {
+          images = event.images;
+        } else if (typeof event.images === 'string') {
+          try {
+            images = JSON.parse(event.images);
+          } catch {
+            images = [event.images];
+          }
+        }
+      }
+
+      return {
+        id: event.id,
+        title: event.title,
+        description: event.description,
+        date: event.date,
+        location: event.location,
+        images: images,
+        status: event.status,
+        advisor: event.Advisor ? {
+          id: event.Advisor.id,
+          name: `${event.Advisor.User.first_name} ${event.Advisor.User.last_name}`,
+          profile_image: event.Advisor.User.profile_image
+        } : null
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: formattedEvents
+    });
+  } catch (error) {
+    console.error("Error fetching upcoming events:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 };

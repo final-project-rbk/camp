@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, Pressable, ActivityIndicator, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, Pressable, ActivityIndicator, TextInput, TouchableOpacity } from 'react-native';
 import { Link, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -10,6 +10,7 @@ import {  EXPO_PUBLIC_API_URL  } from '../../config';
 // Define navigation type
 type RootStackParamList = {
   'all-places': undefined;
+  'event': { id: string };
   // Add other screen names here
 };
 
@@ -43,13 +44,23 @@ interface MarketplacePreview {
   seller: string;
 }
 
+interface Event {
+  id: string;
+  title: string;
+  date: string;
+  location: string;
+  images?: string[];
+}
+
 export default function DiscoverScreen() {
   const [places, setPlaces] = useState<Place[]>([]);
+  const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
   const [weatherData, setWeatherData] = useState<{ [key: string]: WeatherData }>({});
   const [loading, setLoading] = useState(true);
   const [placesLoading, setPlacesLoading] = useState(true);
+  const [eventsLoading, setEventsLoading] = useState(true);
   const [showAllPlaces, setShowAllPlaces] = useState(false);
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp>();
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredPlaces, setFilteredPlaces] = useState<Place[]>([]);
   const [isSidebarVisible, setSidebarVisible] = useState(false);
@@ -70,6 +81,21 @@ export default function DiscoverScreen() {
       console.error('Error fetching places:', error);
     } finally {
       setPlacesLoading(false);
+    }
+  };
+
+  const fetchUpcomingEvents = async () => {
+    try {
+      setEventsLoading(true);
+      const response = await fetch(`${EXPO_PUBLIC_API_URL}events/upcoming?limit=5`);
+      const data = await response.json();
+      if (data.success) {
+        setUpcomingEvents(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching upcoming events:', error);
+    } finally {
+      setEventsLoading(false);
     }
   };
 
@@ -94,6 +120,7 @@ export default function DiscoverScreen() {
 
   useEffect(() => {
     fetchPlaces();
+    fetchUpcomingEvents();
   }, [showAllPlaces]);
 
   useEffect(() => {
@@ -267,6 +294,40 @@ export default function DiscoverScreen() {
               </View>
             </View>
           ))}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Upcoming Events</Text>
+          {eventsLoading ? (
+            <ActivityIndicator color="#64FFDA" />
+          ) : upcomingEvents.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {upcomingEvents.map((event, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.eventCard}
+                  onPress={() => navigation.navigate('event', { id: event.id })}
+                >
+                  <Image
+                    source={{ uri: event.images?.[0] || 'https://via.placeholder.com/150' }}
+                    style={styles.eventImage}
+                  />
+                  <View style={styles.eventInfo}>
+                    <Text style={styles.eventTitle}>{event.title}</Text>
+                    <Text style={styles.eventDate}>
+                      {new Date(event.date).toLocaleDateString()}
+                    </Text>
+                    <View style={styles.eventLocation}>
+                      <Ionicons name="location" size={16} color="#64FFDA" />
+                      <Text style={styles.eventLocationText}>{event.location}</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          ) : (
+            <Text style={styles.noEventsText}>No upcoming events</Text>
+          )}
         </View>
       </ScrollView>
     </>
@@ -458,5 +519,46 @@ const styles = StyleSheet.create({
   marketplaceSeller: {
     fontSize: 14,
     color: '#8892B0',
+  },
+  eventCard: {
+    width: 250,
+    backgroundColor: '#1D2D50',
+    borderRadius: 12,
+    marginRight: 15,
+    overflow: 'hidden',
+  },
+  eventImage: {
+    width: '100%',
+    height: 150,
+    resizeMode: 'cover',
+  },
+  eventInfo: {
+    padding: 12,
+  },
+  eventTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#CCD6F6',
+    marginBottom: 4,
+  },
+  eventDate: {
+    fontSize: 14,
+    color: '#64FFDA',
+    marginBottom: 4,
+  },
+  eventLocation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  eventLocationText: {
+    fontSize: 14,
+    color: '#8892B0',
+    marginLeft: 4,
+  },
+  noEventsText: {
+    color: '#8892B0',
+    fontSize: 16,
+    textAlign: 'center',
+    marginTop: 10,
   },
 });
