@@ -95,16 +95,31 @@ Comment.belongsTo(User, { foreignKey: "userId" });
 Place.belongsToMany(Citiria, { through: PlaceCitiria, foreignKey: "placeId" });
 Citiria.belongsToMany(Place, { through: PlaceCitiria, foreignKey: "citiriaId" });
 
-User.hasMany(MarketplaceItem, { foreignKey: 'userId' });
-MarketplaceItem.belongsTo(User, { foreignKey: 'userId' });
+User.hasMany(MarketplaceItem, { foreignKey: 'sellerId', as: 'itemsSold' });
+MarketplaceItem.belongsTo(User, { foreignKey: 'sellerId', as: 'seller' });
 
-  
-  
-  
+User.hasMany(MarketplaceItem, { foreignKey: 'buyerId', as: 'itemsBought' });
+MarketplaceItem.belongsTo(User, { foreignKey: 'buyerId', as: 'buyer' });
 
-  // Chat relationships
-  Chat.belongsTo(MarketplaceItem, { foreignKey: "itemId", onDelete: "CASCADE" });
-  MarketplaceItem.hasMany(Chat, { foreignKey: "itemId" });
+// Chat relationships for marketplace
+User.hasMany(Chat, { foreignKey: 'userId' });
+Chat.belongsTo(User, { foreignKey: 'userId' });
+
+MarketplaceItem.hasMany(Chat, { foreignKey: 'itemId' });
+Chat.belongsTo(MarketplaceItem, { foreignKey: 'itemId' });
+
+// Marketplace categories relationship
+MarketplaceItem.belongsToMany(Categorie, { 
+  through: 'marketplace_item_categorie', 
+  as: 'categories', 
+  foreignKey: 'marketplaceItemId' 
+});
+
+Categorie.belongsToMany(MarketplaceItem, { 
+  through: 'marketplace_item_categorie', 
+  as: 'items', 
+  foreignKey: 'categorieId' 
+});
 
 };
 

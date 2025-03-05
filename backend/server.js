@@ -7,6 +7,7 @@ const db = require("./models/index");
 const blogRoutes = require('./routes/blogs.routes');
 const marcketPlaceRoutes = require('./routes/marchetPlace.routes');
 const placeRoutes = require('./routes/Place.routes');
+const userRoutes = require('./routes/user.routes');
 const app = express();
 
 // Configure CORS
@@ -36,6 +37,7 @@ app.get('/', (req, res) => {
 app.use('/api/blogs', blogRoutes);
 app.use('/api/places', placeRoutes);
 app.use('/api/categories', require('./routes/categorie.routes')); 
+app.use('/api/users', userRoutes);
 
 const port = process.env.PORT || 3000;
 
