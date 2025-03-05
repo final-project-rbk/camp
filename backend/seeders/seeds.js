@@ -234,6 +234,72 @@ module.exports = {
         }
       ]);
 
+      // Marketplace Items
+      console.log('Seeding marketplace_items...');
+      await queryInterface.bulkInsert('marketplace_items', [
+        {
+          id: 1,
+          title: 'Two-Person Camping Tent',
+          description: 'Lightweight and durable tent, perfect for backpacking in the mountains or beaches.',
+          imageURL: 'https://example.com/tent.jpg',
+          price: 49.99,
+          status: 'available',
+          sellerId: 3, // Regular User
+          buyerId: null,
+          location: 'Bizerte',
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          id: 2,
+          title: 'Portable Camping Stove',
+          description: 'Compact gas stove with wind protection, ideal for outdoor cooking.',
+          imageURL: 'https://example.com/stove.jpg',
+          price: 29.50,
+          status: 'sold',
+          sellerId: 2, // Travel Advisor
+          buyerId: 1, // Admin
+          location: 'Ain Draham, Jendouba',
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          id: 3,
+          title: 'Sleeping Bag (-5°C)',
+          description: 'Warm and cozy sleeping bag for cold mountain nights.',
+          imageURL: 'https://example.com/sleeping-bag.jpg',
+          price: 39.99,
+          status: 'pending',
+          sellerId: 3, // Regular User
+          buyerId: 2, // Travel Advisor
+          location: 'Zaghouan',
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          id: 4,
+          title: 'Camping Cookware Set',
+          description: 'Lightweight aluminum cookware set including pots and pans.',
+          imageURL: 'https://example.com/cookware.jpg',
+          price: 25.00,
+          status: 'available',
+          sellerId: 1, // Admin
+          buyerId: null,
+          location: 'Tabarka, Jendouba',
+          createdAt: now,
+          updatedAt: now
+        }
+      ]);
+
+      // Marketplace Item Categories
+      console.log('Seeding marketplace_item_categories...');
+      await queryInterface.bulkInsert('marketplace_item_categories', [
+        { marketplaceItemId: 1, categorieId: 3, createdAt: now, updatedAt: now }, // Tent -> Tents
+        { marketplaceItemId: 2, categorieId: 4, createdAt: now, updatedAt: now }, // Stove -> Cooking Gear
+        { marketplaceItemId: 3, categorieId: 5, createdAt: now, updatedAt: now }, // Sleeping Bag -> Sleeping Gear
+        { marketplaceItemId: 4, categorieId: 4, createdAt: now, updatedAt: now }  // Cookware -> Cooking Gear
+      ]);
+
       // PlaceCategories
       console.log('Seeding placeCategories...');
       await queryInterface.bulkInsert('placeCategories', [
@@ -327,20 +393,9 @@ module.exports = {
       // Criteria
       console.log('Seeding critiria...');
       await queryInterface.bulkInsert('critiria', [
-        { 
-          name: 'Cleanliness', 
-          purcent: 25, 
-          placeUserId: 1, 
-          createdAt: now, 
-          updatedAt: now 
-        },
-        { 
-          name: 'Service', 
-          purcent: 30, 
-          placeUserId: 1, 
-          createdAt: now, 
-          updatedAt: now 
-        }
+        { name: 'Cleanliness', purcent: 25, createdAt: now, updatedAt: now },
+        { name: 'Service', purcent: 30, createdAt: now, updatedAt: now },
+        { name: 'Location', purcent: 20, createdAt: now, updatedAt: now }
       ]);
 
       // Favorites
@@ -376,6 +431,8 @@ module.exports = {
         'Reviews',
         'placeUsers',
         'placeCategories',
+        'marketplace_item_categories', // Added for marketplace
+        'marketplace_items',          // Added for marketplace
         'blogs',
         'events',
         'places',
