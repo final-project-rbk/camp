@@ -370,9 +370,9 @@ module.exports = {
       // Criteria (using original table name 'critiria')
       console.log('Seeding critiria...');
       await queryInterface.bulkInsert('critiria', [
-        { name: 'Cleanliness', purcent: 25, placeUserId: 1, createdAt: now, updatedAt: now },
-        { name: 'Service', purcent: 30, placeUserId: 1, createdAt: now, updatedAt: now },
-        { name: 'Location', purcent: 20, placeUserId: 2, createdAt: now, updatedAt: now }
+        { name: 'Cleanliness', purcent: 25,  createdAt: now, updatedAt: now },
+        { name: 'Service', purcent: 30,  createdAt: now, updatedAt: now },
+        { name: 'Location', purcent: 20, createdAt: now, updatedAt: now }
       ]);
 
       // Favorites

@@ -1,5 +1,6 @@
 const { Sequelize, DataTypes } = require("sequelize");
-const critiria = require("./critiria");
+
+
 
 
 // Initialize Sequelize connection
@@ -23,7 +24,6 @@ const Review=require("./review")(connection,DataTypes)
 const PlaceUser=require("./PlaceUser")(connection,DataTypes)
 const PlaceCategorie = require("./PlaceCategorie")(connection,DataTypes)
 const Blog = require("./blog")(connection,DataTypes)
-const PlaceCitiria=require("./placeCritiria")(connection,DataTypes)
 const MarketplaceItem = require("./marcketPlaceItem")(connection, DataTypes);
 const MarketplaceItemCategorie = require("./marcketPlaceItemCategorie")(connection, DataTypes);
 // Define relationships
@@ -59,8 +59,8 @@ const defineAssociations = () => {
  User.belongsToMany(Place, { through: PlaceUser, foreignKey: "userId" });
  Place.belongsToMany(User, { through: PlaceUser, foreignKey: "placeId" });
 
- PlaceUser.hasMany(Citiria, { foreignKey: "placeUserId" });
- Citiria.belongsTo(PlaceUser, { foreignKey: "placeUserId" });
+ Citiria.hasMany(PlaceUser, { foreignKey: "critiriaId" });
+ PlaceUser.belongsTo(Citiria, { foreignKey: "critiriaId" });
 
  Event.hasMany(Media, { foreignKey: "eventId" });
  Media.belongsTo(Event, { foreignKey: "eventId" });
@@ -76,13 +76,6 @@ Favorite.belongsTo(User, { foreignKey: "userId" });
 
 User.hasMany(Blog, { foreignKey: "userId" });
 Blog.belongsTo(User, { foreignKey: "userId" });
-
-// Place.belongsToMany(Citiria, { through: PlaceUser, foreignKey: "placeId" });
-// Citiria.belongsToMany(Place, { through: PlaceUser, foreignKey: "citiriaId" });
-  
-  
-Place.belongsToMany(Citiria, { through: PlaceCitiria, foreignKey: "placeId" });
-Citiria.belongsToMany(Place, { through: PlaceCitiria, foreignKey: "citiriaId" });
 
 // In defineAssociations function
 User.hasMany(MarketplaceItem, { foreignKey: 'sellerId', as: 'itemsSold' });
@@ -156,7 +149,6 @@ module.exports = {
   PlaceUser,
   PlaceCategorie,
   Blog,
-  PlaceCitiria,
   MarketplaceItem,
   MarketplaceItemCategorie
  
