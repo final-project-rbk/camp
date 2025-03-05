@@ -19,3 +19,4 @@ export default function Hints() {
         fontSize: 20,
     },
     });
+    

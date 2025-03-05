@@ -81,99 +81,99 @@ module.exports = {
         {
           id: 1,
           name: 'Camping Sidi El Barrak',
-          description: 'Beautiful lakeside camping site surrounded by pine forests. Perfect for nature lovers with facilities for tents and caravans. Features include fishing opportunities and hiking trails.',
+          description: 'Beautiful lakeside camping site surrounded by pine forests. Perfect for family camping with facilities for swimming, fishing, and hiking. Features clean amenities and designated BBQ areas.',
           location: 'Nefza, Béja Governorate',
-          images: JSON.stringify(['https://tse1.mm.bing.net/th?id=OIP.MY-smMH1_QwxSgN_7qqS6AAAAA&pid=Api&P=0&h=180']),
+          images: JSON.stringify(['https://example.com/sidi-el-barrak-1.jpg', 'https://example.com/sidi-el-barrak-2.jpg']),
           status: 'approved',
           createdAt: now,
           updatedAt: now
         },
         {
           id: 2,
-          name: 'Ain Draham Forest Camping',
-          description: 'Mountain camping in Tunisia\'s most beautiful cork oak forest. Cool climate year-round with excellent hiking opportunities and wildlife viewing.',
+          name: 'Ain Draham Forest Camp',
+          description: 'Mountain camping in Tunisia\'s most beautiful cork oak forest. Experience cool mountain air and stunning views. Ideal for nature lovers and hikers.',
           location: 'Ain Draham, Jendouba',
-          images: JSON.stringify(['https://tse3.mm.bing.net/th?id=OIP.y0Gjlm0ru4qOJpxUQupXWQHaE9&pid=Api&P=0&h=180']),
+          images: JSON.stringify(['https://example.com/ain-draham-1.jpg', 'https://example.com/ain-draham-2.jpg']),
           status: 'approved',
           createdAt: now,
           updatedAt: now
         },
         {
           id: 3,
-          name: 'Desert Oasis Camp Douz',
-          description: 'Authentic Sahara desert camping experience with traditional Bedouin-style tents. Offers camel treks, stargazing, and traditional music around the campfire.',
-          location: 'Douz, Kebili',
-          images: JSON.stringify(['https://tse4.mm.bing.net/th?id=OIP.nERywcqXC9uEPA-oDEVPHQHaFb&pid=Api&P=0&h=180']),
+          name: 'Cap Serrat Beach Camp',
+          description: 'Pristine beachfront camping location with crystal clear waters. Perfect for snorkeling and beach activities. Offers both tent and cabin accommodations.',
+          location: 'Cap Serrat, Bizerte',
+          images: JSON.stringify(['https://example.com/cap-serrat-1.jpg']),
           status: 'approved',
           createdAt: now,
           updatedAt: now
         },
         {
           id: 4,
-          name: 'Cap Serrat Beach Camp',
-          description: 'Coastal camping site with pristine beaches and crystal-clear waters. Perfect for snorkeling and beach activities.',
-          location: 'Cap Serrat, Bizerte',
-          images: JSON.stringify(['https://tse4.mm.bing.net/th?id=OIP.vuna-0qz5d5m1j1NhEopVQHaE7&pid=Api&P=0&h=180']),
+          name: 'Zaghouan Mountain Retreat',
+          description: 'High-altitude camping site near the ancient Roman temple. Excellent for rock climbing and mountain biking. Spectacular sunrise views over the mountains.',
+          location: 'Zaghouan Mountains',
+          images: JSON.stringify(['https://example.com/zaghouan-1.jpg']),
           status: 'approved',
           createdAt: now,
           updatedAt: now
         },
         {
           id: 5,
-          name: 'Camping Le Kef',
-          description: 'Mountain camping site offering panoramic views of the surrounding valleys. Great base for exploring Roman ruins and traditional Berber villages.',
-          location: 'Le Kef',
-          images: JSON.stringify(['https://tse2.mm.bing.net/th?id=OIP.KIsx9ZYw3T4R1otiXqHQZQHaE6&pid=Api&P=0&h=180']),
+          name: 'El Haouaria Beach Camp',
+          description: 'Coastal camping ground with views of the Mediterranean. Famous for bird watching and wind sports. Close to ancient Punic caves.',
+          location: 'El Haouaria, Cap Bon',
+          images: JSON.stringify(['https://example.com/haouaria-1.jpg']),
           status: 'approved',
           createdAt: now,
           updatedAt: now
         },
         {
           id: 6,
-          name: 'Ichkeul Lake Camp',
-          description: 'Eco-camping near UNESCO World Heritage site. Perfect for birdwatching and nature photography.',
-          location: 'Ichkeul National Park, Bizerte',
-          images: JSON.stringify(['https://tse2.mm.bing.net/th?id=OIP.tOcDJMOAUFfA7T2UiwS9HQHaE7&pid=Api&P=0&h=180']),
+          name: 'Ichkeul National Park Camp',
+          description: 'UNESCO World Heritage site offering unique ecosystem camping. Home to diverse bird species and lake views. Educational nature trails available.',
+          location: 'Ichkeul, Bizerte',
+          images: JSON.stringify(['https://example.com/ichkeul-1.jpg']),
           status: 'approved',
           createdAt: now,
           updatedAt: now
         },
         {
           id: 7,
-          name: 'Zaghouan Mountain Camp',
-          description: 'High-altitude camping in the Zaghouan mountains. Close to the Roman Temple of Waters with excellent climbing opportunities.',
-          location: 'Zaghouan',
-          images: JSON.stringify(['https://tse2.mm.bing.net/th?id=OIP.vfiSwEDbe5pZr3T4qDqjeQHaE8&pid=Api&P=0&h=180']),
+          name: 'Tabarka Pine Forest Camp',
+          description: 'Seaside forest camping combining beach and woodland experiences. Close to coral reefs and historic Genoese fort. Excellent for diving enthusiasts.',
+          location: 'Tabarka, Jendouba',
+          images: JSON.stringify(['https://example.com/tabarka-1.jpg']),
           status: 'approved',
           createdAt: now,
           updatedAt: now
         },
         {
           id: 8,
-          name: 'Tabarka Forest Camp',
-          description: 'Coastal forest camping combining beach access with woodland serenity. Famous for its coral reefs and water activities.',
-          location: 'Tabarka, Jendouba',
-          images: JSON.stringify(['https://tse2.mm.bing.net/th?id=OIP.-rXJAEenmMwOtGQRt4dTMAHaD4&pid=Api&P=0&h=180']),
+          name: 'Beni Mtir Lake Camp',
+          description: 'Peaceful lakeside camping in the heart of Kroumirie. Surrounded by dense forests and offering water activities. Perfect for fishing and kayaking.',
+          location: 'Beni Mtir, Jendouba',
+          images: JSON.stringify(['https://example.com/beni-mtir-1.jpg']),
           status: 'approved',
           createdAt: now,
           updatedAt: now
         },
         {
           id: 9,
-          name: 'Chott El Jerid Camp',
-          description: 'Unique camping experience on the edge of Tunisia\'s salt lake. Spectacular sunset views and otherworldly landscapes.',
-          location: 'Tozeur',
-          images: JSON.stringify(['https://example.com/chott-el-jerid.jpg']),
+          name: 'Djebel Ressas Eco Camp',
+          description: 'Eco-friendly mountain camping site with panoramic views of Tunis. Popular for climbing and hiking. Traditional Berber hospitality experience.',
+          location: 'Djebel Ressas, Ben Arous',
+          images: JSON.stringify(['https://example.com/djebel-ressas-1.jpg']),
           status: 'approved',
           createdAt: now,
           updatedAt: now
         },
         {
           id: 10,
-          name: 'Beni Mtir Lake Camp',
-          description: 'Peaceful lakeside camping in the mountains. Excellent for fishing and water sports.',
-          location: 'Beni Mtir, Jendouba',
-          images: JSON.stringify(['https://example.com/beni-mtir.jpg']),
+          name: 'Bizerte Lakes Camp',
+          description: 'Unique camping experience between the Mediterranean Sea and Bizerte Lake. Rich in marine life and bird watching opportunities. Water sports facilities available.',
+          location: 'Bizerte',
+          images: JSON.stringify(['https://example.com/bizerte-lakes-1.jpg']),
           status: 'approved',
           createdAt: now,
           updatedAt: now
@@ -188,7 +188,7 @@ module.exports = {
           title: 'Beach Party',
           description: 'Annual summer beach party',
           date: new Date('2025-07-01'),
-          location: 'Beach ',
+          location: 'Beach',
           images: JSON.stringify(['party1.jpg']),
           status: 'approved',
           advisorId: 1,
@@ -207,7 +207,7 @@ module.exports = {
           createdAt: now,
           updatedAt: now
         }
-      ], { returning: true });
+      ]);
 
       // Blogs
       console.log('Seeding blogs...');
@@ -238,74 +238,91 @@ module.exports = {
       console.log('Seeding marketplace_items...');
       await queryInterface.bulkInsert('marketplace_items', [
         {
-            id: 1,
-            title: 'Two-Person Camping Tent',
-            description: 'Lightweight tent, perfect for backpacking',
-            imageURL: 'https://images.unsplash.com/photo-1506748686214-e9df14d4d9d0',
-            price: 49.99,
-            status: 'available',
-            sellerId: 3,
-            buyerId: null,
-            location: 'Portland, OR',
-            createdAt: new Date(),
-            updatedAt: new Date()
+          id: 1,
+          title: 'Two-Person Camping Tent',
+          description: 'Lightweight and durable tent, perfect for backpacking in the mountains or beaches.',
+          imageURL: 'https://example.com/tent.jpg',
+          price: 49.99,
+          status: 'available',
+          sellerId: 3, // Regular User
+          buyerId: null,
+          location: 'Bizerte',
+          createdAt: now,
+          updatedAt: now
         },
         {
-            id: 2,
-            title: 'Sleeping Bag (0°C)',
-            description: 'Warm sleeping bag for cold nights',
-            imageURL: 'https://images.unsplash.com/photo-1587809166987-75f3602f32c7',
-            price: 29.50,
-            status: 'sold',
-            sellerId: 2,
-            buyerId: 1,
-            location: 'Seattle, WA',
-            createdAt: new Date(),
-            updatedAt: new Date()
+          id: 2,
+          title: 'Portable Camping Stove',
+          description: 'Compact gas stove with wind protection, ideal for outdoor cooking.',
+          imageURL: 'https://example.com/stove.jpg',
+          price: 29.50,
+          status: 'sold',
+          sellerId: 2, // Travel Advisor
+          buyerId: 1, // Admin
+          location: 'Ain Draham, Jendouba',
+          createdAt: now,
+          updatedAt: now
         },
         {
-            id: 3,
-            title: 'Portable Camping Stove',
-            description: 'Compact stove for outdoor cooking',
-            imageURL: 'https://images.unsplash.com/photo-1626636691511-d84f3d3df855',
-            price: 19.99,
-            status: 'pending',
-            sellerId: 3,
-            buyerId: 2,
-            location: 'Bend, OR',
-            createdAt: new Date(),
-            updatedAt: new Date()
+          id: 3,
+          title: 'Sleeping Bag (-5°C)',
+          description: 'Warm and cozy sleeping bag for cold mountain nights.',
+          imageURL: 'https://example.com/sleeping-bag.jpg',
+          price: 39.99,
+          status: 'pending',
+          sellerId: 3, // Regular User
+          buyerId: 2, // Travel Advisor
+          location: 'Zaghouan',
+          createdAt: now,
+          updatedAt: now
         },
         {
-            id: 4,
-            title: 'Camping Lantern',
-            description: 'Bright LED lantern with long battery life',
-            imageURL: 'https://images.unsplash.com/photo-1513279922455-bd37e2b7aa9b',
-            price: 15.00,
-            status: 'available',
-            sellerId: 2,
-            buyerId: null,
-            location: 'Boise, ID',
-            createdAt: new Date(),
-            updatedAt: new Date()
+          id: 4,
+          title: 'Camping Cookware Set',
+          description: 'Lightweight aluminum cookware set including pots and pans.',
+          imageURL: 'https://example.com/cookware.jpg',
+          price: 25.00,
+          status: 'available',
+          sellerId: 1, // Admin
+          buyerId: null,
+          location: 'Tabarka, Jendouba',
+          createdAt: now,
+          updatedAt: now
         }
-    ]);
-    
+      ]);
 
       // Marketplace Item Categories
       console.log('Seeding marketplace_item_categories...');
       await queryInterface.bulkInsert('marketplace_item_categories', [
-        { marketplaceItemId: 1, categorieId: 3, createdAt: now, updatedAt: now },
-        { marketplaceItemId: 2, categorieId: 5, createdAt: now, updatedAt: now },
-        { marketplaceItemId: 3, categorieId: 4, createdAt: now, updatedAt: now },
-        { marketplaceItemId: 4, categorieId: 4, createdAt: now, updatedAt: now }
+        { marketplaceItemId: 1, categorieId: 3, createdAt: now, updatedAt: now }, // Tent -> Tents
+        { marketplaceItemId: 2, categorieId: 4, createdAt: now, updatedAt: now }, // Stove -> Cooking Gear
+        { marketplaceItemId: 3, categorieId: 5, createdAt: now, updatedAt: now }, // Sleeping Bag -> Sleeping Gear
+        { marketplaceItemId: 4, categorieId: 4, createdAt: now, updatedAt: now }  // Cookware -> Cooking Gear
       ]);
 
-      // Place-Category Associations
+      // PlaceCategories
       console.log('Seeding placeCategories...');
       await queryInterface.bulkInsert('placeCategories', [
-        { placeId: 1, categorieId: 1, createdAt: now, updatedAt: now },
-        { placeId: 2, categorieId: 2, createdAt: now, updatedAt: now }
+        { placeId: 1, categorieId: 1, createdAt: now, updatedAt: now }, // Sidi El Barrak - Beaches
+        { placeId: 1, categorieId: 3, createdAt: now, updatedAt: now }, // Sidi El Barrak - Tents
+        { placeId: 2, categorieId: 2, createdAt: now, updatedAt: now }, // Ain Draham - Mountains
+        { placeId: 2, categorieId: 3, createdAt: now, updatedAt: now }, // Ain Draham - Tents
+        { placeId: 3, categorieId: 1, createdAt: now, updatedAt: now }, // Cap Serrat - Beaches
+        { placeId: 3, categorieId: 3, createdAt: now, updatedAt: now }, // Cap Serrat - Tents
+        { placeId: 4, categorieId: 2, createdAt: now, updatedAt: now }, // Zaghouan - Mountains
+        { placeId: 4, categorieId: 5, createdAt: now, updatedAt: now }, // Zaghouan - Sleeping Gear
+        { placeId: 5, categorieId: 1, createdAt: now, updatedAt: now }, // El Haouaria - Beaches
+        { placeId: 5, categorieId: 3, createdAt: now, updatedAt: now }, // El Haouaria - Tents
+        { placeId: 6, categorieId: 2, createdAt: now, updatedAt: now }, // Ichkeul - Mountains
+        { placeId: 6, categorieId: 4, createdAt: now, updatedAt: now }, // Ichkeul - Cooking Gear
+        { placeId: 7, categorieId: 1, createdAt: now, updatedAt: now }, // Tabarka - Beaches
+        { placeId: 7, categorieId: 3, createdAt: now, updatedAt: now }, // Tabarka - Tents
+        { placeId: 8, categorieId: 2, createdAt: now, updatedAt: now }, // Beni Mtir - Mountains
+        { placeId: 8, categorieId: 4, createdAt: now, updatedAt: now }, // Beni Mtir - Cooking Gear
+        { placeId: 9, categorieId: 2, createdAt: now, updatedAt: now }, // Djebel Ressas - Mountains
+        { placeId: 9, categorieId: 5, createdAt: now, updatedAt: now }, // Djebel Ressas - Sleeping Gear
+        { placeId: 10, categorieId: 1, createdAt: now, updatedAt: now }, // Bizerte Lakes - Beaches
+        { placeId: 10, categorieId: 4, createdAt: now, updatedAt: now } // Bizerte Lakes - Cooking Gear
       ]);
 
       // PlaceUser Associations
@@ -317,10 +334,23 @@ module.exports = {
 
       // Reviews
       console.log('Seeding reviews...');
-      await queryInterface.bulkInsert('reviews', [
-        { rating: 5, placeId: 1, userId: 1, createdAt: now, updatedAt: now },
-        { rating: 4, placeId: 2, userId: 3, createdAt: now, updatedAt: now },
-        { rating: 5, placeId: 2, userId: 3, createdAt: now, updatedAt: now }
+      await queryInterface.bulkInsert('Reviews', [
+        { 
+          rating: 5, 
+          comment: 'Great place!',
+          placeId: 1, 
+          userId: 1, 
+          createdAt: now, 
+          updatedAt: now 
+        },
+        { 
+          rating: 4, 
+          comment: 'Nice location',
+          placeId: 2, 
+          userId: 3, 
+          createdAt: now, 
+          updatedAt: now 
+        }
       ]);
 
       // Media
@@ -330,23 +360,16 @@ module.exports = {
           url: 'https://example.com/beach-photo.jpg',
           type: 'image',
           userId: 1,
-          placeId: 1, // Valid placeId
+          placeId: 1,
           createdAt: now,
           updatedAt: now
         },
         {
           url: 'https://example.com/event-video.mp4',
           type: 'video',
+          userId: 2,
           eventId: 1,
-          placeId: 1, // Add a valid placeId here
-          createdAt: now,
-          updatedAt: now
-        },
-        {
-          url: 'https://example.com/mountain-photo.jpg',
-          type: 'image',
-          userId: 3,
-          placeId: 2, // Valid placeId
+          placeId: 2,
           createdAt: now,
           updatedAt: now
         }
@@ -356,7 +379,7 @@ module.exports = {
       console.log('Seeding chats...');
       await queryInterface.bulkInsert('chats', [
         {
-          message: 'Hello, I have a question about the beach .',
+          message: 'Hello, I have a question about the beach.',
           createdAt: now,
           updatedAt: now
         },
@@ -367,11 +390,11 @@ module.exports = {
         }
       ]);
 
-      // Criteria (using original table name 'critiria')
+      // Criteria
       console.log('Seeding critiria...');
       await queryInterface.bulkInsert('critiria', [
-        { name: 'Cleanliness', purcent: 25,  createdAt: now, updatedAt: now },
-        { name: 'Service', purcent: 30,  createdAt: now, updatedAt: now },
+        { name: 'Cleanliness', purcent: 25, createdAt: now, updatedAt: now },
+        { name: 'Service', purcent: 30, createdAt: now, updatedAt: now },
         { name: 'Location', purcent: 20, createdAt: now, updatedAt: now }
       ]);
 
@@ -402,14 +425,14 @@ module.exports = {
       const tables = [
         'event_ratings',
         'favorites',
-        'critiria', // Reverted to original name
+        'critiria',
         'chats',
         'media',
-        'reviews',
+        'Reviews',
         'placeUsers',
         'placeCategories',
-        'marketplace_item_categories',
-        'marketplace_items',
+        'marketplace_item_categories', // Added for marketplace
+        'marketplace_items',          // Added for marketplace
         'blogs',
         'events',
         'places',
@@ -419,8 +442,16 @@ module.exports = {
       ];
 
       for (const table of tables) {
-        console.log(`Deleting ${table}...`);
-        await queryInterface.bulkDelete(table, null, {});
+        try {
+          console.log(`Deleting ${table}...`);
+          await queryInterface.bulkDelete(table, null, {});
+        } catch (error) {
+          if (error.original && error.original.code === 'ER_NO_SUCH_TABLE') {
+            console.log(`Table ${table} does not exist, skipping...`);
+            continue;
+          }
+          throw error;
+        }
       }
 
       console.log('✅ Seeds reverted successfully!');

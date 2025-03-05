@@ -5,12 +5,13 @@ const { Sequelize, DataTypes } = require("sequelize");
 
 // Initialize Sequelize connection
 const connection = new Sequelize(process.env.Database, process.env.User, process.env.Password, {
-  host: process.env.Host,
+  host: process.env.HOST,
   dialect: "mysql",
+  logging: false
 });
 
 // Import all models
-const User = require("./user")(connection, DataTypes);
+const User = require("./User")(connection, DataTypes);
 const Place = require("./Place")(connection, DataTypes);
 const Event = require("./Event")(connection, DataTypes);
 const Rank = require("./rank")(connection, DataTypes);
