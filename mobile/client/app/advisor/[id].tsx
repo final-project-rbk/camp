@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Pressable, Dimensions } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { EXPO_PUBLIC_API_URL } from '@/config';
 
 interface Review {
@@ -45,6 +46,8 @@ export default function AdvisorProfileScreen() {
   const [advisor, setAdvisor] = useState<AdvisorProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
+  const [showImageOptions, setShowImageOptions] = useState(false);
+  const [showFullImage, setShowFullImage] = useState(false);
 
   const fetchAdvisorProfile = async () => {
     try {
@@ -111,6 +114,68 @@ export default function AdvisorProfileScreen() {
     </View>
   );
 
+  const handleImagePress = () => {
+    setShowImageOptions(true);
+  };
+
+  const handleViewImage = () => {
+    setShowImageOptions(false);
+    setShowFullImage(true);
+  };
+
+  const handleChooseImage = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (permissionResult.granted === false) {
+        alert("You need to enable permission to access your photos!");
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 1,
+      });
+
+      if (!result.canceled) {
+        // Create form data for the image upload
+        const formData = new FormData();
+        const imageUri = result.assets[0].uri;
+        const uriParts = imageUri.split('.');
+        const fileType = uriParts[uriParts.length - 1];
+
+        formData.append('profile_image', {
+          uri: imageUri,
+          name: `profile_image.${fileType}`,
+          type: `image/${fileType}`
+        } as any); // Type assertion needed for React Native FormData
+
+        // Upload the image
+        const response = await fetch(`${EXPO_PUBLIC_API_URL}advisor/${id}/profile-image`, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+
+        if (response.ok) {
+          // Refresh advisor data to get the new image
+          fetchAdvisorProfile();
+        } else {
+          alert('Failed to update profile image');
+        }
+      }
+    } catch (error) {
+      console.error('Error choosing image:', error);
+      alert('Error updating profile image');
+    } finally {
+      setShowImageOptions(false);
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -128,56 +193,115 @@ export default function AdvisorProfileScreen() {
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.profileImageContainer}>
+    <>
+      <ScrollView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.profileImageContainer}
+            onPress={handleImagePress}
+          >
+            <Image
+              source={{ 
+                uri: !imageError ? (advisor?.user.profile_image || 'https://via.placeholder.com/150') 
+                                : 'https://via.placeholder.com/150'
+              }}
+              style={styles.profileImage}
+              onError={() => setImageError(true)}
+            />
+            {loading && (
+              <View style={styles.imageLoadingOverlay}>
+                <ActivityIndicator size="large" color="#64FFDA" />
+              </View>
+            )}
+          </TouchableOpacity>
+          <View style={styles.headerInfo}>
+            <Text style={styles.name}>{`${advisor.user.first_name} ${advisor.user.last_name}`}</Text>
+            <Text style={styles.bio}>{advisor.user.bio}</Text>
+            <View style={styles.rankContainer}>
+              <Text style={[styles.rank, { color: getRankColor(advisor.rank) }]}>
+                {advisor.rank.toUpperCase()}
+              </Text>
+              <Text style={styles.points}>{advisor.points} points</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Upcoming Events</Text>
+          {advisor.events.map((event, index) => (
+            <View key={index} style={styles.eventCard}>
+              <Text style={styles.eventTitle}>{event.title}</Text>
+              <Text style={styles.eventDate}>
+                {new Date(event.date).toLocaleDateString()}
+              </Text>
+              <Text style={[styles.eventStatus, { 
+                color: event.status === 'approved' ? '#64FFDA' : '#FFB347'
+              }]}>
+                {event.status.toUpperCase()}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        {/* <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Reviews</Text>
+          {advisor.reviews.map(review => renderReview({ item: review }))}
+        </View> */}
+      </ScrollView>
+
+      {/* Image Options Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showImageOptions}
+        onRequestClose={() => setShowImageOptions(false)}
+      >
+        <Pressable 
+          style={styles.modalOverlay}
+          onPress={() => setShowImageOptions(false)}
+        >
+          <View style={styles.modalContent}>
+            <TouchableOpacity
+              style={styles.modalOption}
+              onPress={handleViewImage}
+            >
+              <Ionicons name="eye-outline" size={24} color="#64FFDA" />
+              <Text style={styles.modalOptionText}>View Profile Picture</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.modalOption}
+              onPress={handleChooseImage}
+            >
+              <Ionicons name="camera-outline" size={24} color="#64FFDA" />
+              <Text style={styles.modalOptionText}>Choose New Picture</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* Full Image Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={showFullImage}
+        onRequestClose={() => setShowFullImage(false)}
+      >
+        <Pressable 
+          style={styles.fullImageContainer}
+          onPress={() => setShowFullImage(false)}
+        >
           <Image
             source={{ 
-              uri: advisor.user.profile_image
+              uri: !imageError ? (advisor?.user.profile_image || 'https://via.placeholder.com/150') 
+                              : 'https://via.placeholder.com/150'
             }}
-            style={styles.profileImage}
-            onError={() => setImageError(true)}
+            style={styles.fullImage}
+            resizeMode="contain"
           />
-          {loading && (
-            <View style={styles.imageLoadingOverlay}>
-              <ActivityIndicator size="large" color="#64FFDA" />
-            </View>
-          )}
-        </View>
-        <View style={styles.headerInfo}>
-          <Text style={styles.name}>{`${advisor.user.first_name} ${advisor.user.last_name}`}</Text>
-          <Text style={styles.bio}>{advisor.user.bio}</Text>
-          <View style={styles.rankContainer}>
-            <Text style={[styles.rank, { color: getRankColor(advisor.rank) }]}>
-              {advisor.rank.toUpperCase()}
-            </Text>
-            <Text style={styles.points}>{advisor.points} points</Text>
-          </View>
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Upcoming Events</Text>
-        {advisor.events.map((event, index) => (
-          <View key={index} style={styles.eventCard}>
-            <Text style={styles.eventTitle}>{event.title}</Text>
-            <Text style={styles.eventDate}>
-              {new Date(event.date).toLocaleDateString()}
-            </Text>
-            <Text style={[styles.eventStatus, { 
-              color: event.status === 'approved' ? '#64FFDA' : '#FFB347'
-            }]}>
-              {event.status.toUpperCase()}
-            </Text>
-          </View>
-        ))}
-      </View>
-
-      {/* <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Reviews</Text>
-        {advisor.reviews.map(review => renderReview({ item: review }))}
-      </View> */}
-    </ScrollView>
+        </Pressable>
+      </Modal>
+    </>
   );
 }
 
@@ -322,5 +446,38 @@ const styles = StyleSheet.create({
     fontSize: 18,
     textAlign: 'center',
     marginTop: 20,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#1D2D50',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+  },
+  modalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(100, 255, 218, 0.1)',
+  },
+  modalOptionText: {
+    color: '#CCD6F6',
+    fontSize: 16,
+    marginLeft: 15,
+  },
+  fullImageContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullImage: {
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').width,
   },
 }); 
