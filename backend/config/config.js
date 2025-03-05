@@ -22,4 +22,5 @@ module.exports = {
     host: process.env.Host,
     dialect: "mysql"
   }
-}; 
+};
+
