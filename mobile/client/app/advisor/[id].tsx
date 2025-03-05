@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Pressable, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Pressable, Dimensions, Alert } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { EXPO_PUBLIC_API_URL } from '@/config';
+import { cloudinary, uploadImageToCloudinary } from '@/config/cloudinary';
 
 interface Review {
   id: string;
@@ -125,10 +126,9 @@ export default function AdvisorProfileScreen() {
 
   const handleChooseImage = async () => {
     try {
-      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
-      if (permissionResult.granted === false) {
-        alert("You need to enable permission to access your photos!");
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Please grant camera roll permissions to change your profile picture.');
         return;
       }
 
@@ -136,43 +136,52 @@ export default function AdvisorProfileScreen() {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 1,
+        quality: 0.8,
+        base64: true,
       });
 
-      if (!result.canceled) {
-        // Create form data for the image upload
-        const formData = new FormData();
-        const imageUri = result.assets[0].uri;
-        const uriParts = imageUri.split('.');
-        const fileType = uriParts[uriParts.length - 1];
+      if (!result.canceled && result.assets[0]) {
+        setShowImageOptions(false);
+        setLoading(true);
+        const base64Data = result.assets[0].base64;
 
-        formData.append('profile_image', {
-          uri: imageUri,
-          name: `profile_image.${fileType}`,
-          type: `image/${fileType}`
-        } as any); // Type assertion needed for React Native FormData
+        if (!base64Data) {
+          Alert.alert('Error', 'Failed to get image data');
+          return;
+        }
 
-        // Upload the image
-        const response = await fetch(`${EXPO_PUBLIC_API_URL}advisor/${id}/profile-image`, {
-          method: 'POST',
-          body: formData,
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        });
+        try {
+          // Upload to Cloudinary using our helper function
+          const uploadResponse = await uploadImageToCloudinary(base64Data);
 
-        if (response.ok) {
-          // Refresh advisor data to get the new image
-          fetchAdvisorProfile();
-        } else {
-          alert('Failed to update profile image');
+          // Update advisor profile with Cloudinary URL
+          const response = await fetch(`${EXPO_PUBLIC_API_URL}advisor/${id}/profile-image`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              profile_image: uploadResponse.secure_url,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to update profile image');
+          }
+
+          // Refresh advisor data
+          await fetchAdvisorProfile();
+          Alert.alert('Success', 'Profile picture updated successfully');
+        } catch (error) {
+          console.error('Error in image upload:', error);
+          Alert.alert('Error', 'Failed to upload image. Please try again.');
         }
       }
     } catch (error) {
-      console.error('Error choosing image:', error);
-      alert('Error updating profile image');
+      console.error('Error updating profile image:', error);
+      Alert.alert('Error', 'Failed to update profile picture. Please try again.');
     } finally {
-      setShowImageOptions(false);
+      setLoading(false);
     }
   };
 
@@ -481,3 +490,4 @@ const styles = StyleSheet.create({
     height: Dimensions.get('window').width,
   },
 }); 
+; 
