@@ -21,7 +21,7 @@ const {
 // Item routes
 router.get('/items', getAllItems);                    // Get all items
 router.get('/items/:id', getItemById);               // Get single item by ID
-router.post('/items', createItem);                    // Create a new item
+router.post('/items/:sellerId', createItem);                    // Create a new item
 router.put('/items/:id/buy', buyItem);               // Buy an item
 
 // Category routes

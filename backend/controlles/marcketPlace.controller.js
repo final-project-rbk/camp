@@ -97,36 +97,57 @@ module.exports.getItemsByCategory = async (req, res) => {
 
 // Create a new item listing
 module.exports.createItem = async (req, res) => {
-    try {
-      const { title, description, price, location, categoryIds } = req.body; // Added location and categoryIds
-      const sellerId = req.user.id; // Requires auth middleware
-  
-      const item = await MarketplaceItem.create({ 
-        title, 
-        description, 
-        price, 
-        location, // New field
-        sellerId, 
-        status: 'available' 
-      });
-  
-      // Associate categories if provided
-      if (categoryIds && Array.isArray(categoryIds)) {
-        await MarketplaceItemCategorie.bulkCreate(
-          categoryIds.map(categorieId => ({
-            marketplaceItemId: item.id,
-            categorieId
-          }))
-        );
-      }
-  
-      res.status(201).json(item);
-    } catch (error) {
-      console.error('Error creating item:', error);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  };
+  try {
+    const { title, description, price, location, categoryIds } = req.body;
+    const { sellerId } = req.params; // Extract sellerId from URL params
 
+    // Validate sellerId (ensure it's a valid integer)
+    if (!sellerId || isNaN(sellerId)) {
+      return res.status(400).json({ error: 'Valid sellerId is required in URL parameters' });
+    }
+
+    // Validate categoryIds (ensure it's an array of valid integers)
+    if (!Array.isArray(categoryIds) || categoryIds.some(id => isNaN(id))) {
+      return res.status(400).json({ error: 'Valid categoryIds are required' });
+    }
+
+    // Create the item
+    const item = await MarketplaceItem.create({ 
+      title, 
+      description, 
+      price, 
+      location,
+      sellerId: parseInt(sellerId), // Convert to integer
+      status: 'available' 
+    });
+
+    // Associate categories if provided
+    if (categoryIds.length > 0) {
+      const categories = await MarketplaceCategorie.findAll({
+        where: { id: categoryIds },
+        attributes: ['id']
+      });
+
+      const validCategoryIds = categories.map(cat => cat.id);
+
+      if (validCategoryIds.length !== categoryIds.length) {
+        return res.status(400).json({ error: 'Some categoryIds are invalid' });
+      }
+
+      await MarketplaceItemCategorie.bulkCreate(
+        validCategoryIds.map(marketplaceCategorieId => ({
+          marketplaceItemId: item.id,
+          marketplaceCategorieId
+        }))
+      );
+    }
+
+    res.status(201).json(item);
+  } catch (error) {
+    console.error('Error creating item:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
+  }
+};
 // Purchase an item
 module.exports.buyItem = async (req, res) => {
   try {
