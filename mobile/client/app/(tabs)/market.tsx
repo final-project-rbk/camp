@@ -8,8 +8,10 @@ import {EXPO_PUBLIC_API_URL} from '../../config';
 
 
 interface Category {
-  id: number;
+  id: string;
   name: string;
+  icon?: string;
+  description?: string;
 }
 
 interface MarketplaceItem {
@@ -29,29 +31,48 @@ interface MarketplaceItem {
   categories: Category[];
 }
 
+interface SearchFilters {
+  minPrice?: string;
+  maxPrice?: string;
+  category?: string;
+}
+
 export default function Market() {
   const [items, setItems] = useState<MarketplaceItem[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [searchFilters, setSearchFilters] = useState<SearchFilters>({});
   const router = useRouter();
 
-  const categories = [
-    { id: 'all', name: 'All' },
-    { id: '1', name: 'Tents' },
-    { id: '2', name: 'Sleeping Bags' },
-    { id: '3', name: 'Cooking' },
-    { id: '4', name: 'Tools' },
-  ];
+  const fetchCategories = async () => {
+    try {
+      const response = await axios.get(`${EXPO_PUBLIC_API_URL}marketplace/categories`);
+      // Add the "All" category at the beginning
+      const allCategories = [
+        { id: 'all', name: 'All' },
+        ...response.data.map((cat: any) => ({
+          id: cat.id.toString(),
+          name: cat.name,
+          icon: cat.icon,
+          description: cat.description
+        }))
+      ];
+      setCategories(allCategories);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
 
   const fetchItems = async (categoryId?: string) => {
     try {
       setError(null);
       const url = categoryId && categoryId !== 'all' 
-        ? `${EXPO_PUBLIC_API_URL}marketplace/category/${categoryId}`
+        ? `${EXPO_PUBLIC_API_URL}marketplace/categories/${categoryId}/items`
         : `${EXPO_PUBLIC_API_URL}marketplace/items`;
       
       const response = await axios.get(url);
@@ -65,7 +86,7 @@ export default function Market() {
   };
 
   const searchItems = async (query: string) => {
-    if (!query.trim()) {
+    if (!query.trim() && !searchFilters.minPrice && !searchFilters.maxPrice && !searchFilters.category) {
       fetchItems(selectedCategory);
       return;
     }
@@ -73,18 +94,44 @@ export default function Market() {
     try {
       setIsSearching(true);
       setError(null);
-      const response = await axios.get(`${EXPO_PUBLIC_API_URL}marketplace/search?name=${encodeURIComponent(query)}`);
+
+      // Build query parameters
+      const params = new URLSearchParams();
+      if (query.trim()) params.append('name', query);
+      if (searchFilters.minPrice) params.append('minPrice', searchFilters.minPrice);
+      if (searchFilters.maxPrice) params.append('maxPrice', searchFilters.maxPrice);
+      if (searchFilters.category && searchFilters.category !== 'all') {
+        params.append('category', searchFilters.category);
+      }
+
+      const response = await axios.get(`${EXPO_PUBLIC_API_URL}marketplace/search?${params.toString()}`);
       if (response.data) {
-        setItems([response.data]); // Wrap single item in array since our UI expects an array
+        setItems(Array.isArray(response.data) ? response.data : [response.data]);
       } else {
         setItems([]);
       }
     } catch (error) {
-      console.error('Error searching items:', error);
-      setError('Failed to search items. Please try again.');
+      if (axios.isAxiosError(error)) {
+        console.error('Error searching items:', error.response?.data || error.message);
+      } else {
+        console.error('Error searching items:', error);
+      }
+      if (axios.isAxiosError(error)) {
+        setError(error.response?.data?.details || 'Failed to search items. Please try again.');
+      } else {
+        console.error('Error searching items:', error);
+        setError('Failed to search items. Please try again.');
+      }
     } finally {
       setIsSearching(false);
     }
+  };
+
+  // Add this function to handle filter changes
+  const handleFilterChange = (filters: Partial<SearchFilters>) => {
+    setSearchFilters(prev => ({ ...prev, ...filters }));
+    // Trigger search with current query and new filters
+    searchItems(searchQuery);
   };
 
   // Debounce search
@@ -97,6 +144,11 @@ export default function Market() {
 
     return () => clearTimeout(timeoutId);
   }, [searchQuery]);
+
+  // Fetch categories when component mounts
+  useEffect(() => {
+    fetchCategories();
+  }, []);
 
   useEffect(() => {
     fetchItems(selectedCategory);
@@ -119,7 +171,14 @@ export default function Market() {
     <ScrollView 
       style={styles.container}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        <RefreshControl 
+          refreshing={refreshing} 
+          onRefresh={() => {
+            setRefreshing(true);
+            Promise.all([fetchCategories(), fetchItems(selectedCategory)])
+              .finally(() => setRefreshing(false));
+          }} 
+        />
       }
     >
       <View style={styles.header}>
@@ -140,12 +199,16 @@ export default function Market() {
           placeholder="Search items..."
           placeholderTextColor="#8892B0"
           value={searchQuery}
-          onChangeText={setSearchQuery}
+          onChangeText={(text) => {
+            setSearchQuery(text);
+            // The existing useEffect will handle the debounced search
+          }}
         />
         {searchQuery.length > 0 && (
           <TouchableOpacity 
             onPress={() => {
               setSearchQuery('');
+              setSearchFilters({});
               fetchItems(selectedCategory);
             }}
             style={styles.clearButton}
@@ -153,6 +216,25 @@ export default function Market() {
             <Ionicons name="close-circle" size={20} color="#8892B0" />
           </TouchableOpacity>
         )}
+      </View>
+
+      <View style={styles.filterContainer}>
+        <TextInput
+          style={styles.priceInput}
+          placeholder="Min Price"
+          placeholderTextColor="#8892B0"
+          keyboardType="numeric"
+          value={searchFilters.minPrice}
+          onChangeText={(text) => handleFilterChange({ minPrice: text })}
+        />
+        <TextInput
+          style={styles.priceInput}
+          placeholder="Max Price"
+          placeholderTextColor="#8892B0"
+          keyboardType="numeric"
+          value={searchFilters.maxPrice}
+          onChangeText={(text) => handleFilterChange({ maxPrice: text })}
+        />
       </View>
 
       <ScrollView 
@@ -167,8 +249,17 @@ export default function Market() {
               styles.categoryButton,
               selectedCategory === category.id && styles.categoryButtonActive
             ]}
-            onPress={() => setSelectedCategory(category.id)}
+            onPress={() => {
+              setSelectedCategory(category.id);
+              handleFilterChange({ category: category.id });
+            }}
           >
+            {category.icon && (
+              <Image 
+                source={{ uri: category.icon }}
+                style={styles.categoryIcon}
+              />
+            )}
             <Text style={[
               styles.categoryButtonText,
               selectedCategory === category.id && styles.categoryButtonTextActive
@@ -334,5 +425,25 @@ const styles = StyleSheet.create({
   },
   clearButton: {
     padding: 8,
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    marginBottom: 16,
+    justifyContent: 'space-between',
+  },
+  priceInput: {
+    flex: 1,
+    height: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginHorizontal: 4,
+    color: '#CCD6F6',
+  },
+  categoryIcon: {
+    width: 20,
+    height: 20,
+    marginRight: 8,
   },
 });

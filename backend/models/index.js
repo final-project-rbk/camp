@@ -1,8 +1,5 @@
 const { Sequelize, DataTypes } = require("sequelize");
 
-
-
-
 // Initialize Sequelize connection
 const connection = new Sequelize(process.env.Database, process.env.User, process.env.Password, {
   host: process.env.HOST,
@@ -20,13 +17,15 @@ const Media = require("./media")(connection, DataTypes);
 const Categorie = require("./categorie")(connection, DataTypes);
 const Chat = require("./Chat")(connection, DataTypes);
 const Advisor = require("./advisor")(connection, DataTypes);
-const Citiria=require("./critiria")(connection,DataTypes)
-const Review=require("./review")(connection,DataTypes)
-const PlaceUser=require("./PlaceUser")(connection,DataTypes)
-const PlaceCategorie = require("./PlaceCategorie")(connection,DataTypes)
-const Blog = require("./blog")(connection,DataTypes)
+const Citiria = require("./critiria")(connection, DataTypes);
+const Review = require("./review")(connection, DataTypes);
+const PlaceUser = require("./PlaceUser")(connection, DataTypes);
+const PlaceCategorie = require("./PlaceCategorie")(connection, DataTypes);
+const Blog = require("./blog")(connection, DataTypes);
 const MarketplaceItem = require("./marcketPlaceItem")(connection, DataTypes);
+const MarketplaceCategorie = require("./marcketPlaceCategorie")(connection, DataTypes);
 const MarketplaceItemCategorie = require("./marcketPlaceItemCategorie")(connection, DataTypes);
+
 // Define relationships
 const defineAssociations = () => {
   // User relationships
@@ -57,57 +56,77 @@ const defineAssociations = () => {
   Place.hasMany(Review, { foreignKey: "placeId" });
   Review.belongsTo(Place, { foreignKey: "placeId" });
 
- User.belongsToMany(Place, { through: PlaceUser, foreignKey: "userId" });
- Place.belongsToMany(User, { through: PlaceUser, foreignKey: "placeId" });
+  User.belongsToMany(Place, { through: PlaceUser, foreignKey: "userId" });
+  Place.belongsToMany(User, { through: PlaceUser, foreignKey: "placeId" });
 
- Citiria.hasMany(PlaceUser, { foreignKey: "critiriaId" });
- PlaceUser.belongsTo(Citiria, { foreignKey: "critiriaId" });
+  Citiria.hasMany(PlaceUser, { foreignKey: "critiriaId" });
+  PlaceUser.belongsTo(Citiria, { foreignKey: "critiriaId" });
 
- Event.hasMany(Media, { foreignKey: "eventId" });
- Media.belongsTo(Event, { foreignKey: "eventId" });
+  Event.hasMany(Media, { foreignKey: "eventId" });
+  Media.belongsTo(Event, { foreignKey: "eventId" });
 
-Place.hasMany(Media, { foreignKey: "placeId" });
-Media.belongsTo(Place, { foreignKey: "placeId" });
+  Place.hasMany(Media, { foreignKey: "placeId" });
+  Media.belongsTo(Place, { foreignKey: "placeId" });
 
-Categorie.belongsToMany(Place, { through: PlaceCategorie, foreignKey: "categorieId" });
-Place.belongsToMany(Categorie, { through: PlaceCategorie, foreignKey: "placeId" });
+  Categorie.belongsToMany(Place, { through: PlaceCategorie, foreignKey: "categorieId" });
+  Place.belongsToMany(Categorie, { through: PlaceCategorie, foreignKey: "placeId" });
 
-User.hasMany(Favorite, { foreignKey: "userId" });
-Favorite.belongsTo(User, { foreignKey: "userId" });
+  User.hasMany(Favorite, { foreignKey: "userId" });
+  Favorite.belongsTo(User, { foreignKey: "userId" });
 
-User.hasMany(Blog, { foreignKey: "userId" });
-Blog.belongsTo(User, { foreignKey: "userId" });
+  User.hasMany(Blog, { foreignKey: "userId" });
+  Blog.belongsTo(User, { foreignKey: "userId" });
 
-// In defineAssociations function
-User.hasMany(MarketplaceItem, { foreignKey: 'sellerId', as: 'itemsSold' });
-MarketplaceItem.belongsTo(User, { foreignKey: 'sellerId', as: 'seller' });
+  // MarketPlace Item relationships
+  User.hasMany(MarketplaceItem, { foreignKey: "sellerId", as: "itemsSold" });
+  MarketplaceItem.belongsTo(User, { foreignKey: "sellerId", as: "seller" });
 
-User.hasMany(MarketplaceItem, { foreignKey: 'buyerId', as: 'itemsBought' });
-MarketplaceItem.belongsTo(User, { foreignKey: 'buyerId', as: 'buyer' });
+  User.hasMany(MarketplaceItem, { foreignKey: "buyerId", as: "itemsBought" });
+  MarketplaceItem.belongsTo(User, { foreignKey: "buyerId", as: "buyer" });
 
-// Leverage existing Chat model for negotiations
-User.hasMany(Chat, { foreignKey: 'userId' });
-Chat.belongsTo(User, { foreignKey: 'userId' });
+  // MarketPlace Item and Categories relationship
+  MarketplaceItem.belongsToMany(MarketplaceCategorie, {
+    through: MarketplaceItemCategorie,
+    foreignKey: "marketplaceItemId",
+    otherKey: "marketplaceCategorieId",
+    as: "categories",
+    constraints: true
+  });
 
-// Optionally link chats to marketplace items
-MarketplaceItem.hasMany(Chat, { foreignKey: 'itemId' });
-Chat.belongsTo(MarketplaceItem, { foreignKey: 'itemId' });
+  MarketplaceCategorie.belongsToMany(MarketplaceItem, {
+    through: MarketplaceItemCategorie,
+    foreignKey: "marketplaceCategorieId",
+    otherKey: "marketplaceItemId",
+    as: "items",
+    constraints: true
+  });
 
-MarketplaceItem.belongsToMany(Categorie, { 
-  through: 'marketplace_item_categorie', 
-  as: 'categories', 
-  foreignKey: 'marketplaceItemId' 
-});
+  // Explicit foreign key relationships for MarketplaceItemCategorie
+  MarketplaceItemCategorie.belongsTo(MarketplaceItem, {
+    foreignKey: "marketplaceItemId",
+    targetKey: "id",
+    onDelete: "CASCADE",
+    constraint: true,
+    foreignKeyConstraint: true
+  });
 
-Categorie.belongsToMany(MarketplaceItem, { 
-  through: 'marketplace_item_categorie', 
-  as: 'items', 
-  foreignKey: 'categorieId' 
-});
+  MarketplaceItemCategorie.belongsTo(MarketplaceCategorie, {
+    foreignKey: "marketplaceCategorieId",
+    targetKey: "id",
+    onDelete: "CASCADE",
+    constraint: true,
+    foreignKeyConstraint: true
+  });
 
-  
-  
+  // Chat relationships for marketplace
+  MarketplaceItem.hasMany(Chat, { foreignKey: "itemId", onDelete: "CASCADE" });
+  Chat.belongsTo(MarketplaceItem, { foreignKey: "itemId" });
 
+  User.hasMany(Chat, { foreignKey: "senderId", as: "sentChats" });
+  Chat.belongsTo(User, { foreignKey: "senderId", as: "sender" });
+
+  User.hasMany(Chat, { foreignKey: "recipientId", as: "receivedChats" });
+  Chat.belongsTo(User, { foreignKey: "recipientId", as: "recipient" });
 };
 
 // Call the function to define associations
@@ -124,10 +143,10 @@ connection
     throw err;
   });
 
-// Sync the database (uncomment to create tables)
+// Sync the database
 // connection
-//   .sync({ force: true }) // Use { force: true } to drop and recreate tables; remove in production
-//   .then(() => console.log("Tables are created"))
+//   .sync({ alter: true }) // Use alter: true to update tables without dropping them
+//   .then(() => console.log("Tables are created or updated"))
 //   .catch((err) => {
 //     console.error("Error syncing tables:", err);
 //     throw err;
@@ -151,6 +170,6 @@ module.exports = {
   PlaceCategorie,
   Blog,
   MarketplaceItem,
+  MarketplaceCategorie,
   MarketplaceItemCategorie
- 
 };
