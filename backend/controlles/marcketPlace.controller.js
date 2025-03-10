@@ -1,11 +1,17 @@
 const { MarketplaceItem, User, Chat, Review,MarketplaceItemCategorie,Categorie, Media, MarketplaceCategorie } = require('../models');
-const Sequelize = require('sequelize');
+const { connection } = require('../models'); 
+const {Op,Sequelize}=require('sequelize');
+
 
 // Get all available items
 
 module.exports.getItemById = async (req, res) => {
   try {
-    const { id } = req.params; // Get the item ID from the URL parameters
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ error: 'Item ID is required' });
+    }
 
     const item = await MarketplaceItem.findByPk(id, {
       include: [
@@ -15,9 +21,9 @@ module.exports.getItemById = async (req, res) => {
           attributes: ['id', 'first_name', 'last_name', 'profile_image'],
         },
         {
-          model: Categorie,
+          model: MarketplaceCategorie,
           as: 'categories',
-          through: { attributes: [] }, // Exclude junction table attributes
+          through: { attributes: [] },
           attributes: ['id', 'name'],
         },
       ],
@@ -29,10 +35,11 @@ module.exports.getItemById = async (req, res) => {
 
     res.status(200).json(item);
   } catch (error) {
-    console.error('Error fetching marketplace item by ID:', error);
+    console.error('Error fetching item by ID:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+
 
 module.exports.getAllItems = async (req, res) => {
   try {
@@ -50,6 +57,10 @@ module.exports.getAllItems = async (req, res) => {
           through: { attributes: [] },
           attributes: ['id', 'name'],
         },
+        {
+          model: Media,
+          as: 'media',
+        }
       ],
     });
     res.status(200).json(items);
@@ -84,6 +95,10 @@ module.exports.getItemsByCategory = async (req, res) => {
           where: { id: categoryId },
           through: { attributes: [] },
           attributes: ['id', 'name', 'icon']
+        },
+        {
+          model: Media,
+          as: 'media',
         }
       ]
     });
@@ -95,57 +110,112 @@ module.exports.getItemsByCategory = async (req, res) => {
   }
 };
 
-// Create a new item listing
+
 module.exports.createItem = async (req, res) => {
   try {
-    const { title, description, price, location, categoryIds } = req.body;
-    const { sellerId } = req.params; // Extract sellerId from URL params
+    const { title, description, price, location, categoryIds, images } = req.body;
+    const { sellerId } = req.params;
 
-    // Validate sellerId (ensure it's a valid integer)
+    // Input validation
+    if (!title || !description || !price || !location) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Validate sellerId
     if (!sellerId || isNaN(sellerId)) {
-      return res.status(400).json({ error: 'Valid sellerId is required in URL parameters' });
+      return res.status(400).json({ error: 'Valid sellerId is required' });
     }
 
-    // Validate categoryIds (ensure it's an array of valid integers)
-    if (!Array.isArray(categoryIds) || categoryIds.some(id => isNaN(id))) {
-      return res.status(400).json({ error: 'Valid categoryIds are required' });
+    // Validate categoryIds
+    if (!Array.isArray(categoryIds) || categoryIds.length === 0) {
+      return res.status(400).json({ error: 'At least one category is required' });
     }
 
-    // Create the item
-    const item = await MarketplaceItem.create({ 
-      title, 
-      description, 
-      price, 
-      location,
-      sellerId: parseInt(sellerId), // Convert to integer
-      status: 'available' 
-    });
+    // Validate images
+    if (!Array.isArray(images) || images.length === 0) {
+      return res.status(400).json({ error: 'At least one image is required' });
+    }
 
-    // Associate categories if provided
-    if (categoryIds.length > 0) {
+    // Start transaction
+    const result = await connection.transaction(async (t) => {
+      // Create the item
+      const item = await MarketplaceItem.create({
+        title,
+        description,
+        price: parseFloat(price),
+        location,
+        sellerId: parseInt(sellerId),
+        status: 'available',
+        imageURL: images[0] // Set first image as main image (optional)
+      }, { transaction: t });
+
+      // Create media entries
+      const mediaEntries = images.map((imageUrl) => ({
+        url: imageUrl,
+        type: 'image',
+        marketplaceItemId: item.id
+      }));
+      await Media.bulkCreate(mediaEntries, { transaction: t });
+
+      // Find and validate categories
       const categories = await MarketplaceCategorie.findAll({
-        where: { id: categoryIds },
-        attributes: ['id']
+        where: { 
+          id: categoryIds.map(id => parseInt(id)) 
+        },
+        transaction: t
       });
 
-      const validCategoryIds = categories.map(cat => cat.id);
-
-      if (validCategoryIds.length !== categoryIds.length) {
-        return res.status(400).json({ error: 'Some categoryIds are invalid' });
+      if (categories.length !== categoryIds.length) {
+        throw new Error('One or more invalid category IDs');
       }
 
-      await MarketplaceItemCategorie.bulkCreate(
-        validCategoryIds.map(marketplaceCategorieId => ({
+      // Create category associations
+      await Promise.all(categories.map(category =>
+        MarketplaceItemCategorie.create({
           marketplaceItemId: item.id,
-          marketplaceCategorieId
-        }))
-      );
-    }
+          marketplaceCategorieId: category.id
+        }, { transaction: t })
+      ));
 
-    res.status(201).json(item);
+      // Fetch complete item with associations
+      return await MarketplaceItem.findByPk(item.id, {
+        include: [
+          {
+            model: User,
+            as: 'seller',
+            attributes: ['id', 'first_name', 'last_name', 'profile_image']
+          },
+          {
+            model: MarketplaceCategorie,
+            as: 'categories',
+            through: { attributes: [] },
+            attributes: ['id', 'name']
+          },
+          {
+            model: Media,
+            as: 'media',
+            attributes: ['id', 'url', 'type']
+          }
+        ],
+        transaction: t
+      });
+    });
+
+    res.status(201).json(result);
   } catch (error) {
     console.error('Error creating item:', error);
-    res.status(500).json({ error: 'Internal server error', details: error.message });
+    if (error.message === 'One or more invalid category IDs') {
+      res.status(400).json({ error: error.message });
+    } else if (error.name === 'SequelizeValidationError') {
+      res.status(400).json({ error: 'Validation error', details: error.errors });
+    } else if (error.name === 'SequelizeForeignKeyConstraintError') {
+      res.status(400).json({ error: 'Invalid seller ID or category ID' });
+    } else {
+      res.status(500).json({ 
+        error: 'Internal server error', 
+        details: error.message 
+      });
+    }
   }
 };
 // Purchase an item
@@ -247,8 +317,8 @@ module.exports.searchItemByName = async (req, res) => {
     // Add price range if provided
     if (minPrice || maxPrice) {
       whereClause.price = {};
-      if (minPrice) whereClause.price[Sequelize.Op.gte] = minPrice;
-      if (maxPrice) whereClause.price[Sequelize.Op.lte] = maxPrice;
+      if (minPrice) whereClause.price[Op.gte] = minPrice;
+      if (maxPrice) whereClause.price[Op.lte] = maxPrice;
     }
 
     // Add category filter if provided
@@ -308,6 +378,7 @@ module.exports.getAllMarketplaceCategories = async (req, res) => {
           attributes: ['id', 'title'],
           through: { attributes: [] }
         }
+        
       ]
     });
     res.status(200).json(categories);

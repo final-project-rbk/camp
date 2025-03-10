@@ -3,19 +3,21 @@ import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, RefreshCon
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
-import {EXPO_PUBLIC_API_URL} from '../../config';
-
-
+import { EXPO_PUBLIC_API_URL } from '../../config';
 
 interface Category {
   id: string;
   name: string;
   icon?: string;
   description?: string;
+  media?: {
+    id: number;
+    url: string;
+    type: string;
+  }[];
 }
 
 interface MarketplaceItem {
-  imageURL: string;
   id: number;
   title: string;
   description: string;
@@ -29,6 +31,11 @@ interface MarketplaceItem {
   };
   images: string[];
   categories: Category[];
+  media: {
+    id: number;
+    url: string;
+    type: string;
+  }[];
 }
 
 interface SearchFilters {
@@ -52,14 +59,18 @@ export default function Market() {
   const fetchCategories = async () => {
     try {
       const response = await axios.get(`${EXPO_PUBLIC_API_URL}marketplace/categories`);
-      // Add the "All" category at the beginning
       const allCategories = [
-        { id: 'all', name: 'All' },
+        { 
+          id: 'all', 
+          name: 'All',
+          media: [] 
+        },
         ...response.data.map((cat: any) => ({
           id: cat.id.toString(),
           name: cat.name,
-          icon: cat.icon,
-          description: cat.description
+          description: cat.description,
+          media: cat.media || [],
+          icon: cat.media?.[0]?.url || cat.icon // Use first media URL if available, fallback to icon
         }))
       ];
       setCategories(allCategories);
@@ -71,12 +82,16 @@ export default function Market() {
   const fetchItems = async (categoryId?: string) => {
     try {
       setError(null);
-      const url = categoryId && categoryId !== 'all' 
+      const url = categoryId && categoryId !== 'all'
         ? `${EXPO_PUBLIC_API_URL}marketplace/categories/${categoryId}/items`
         : `${EXPO_PUBLIC_API_URL}marketplace/items`;
       
       const response = await axios.get(url);
-      setItems(Array.isArray(response.data) ? response.data : []);
+      const itemsWithMedia = response.data.map((item: MarketplaceItem) => ({
+        ...item,
+        media: item.media || [] // Ensure media is always an array
+      }));
+      setItems(Array.isArray(itemsWithMedia) ? itemsWithMedia : []);
     } catch (error) {
       console.error('Error fetching marketplace items:', error);
       setError('Failed to load items. Please try again.');
@@ -95,7 +110,6 @@ export default function Market() {
       setIsSearching(true);
       setError(null);
 
-      // Build query parameters
       const params = new URLSearchParams();
       if (query.trim()) params.append('name', query);
       if (searchFilters.minPrice) params.append('minPrice', searchFilters.minPrice);
@@ -105,18 +119,17 @@ export default function Market() {
       }
 
       const response = await axios.get(`${EXPO_PUBLIC_API_URL}marketplace/search?${params.toString()}`);
-      if (response.data) {
-        setItems(Array.isArray(response.data) ? response.data : [response.data]);
-      } else {
-        setItems([]);
-      }
+      const itemsWithMedia = response.data.map((item: MarketplaceItem) => ({
+        ...item,
+        media: item.media || [] // Ensure media is always an array
+      }));
+      setItems(Array.isArray(itemsWithMedia) ? itemsWithMedia : []);
     } catch (error) {
-      if (axios.isAxiosError(error)) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        // Handle "No items found" as a success case
+        setItems([]);
+      } else if (axios.isAxiosError(error)) {
         console.error('Error searching items:', error.response?.data || error.message);
-      } else {
-        console.error('Error searching items:', error);
-      }
-      if (axios.isAxiosError(error)) {
         setError(error.response?.data?.details || 'Failed to search items. Please try again.');
       } else {
         console.error('Error searching items:', error);
@@ -127,14 +140,11 @@ export default function Market() {
     }
   };
 
-  // Add this function to handle filter changes
   const handleFilterChange = (filters: Partial<SearchFilters>) => {
     setSearchFilters(prev => ({ ...prev, ...filters }));
-    // Trigger search with current query and new filters
     searchItems(searchQuery);
   };
 
-  // Debounce search
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (searchQuery) {
@@ -145,7 +155,6 @@ export default function Market() {
     return () => clearTimeout(timeoutId);
   }, [searchQuery]);
 
-  // Fetch categories when component mounts
   useEffect(() => {
     fetchCategories();
   }, []);
@@ -171,14 +180,7 @@ export default function Market() {
     <ScrollView 
       style={styles.container}
       refreshControl={
-        <RefreshControl 
-          refreshing={refreshing} 
-          onRefresh={() => {
-            setRefreshing(true);
-            Promise.all([fetchCategories(), fetchItems(selectedCategory)])
-              .finally(() => setRefreshing(false));
-          }} 
-        />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
     >
       <View style={styles.header}>
@@ -201,7 +203,6 @@ export default function Market() {
           value={searchQuery}
           onChangeText={(text) => {
             setSearchQuery(text);
-            // The existing useEffect will handle the debounced search
           }}
         />
         {searchQuery.length > 0 && (
@@ -254,9 +255,9 @@ export default function Market() {
               handleFilterChange({ category: category.id });
             }}
           >
-            {category.icon && (
+            {(category.media?.[0]?.url || category.icon) && (
               <Image 
-                source={{ uri: category.icon }}
+                source={{ uri: category.media?.[0]?.url || category.icon }}
                 style={styles.categoryIcon}
               />
             )}
@@ -270,42 +271,70 @@ export default function Market() {
         ))}
       </ScrollView>
 
-      <View style={styles.section}>
-        {items.map((item) => (
-          <TouchableOpacity
-            key={item.id}
-            style={styles.itemCard}
-            onPress={() => router.push(`/market/${item.id}` as any)}
-          >
-            <Image 
-              source={{ uri: item.imageURL || 'https://m.media-amazon.com/images/I/812wCS-IKuL.jpg' }}
-              style={styles.itemImage}
-            />
-            <View style={styles.itemInfo}>
-              <Text style={styles.itemTitle}>{item.title}</Text>
-              <Text style={styles.itemPrice}>${item.price}</Text>
-              <View style={styles.sellerInfo}>
-                <Image 
-                  source={{ uri: item.seller?.profile_image || 'https://via.placeholder.com/50' }}
-                  style={styles.sellerImage}
-                />
-                <Text style={styles.sellerName}>
-                  {item.seller?.first_name} {item.seller?.last_name}
-                </Text>
-                <TouchableOpacity 
-                  style={styles.chatButton}
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    router.push(`/chat/${item.sellerId}` as any);
-                  }}
-                >
-                  <Ionicons name="chatbubble-outline" size={20} color="#64FFDA" />
-                </TouchableOpacity>
+      {isSearching && (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#64FFDA" />
+        </View>
+      )}
+
+      {!isSearching && (
+        <View style={styles.section}>
+          {error && (
+            <Text style={styles.errorText}>{error}</Text>
+          )}
+          {items.map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              style={styles.itemCard}
+              onPress={() => router.push(`/market/${item.id}` as any)}
+            >
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                {(item.media || []).map((mediaItem) => (
+                  <Image 
+                    key={mediaItem.id}
+                    source={{ 
+                      uri: mediaItem.url || 'https://via.placeholder.com/400x300?text=No+Image'
+                    }}
+                    style={styles.itemImage}
+                    resizeMode="cover"
+                  />
+                ))}
+              </ScrollView>
+              <View style={styles.itemInfo}>
+                <Text style={styles.itemTitle}>{item.title}</Text>
+                <Text style={styles.itemPrice}>${item.price}</Text>
+                <View style={styles.sellerInfo}>
+                  <Image 
+                    source={{ 
+                      uri: item.seller?.profile_image || 'https://via.placeholder.com/50?text=User'
+                    }}
+                    style={styles.sellerImage}
+                  />
+                  <Text style={styles.sellerName}>
+                    {item.seller?.first_name} {item.seller?.last_name}
+                  </Text>
+                  <TouchableOpacity 
+                    style={styles.chatButton}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      router.push(`/chat/${item.sellerId}` as any);
+                    }}
+                  >
+                    <Ionicons name="chatbubble-outline" size={20} color="#64FFDA" />
+                  </TouchableOpacity>
+                </View>
               </View>
+            </TouchableOpacity>
+          ))}
+          
+          {items.length === 0 && !error && (
+            <View style={styles.emptyState}>
+              <Ionicons name="basket-outline" size={48} color="#64FFDA" />
+              <Text style={styles.emptyStateText}>No items found</Text>
             </View>
-          </TouchableOpacity>
-        ))}
-      </View>
+          )}
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -371,8 +400,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   itemImage: {
-    width: '100%',
+    width: 200,
     height: 200,
+    backgroundColor: '#1D2D50',
+    marginRight: 8,
   },
   itemInfo: {
     padding: 16,
@@ -445,5 +476,21 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     marginRight: 8,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+  },
+  emptyStateText: {
+    color: '#8892B0',
+    fontSize: 16,
+    marginTop: 16,
+  },
+  errorText: {
+    color: '#FF6B6B',
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 16,
   },
 });

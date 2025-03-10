@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, ActivityIndicator, Alert, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -88,10 +88,29 @@ export default function MarketplaceItemDetails() {
         <Text style={styles.title}>Item Details</Text>
       </View>
 
-      <Image 
-        source={{ uri: item.imageURL || 'https://m.media-amazon.com/images/I/812wCS-IKuL.jpg' }}
-        style={styles.itemImage}
-      />
+      <ScrollView 
+        horizontal 
+        pagingEnabled 
+        showsHorizontalScrollIndicator={false}
+        style={styles.imageScrollContainer}
+      >
+        {item.images?.length > 0 ? (
+          item.images.map((image, index) => (
+            <Image
+              key={index}
+              source={{ uri: image }}
+              style={styles.itemImage}
+              resizeMode="cover"
+            />
+          ))
+        ) : (
+          <Image
+            source={{ uri: item.imageURL || 'https://m.media-amazon.com/images/I/812wCS-IKuL.jpg' }}
+            style={styles.itemImage}
+            resizeMode="cover"
+          />
+        )}
+      </ScrollView>
 
       <View style={styles.contentContainer}>
         <Text style={styles.itemTitle}>{item.title}</Text>
@@ -161,9 +180,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#CCD6F6',
   },
-  itemImage: {
-    width: '100%',
+  imageScrollContainer: {
     height: 300,
+  },
+  itemImage: {
+    height: 300,
+    width: Dimensions.get('window').width,
   },
   contentContainer: {
     padding: 20,

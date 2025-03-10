@@ -1,4 +1,4 @@
-const { Sequelize, DataTypes } = require("sequelize");
+const { Sequelize, DataTypes,Transaction } = require("sequelize");
 
 // Initialize Sequelize connection
 const connection = new Sequelize(process.env.Database, process.env.User, process.env.Password, {
@@ -127,6 +127,9 @@ const defineAssociations = () => {
 
   User.hasMany(Chat, { foreignKey: "recipientId", as: "receivedChats" });
   Chat.belongsTo(User, { foreignKey: "recipientId", as: "recipient" });
+
+  MarketplaceItem.hasMany(Media, { foreignKey: 'marketplaceItemId', as: 'media',onDelete: 'CASCADE' });
+  Media.belongsTo(MarketplaceItem, { foreignKey: 'marketplaceItemId',as: 'marketplaceItem',onDelete: 'CASCADE'});
 };
 
 // Call the function to define associations
@@ -145,7 +148,7 @@ connection
 
 // Sync the database
 // connection
-//   .sync({ alter: true }) // Use alter: true to update tables without dropping them
+//   .sync({ force: true }) // Use alter: true to update tables without dropping them
 //   .then(() => console.log("Tables are created or updated"))
 //   .catch((err) => {
 //     console.error("Error syncing tables:", err);

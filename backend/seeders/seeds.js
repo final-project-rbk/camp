@@ -426,6 +426,15 @@ await queryInterface.bulkInsert('marketplaceitems', [
           placeId: 2,
           createdAt: now,
           updatedAt: now
+        },
+        {
+          url: 'https://example.com/marketplace-item-photo.jpg',
+          type: 'image',
+          userId: 2,
+          placeId: 3, // Add a valid placeId (e.g., Cap Serrat Beach Camp)
+          marketplaceItemId: 1,
+          createdAt: now,
+          updatedAt: now
         }
       ]);
 

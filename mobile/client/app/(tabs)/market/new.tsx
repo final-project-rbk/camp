@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
 import { EXPO_PUBLIC_API_URL } from '../../../config';
@@ -21,6 +22,17 @@ interface Category {
   name: string;
   icon?: string;
 }
+
+const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dqh6arave/upload";
+const UPLOAD_PRESET = "Ghassen123";
+
+// Create an axios instance with custom config
+const axiosInstance = axios.create({
+  timeout: 30000, // 30 seconds timeout
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
 
 export default function NewItem() {
   const router = useRouter();
@@ -33,6 +45,7 @@ export default function NewItem() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   useEffect(() => {
     fetchCategories();
@@ -48,34 +61,54 @@ export default function NewItem() {
     }
   };
 
-  const pickImage = async () => {
+  const uploadToCloudinary = async (fileUri: string): Promise<string> => {
     try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 1,
-      });
+      // First compress the image
+      const compressedImage = await ImageManipulator.manipulateAsync(
+        fileUri,
+        [{ resize: { width: 1080 } }], // Resize to max width of 1080px
+        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+      );
 
-      if (!result.canceled && result.assets[0].uri) {
-        setImages([...images, result.assets[0].uri]);
+      console.log('Uploading file:', compressedImage); // Debug: Check file object
+
+      const formData = new FormData();
+      const ext = compressedImage.uri.split('.').pop() || 'jpg';
+      
+      formData.append('file', {
+        uri: compressedImage.uri,
+        type: `image/${ext}`,
+        name: `marketplace_${Date.now()}.${ext}`,
+      } as any);
+      formData.append('upload_preset', 'Ghassen123');
+      formData.append('cloud_name', 'dqh6arave');
+
+      const response = await axios.post(
+        'https://api.cloudinary.com/v1_1/dqh6arave/image/upload',
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+          onUploadProgress: (progressEvent) => {
+            const progress = progressEvent.total 
+              ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
+              : 0;
+            setUploadProgress(progress);
+          },
+        }
+      );
+
+      console.log('Cloudinary response:', response.data); // Debug: Check response
+
+      if (!response.data?.secure_url) {
+        throw new Error('Invalid response from Cloudinary');
       }
-    } catch (error) {
-      console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to pick image');
+
+      return response.data.secure_url;
+    } catch (error: any) {
+      throw error// Detailed error logging
     }
-  };
-
-  const removeImage = (index: number) => {
-    setImages(images.filter((_, i) => i !== index));
-  };
-
-  const toggleCategory = (categoryId: string) => {
-    setSelectedCategories(prev =>
-      prev.includes(categoryId)
-        ? prev.filter(id => id !== categoryId)
-        : [...prev, categoryId]
-    );
   };
 
   const handleSubmit = async () => {
@@ -84,36 +117,104 @@ export default function NewItem() {
       return;
     }
 
+    if (images.length === 0) {
+      Alert.alert('Error', 'Please add at least one image');
+      return;
+    }
+
     setSubmitting(true);
     try {
-      // TODO: Replace with actual user ID from authentication
       const userId = '1'; // Temporary user ID
-      const response = await axios.post(`${EXPO_PUBLIC_API_URL}marketplace/items/${userId}`, {
+      const response = await axiosInstance.post(`${EXPO_PUBLIC_API_URL}marketplace/items/${userId}`, {
         title,
         description,
         price: parseFloat(price),
         location,
-        categoryIds: selectedCategories,
-        // TODO: Add image upload functionality
+        categoryIds: selectedCategories.map(id => parseInt(id)),
+        images: images,
       });
 
-      Alert.alert(
-        'Success',
-        'Item listed successfully!',
-        [{ text: 'OK', onPress: () => router.back() }]
-      );
-    } catch (error) {
+      if (response.data) {
+        Alert.alert(
+          'Success',
+          'Item listed successfully!',
+          [{ text: 'OK', onPress: () => router.back() }]
+        );
+      }
+    } catch (error: any) {
       console.error('Error creating item:', error);
-      Alert.alert('Error', 'Failed to create item. Please try again.');
+      let errorMessage = 'Failed to create item. Please try again.';
+      
+      if (error.code === 'ECONNABORTED') {
+        errorMessage = 'Request timed out. Please check your internet connection and try again.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      
+      Alert.alert('Error', errorMessage);
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const pickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        allowsMultipleSelection: true, // Enable multiple selection
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+  
+      if (!result.canceled) {
+        setLoading(true);
+        setUploadProgress(0);
+  
+        try {
+          // Process all selected images
+          const uploadedImages = await Promise.all(
+            result.assets.map(async (asset) => {
+              return await uploadToCloudinary(asset.uri);
+            })
+          );
+  
+          setImages((prev) => [...prev, ...uploadedImages]); // Append new images
+        } catch (error: any) {
+          Alert.alert('Upload Error', error.message || 'Failed to upload images');
+        } finally {
+          setLoading(false);
+          setUploadProgress(0);
+        }
+      }
+    } catch (error) {
+      console.error('Error picking images:', error);
+      Alert.alert('Error', 'Failed to pick images');
+    }
+  };
+  
+
+  const removeImage = (index: number) => {
+    setImages(images.filter((_, i) => i !== index));
+  };
+
+  const toggleCategory = (categoryId: string) => {
+    setSelectedCategories((prev) =>
+      prev.includes(categoryId)
+        ? prev.filter((id) => id !== categoryId)
+        : [...prev, categoryId]
+    );
   };
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#64FFDA" />
+        {uploadProgress > 0 && (
+          <Text style={styles.uploadProgressText}>
+            Uploading: {uploadProgress}%
+          </Text>
+        )}
       </View>
     );
   }
@@ -122,10 +223,16 @@ export default function NewItem() {
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#64FFDA" />
+          <Ionicons name="arrow-back-circle-outline" size={28} color="#64FFDA" />
         </TouchableOpacity>
         <Text style={styles.title}>List New Item</Text>
-        <View style={{ width: 24 }} />
+        <TouchableOpacity onPress={handleSubmit} disabled={submitting}>
+          {submitting ? (
+            <ActivityIndicator color="#64FFDA" />
+          ) : (
+            <Ionicons name="checkmark-circle-outline" size={28} color="#64FFDA" />
+          )}
+        </TouchableOpacity>
       </View>
 
       <View style={styles.form}>
@@ -177,18 +284,18 @@ export default function NewItem() {
                 style={styles.removeImage}
                 onPress={() => removeImage(index)}
               >
-                <Ionicons name="close-circle" size={24} color="#FF6B6B" />
+                <Ionicons name="trash-outline" size={22} color="#FF6B6B" />
               </TouchableOpacity>
             </View>
           ))}
           <TouchableOpacity style={styles.addImage} onPress={pickImage}>
-            <Ionicons name="add" size={40} color="#64FFDA" />
+            <Ionicons name="camera-outline" size={40} color="#64FFDA" />
           </TouchableOpacity>
         </ScrollView>
 
         <Text style={styles.label}>Categories*</Text>
         <View style={styles.categoriesContainer}>
-          {categories.map(category => (
+          {categories.map((category) => (
             <TouchableOpacity
               key={category.id}
               style={[
@@ -228,6 +335,7 @@ export default function NewItem() {
   );
 }
 
+// Styles remain unchanged
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -348,4 +456,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-}); 
+  uploadProgressText: {
+    color: '#64FFDA',
+    marginTop: 10,
+    fontSize: 16,
+  },
+});
