@@ -15,7 +15,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
-import { EXPO_PUBLIC_API_URL } from '../../../config';
+import { EXPO_PUBLIC_API_URL } from '../../config';
 
 interface Category {
   id: string;
