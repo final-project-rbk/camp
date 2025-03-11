@@ -106,6 +106,45 @@ export default function BlogManagement() {
     setShowDetailModal(true);
   };
 
+  const handleDeleteComment = async (blogId: number, commentId: number) => {
+    if (!confirm('Are you sure you want to delete this comment?')) return;
+
+    try {
+      const token = localStorage.getItem('userToken');
+      const response = await fetch(`${API_URL}blogs/${blogId}/comments/${commentId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) throw new Error('Failed to delete comment');
+      
+      // Update the selected blog's comments
+      if (selectedBlog) {
+        setSelectedBlog({
+          ...selectedBlog,
+          comments: selectedBlog.comments.filter(comment => comment.id !== commentId)
+        });
+      }
+      
+      // Update the blogs list
+      setBlogs(blogs.map(blog => {
+        if (blog.id === blogId) {
+          return {
+            ...blog,
+            comments: blog.comments.filter(comment => comment.id !== commentId)
+          };
+        }
+        return blog;
+      }));
+    } catch (error) {
+      console.error('Error:', error);
+      setError('Failed to delete comment');
+    }
+  };
+
   if (loading) return (
     <div className="flex justify-center items-center h-screen bg-[#0A192F]">
       <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-[#64FFDA]"></div>
@@ -236,20 +275,31 @@ export default function BlogManagement() {
               <div className="space-y-4">
                 {selectedBlog.comments.map((comment) => (
                   <div key={comment.id} className="bg-[#112240] rounded-lg p-4">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <img
-                        src={comment.user.profile_image || 'https://via.placeholder.com/32'}
-                        alt={`${comment.user.first_name}'s profile`}
-                        className="w-8 h-8 rounded-full"
-                      />
-                      <div>
-                        <p className="text-[#CCD6F6] font-semibold">
-                          {`${comment.user.first_name} ${comment.user.last_name}`}
-                        </p>
-                        <p className="text-sm text-[#8892B0]">
-                          {new Date(comment.created_at).toLocaleDateString()}
-                        </p>
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <img
+                          src={comment.user.profile_image || 'https://via.placeholder.com/32'}
+                          alt={`${comment.user.first_name}'s profile`}
+                          className="w-8 h-8 rounded-full"
+                        />
+                        <div>
+                          <p className="text-[#CCD6F6] font-semibold">
+                            {`${comment.user.first_name} ${comment.user.last_name}`}
+                          </p>
+                          <p className="text-sm text-[#8892B0]">
+                            {new Date(comment.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
                       </div>
+                      <button
+                        onClick={() => handleDeleteComment(selectedBlog.id, comment.id)}
+                        className="text-red-500 hover:text-red-600 p-1"
+                        title="Delete comment"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
                     </div>
                     <p className="text-[#8892B0] ml-11">{comment.content}</p>
                   </div>
