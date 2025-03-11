@@ -3,17 +3,21 @@ import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, RefreshCon
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
-import {EXPO_PUBLIC_API_URL} from '../../config';
-
-
+import { EXPO_PUBLIC_API_URL } from '../../config';
 
 interface Category {
-  id: number;
+  id: string;
   name: string;
+  icon?: string;
+  description?: string;
+  media?: {
+    id: number;
+    url: string;
+    type: string;
+  }[];
 }
 
 interface MarketplaceItem {
-  imageURL: string;
   id: number;
   title: string;
   description: string;
@@ -27,35 +31,67 @@ interface MarketplaceItem {
   };
   images: string[];
   categories: Category[];
+  media: {
+    id: number;
+    url: string;
+    type: string;
+  }[];
+}
+
+interface SearchFilters {
+  minPrice?: string;
+  maxPrice?: string;
+  category?: string;
 }
 
 export default function Market() {
   const [items, setItems] = useState<MarketplaceItem[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [searchFilters, setSearchFilters] = useState<SearchFilters>({});
   const router = useRouter();
 
-  const categories = [
-    { id: 'all', name: 'All' },
-    { id: '1', name: 'Tents' },
-    { id: '2', name: 'Sleeping Bags' },
-    { id: '3', name: 'Cooking' },
-    { id: '4', name: 'Tools' },
-  ];
+  const fetchCategories = async () => {
+    try {
+      const response = await axios.get(`${EXPO_PUBLIC_API_URL}marketplace/categories`);
+      const allCategories = [
+        { 
+          id: 'all', 
+          name: 'All',
+          media: [] 
+        },
+        ...response.data.map((cat: any) => ({
+          id: cat.id.toString(),
+          name: cat.name,
+          description: cat.description,
+          media: cat.media || [],
+          icon: cat.media?.[0]?.url || cat.icon // Use first media URL if available, fallback to icon
+        }))
+      ];
+      setCategories(allCategories);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
 
   const fetchItems = async (categoryId?: string) => {
     try {
       setError(null);
-      const url = categoryId && categoryId !== 'all' 
-        ? `${EXPO_PUBLIC_API_URL}marketplace/category/${categoryId}`
+      const url = categoryId && categoryId !== 'all'
+        ? `${EXPO_PUBLIC_API_URL}marketplace/categories/${categoryId}/items`
         : `${EXPO_PUBLIC_API_URL}marketplace/items`;
       
       const response = await axios.get(url);
-      setItems(Array.isArray(response.data) ? response.data : []);
+      const itemsWithMedia = response.data.map((item: MarketplaceItem) => ({
+        ...item,
+        media: item.media || [] // Ensure media is always an array
+      }));
+      setItems(Array.isArray(itemsWithMedia) ? itemsWithMedia : []);
     } catch (error) {
       console.error('Error fetching marketplace items:', error);
       setError('Failed to load items. Please try again.');
@@ -65,7 +101,7 @@ export default function Market() {
   };
 
   const searchItems = async (query: string) => {
-    if (!query.trim()) {
+    if (!query.trim() && !searchFilters.minPrice && !searchFilters.maxPrice && !searchFilters.category) {
       fetchItems(selectedCategory);
       return;
     }
@@ -73,21 +109,42 @@ export default function Market() {
     try {
       setIsSearching(true);
       setError(null);
-      const response = await axios.get(`${EXPO_PUBLIC_API_URL}marketplace/search?name=${encodeURIComponent(query)}`);
-      if (response.data) {
-        setItems([response.data]); // Wrap single item in array since our UI expects an array
-      } else {
-        setItems([]);
+
+      const params = new URLSearchParams();
+      if (query.trim()) params.append('name', query);
+      if (searchFilters.minPrice) params.append('minPrice', searchFilters.minPrice);
+      if (searchFilters.maxPrice) params.append('maxPrice', searchFilters.maxPrice);
+      if (searchFilters.category && searchFilters.category !== 'all') {
+        params.append('category', searchFilters.category);
       }
+
+      const response = await axios.get(`${EXPO_PUBLIC_API_URL}marketplace/search?${params.toString()}`);
+      const itemsWithMedia = response.data.map((item: MarketplaceItem) => ({
+        ...item,
+        media: item.media || [] // Ensure media is always an array
+      }));
+      setItems(Array.isArray(itemsWithMedia) ? itemsWithMedia : []);
     } catch (error) {
-      console.error('Error searching items:', error);
-      setError('Failed to search items. Please try again.');
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        // Handle "No items found" as a success case
+        setItems([]);
+      } else if (axios.isAxiosError(error)) {
+        console.error('Error searching items:', error.response?.data || error.message);
+        setError(error.response?.data?.details || 'Failed to search items. Please try again.');
+      } else {
+        console.error('Error searching items:', error);
+        setError('Failed to search items. Please try again.');
+      }
     } finally {
       setIsSearching(false);
     }
   };
 
-  // Debounce search
+  const handleFilterChange = (filters: Partial<SearchFilters>) => {
+    setSearchFilters(prev => ({ ...prev, ...filters }));
+    searchItems(searchQuery);
+  };
+
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (searchQuery) {
@@ -97,6 +154,10 @@ export default function Market() {
 
     return () => clearTimeout(timeoutId);
   }, [searchQuery]);
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
 
   useEffect(() => {
     fetchItems(selectedCategory);
@@ -140,12 +201,15 @@ export default function Market() {
           placeholder="Search items..."
           placeholderTextColor="#8892B0"
           value={searchQuery}
-          onChangeText={setSearchQuery}
+          onChangeText={(text) => {
+            setSearchQuery(text);
+          }}
         />
         {searchQuery.length > 0 && (
           <TouchableOpacity 
             onPress={() => {
               setSearchQuery('');
+              setSearchFilters({});
               fetchItems(selectedCategory);
             }}
             style={styles.clearButton}
@@ -153,6 +217,25 @@ export default function Market() {
             <Ionicons name="close-circle" size={20} color="#8892B0" />
           </TouchableOpacity>
         )}
+      </View>
+
+      <View style={styles.filterContainer}>
+        <TextInput
+          style={styles.priceInput}
+          placeholder="Min Price"
+          placeholderTextColor="#8892B0"
+          keyboardType="numeric"
+          value={searchFilters.minPrice}
+          onChangeText={(text) => handleFilterChange({ minPrice: text })}
+        />
+        <TextInput
+          style={styles.priceInput}
+          placeholder="Max Price"
+          placeholderTextColor="#8892B0"
+          keyboardType="numeric"
+          value={searchFilters.maxPrice}
+          onChangeText={(text) => handleFilterChange({ maxPrice: text })}
+        />
       </View>
 
       <ScrollView 
@@ -167,8 +250,17 @@ export default function Market() {
               styles.categoryButton,
               selectedCategory === category.id && styles.categoryButtonActive
             ]}
-            onPress={() => setSelectedCategory(category.id)}
+            onPress={() => {
+              setSelectedCategory(category.id);
+              handleFilterChange({ category: category.id });
+            }}
           >
+            {(category.media?.[0]?.url || category.icon) && (
+              <Image 
+                source={{ uri: category.media?.[0]?.url || category.icon }}
+                style={styles.categoryIcon}
+              />
+            )}
             <Text style={[
               styles.categoryButtonText,
               selectedCategory === category.id && styles.categoryButtonTextActive
@@ -179,42 +271,70 @@ export default function Market() {
         ))}
       </ScrollView>
 
-      <View style={styles.section}>
-        {items.map((item) => (
-          <TouchableOpacity
-            key={item.id}
-            style={styles.itemCard}
-            onPress={() => router.push(`/market/${item.id}` as any)}
-          >
-            <Image 
-              source={{ uri: item.imageURL || 'https://m.media-amazon.com/images/I/812wCS-IKuL.jpg' }}
-              style={styles.itemImage}
-            />
-            <View style={styles.itemInfo}>
-              <Text style={styles.itemTitle}>{item.title}</Text>
-              <Text style={styles.itemPrice}>${item.price}</Text>
-              <View style={styles.sellerInfo}>
-                <Image 
-                  source={{ uri: item.seller?.profile_image || 'https://via.placeholder.com/50' }}
-                  style={styles.sellerImage}
-                />
-                <Text style={styles.sellerName}>
-                  {item.seller?.first_name} {item.seller?.last_name}
-                </Text>
-                <TouchableOpacity 
-                  style={styles.chatButton}
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    router.push(`/chat/${item.sellerId}` as any);
-                  }}
-                >
-                  <Ionicons name="chatbubble-outline" size={20} color="#64FFDA" />
-                </TouchableOpacity>
+      {isSearching && (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#64FFDA" />
+        </View>
+      )}
+
+      {!isSearching && (
+        <View style={styles.section}>
+          {error && (
+            <Text style={styles.errorText}>{error}</Text>
+          )}
+          {items.map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              style={styles.itemCard}
+              onPress={() => router.push(`/market/${item.id}` as any)}
+            >
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                {(item.media || []).map((mediaItem) => (
+                  <Image 
+                    key={mediaItem.id}
+                    source={{ 
+                      uri: mediaItem.url || 'https://via.placeholder.com/400x300?text=No+Image'
+                    }}
+                    style={styles.itemImage}
+                    resizeMode="cover"
+                  />
+                ))}
+              </ScrollView>
+              <View style={styles.itemInfo}>
+                <Text style={styles.itemTitle}>{item.title}</Text>
+                <Text style={styles.itemPrice}>${item.price}</Text>
+                <View style={styles.sellerInfo}>
+                  <Image 
+                    source={{ 
+                      uri: item.seller?.profile_image || 'https://via.placeholder.com/50?text=User'
+                    }}
+                    style={styles.sellerImage}
+                  />
+                  <Text style={styles.sellerName}>
+                    {item.seller?.first_name} {item.seller?.last_name}
+                  </Text>
+                  <TouchableOpacity 
+                    style={styles.chatButton}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      router.push(`/chat/${item.sellerId}` as any);
+                    }}
+                  >
+                    <Ionicons name="chatbubble-outline" size={20} color="#64FFDA" />
+                  </TouchableOpacity>
+                </View>
               </View>
+            </TouchableOpacity>
+          ))}
+          
+          {items.length === 0 && !error && (
+            <View style={styles.emptyState}>
+              <Ionicons name="basket-outline" size={48} color="#64FFDA" />
+              <Text style={styles.emptyStateText}>No items found</Text>
             </View>
-          </TouchableOpacity>
-        ))}
-      </View>
+          )}
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -280,8 +400,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   itemImage: {
-    width: '100%',
+    width: 200,
     height: 200,
+    backgroundColor: '#1D2D50',
+    marginRight: 8,
   },
   itemInfo: {
     padding: 16,
@@ -334,5 +456,41 @@ const styles = StyleSheet.create({
   },
   clearButton: {
     padding: 8,
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    marginBottom: 16,
+    justifyContent: 'space-between',
+  },
+  priceInput: {
+    flex: 1,
+    height: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginHorizontal: 4,
+    color: '#CCD6F6',
+  },
+  categoryIcon: {
+    width: 20,
+    height: 20,
+    marginRight: 8,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+  },
+  emptyStateText: {
+    color: '#8892B0',
+    fontSize: 16,
+    marginTop: 16,
+  },
+  errorText: {
+    color: '#FF6B6B',
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 16,
   },
 });
