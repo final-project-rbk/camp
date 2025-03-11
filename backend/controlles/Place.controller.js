@@ -1,4 +1,4 @@
-const { Place, Media, Review, Categorie } = require('../models');
+const { Place, Media, Review, Categorie, Citiria, PlaceUser } = require('../models');
 
 const placeController = {
   // Get all places with related data
@@ -119,6 +119,15 @@ const placeController = {
         }
       }
 
+      // Add criteria data separately after fetching the place
+      const placeCriteria = await Citiria.findAll({
+        include: [{
+          model: PlaceUser,
+          where: { placeId: id },
+          required: false
+        }]
+      });
+
       const formattedPlace = {
         id: place.id,
         name: place.name,
@@ -142,7 +151,34 @@ const placeController = {
         categories: place.Categories?.map(cat => ({
           name: cat.name,
           icon: cat.icon || '🏷️'
-        })) || []
+        })) || [],
+        critiria: placeCriteria.map(crit => ({
+          id: crit.id,
+          name: crit.name,
+          percentage: crit.purcent,
+          value: crit.PlaceUsers && crit.PlaceUsers.length > 0 ? crit.PlaceUsers[0].value : 0
+        })) || [],
+        distance: 5.2,
+        amenities: ["water", "restrooms", "fire_pit", "picnic_table"],
+        terrain_type: "forest",
+        availability: "open",
+        site_type: "tent",
+        accessibility: "easy",
+        weather: {
+          current: {
+            temp: 22,
+            condition: "Sunny",
+            humidity: 40,
+          },
+          forecast: [
+            { day: "Mon", temp: 22, condition: "Sunny" },
+            { day: "Tue", temp: 20, condition: "Cloudy" },
+            { day: "Wed", temp: 18, condition: "Rain" },
+          ],
+        },
+        cost: 25,
+        user_rating: 4.2,
+        safety: ["Watch for wildlife", "Steep trails nearby"]
       };
 
       console.log('Sending place with images:', formattedPlace.images);

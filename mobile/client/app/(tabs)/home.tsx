@@ -6,6 +6,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Sidebar from '../../components/Sidebar';
 import {  EXPO_PUBLIC_API_URL  } from '../../config';
+import FavoriteButton from '../../components/FavoriteButton';
 
 // Define navigation type
 type RootStackParamList = {
@@ -218,6 +219,7 @@ export default function DiscoverScreen() {
                   asChild
                 >
                   <Pressable style={styles.destinationCard}>
+                    <FavoriteButton placeId={place.id} />
                     <Image
                       source={{ uri: place.image }}
                       style={styles.destinationImage}

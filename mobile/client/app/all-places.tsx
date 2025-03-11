@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import {  EXPO_PUBLIC_API_URL  } from '../config';
 import { Link } from 'expo-router';
+import FavoriteButton from '../components/FavoriteButton';
 
 interface Category {
   name: string;
@@ -73,6 +74,7 @@ export default function AllPlacesScreen() {
   const renderPlace = ({ item }: { item: Place }) => (
     <Link href={`/place/${item.id}`} asChild>
       <Pressable style={styles.placeCard}>
+        <FavoriteButton placeId={item.id} />
         <Image source={{ uri: item.image }} style={styles.placeImage} />
         <View style={styles.placeInfo}>
           <Text style={styles.placeName}>{item.name}</Text>
