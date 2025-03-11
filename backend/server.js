@@ -7,10 +7,18 @@ const db = require("./models/index");
 const blogRoutes = require('./routes/blogs.routes');
 const marcketPlaceRoutes = require('./routes/marchetPlace.routes');
 const placeRoutes = require('./routes/Place.routes');
+const userRoutes = require('./routes/user.routes');
+const formularAdvisorRoutes = require('./routes/formularAdvisor.routes');
+const authRoutes = require('./routes/auth.routes');
+// const advisorMediaRoutes = require('./routes/advisorMedia.routes');
+const adminRoutes = require('./routes/admin.routes');
 const app = express();
 
 // Configure CORS
-app.use(cors());
+app.use(cors({
+  origin: '*',  // Be careful with this in production
+  credentials: true
+}));
 
 app.use(express.static(__dirname + '/../client/dist'));
 app.use(express.json())
@@ -36,6 +44,10 @@ app.get('/', (req, res) => {
 app.use('/api/blogs', blogRoutes);
 app.use('/api/places', placeRoutes);
 app.use('/api/categories', require('./routes/categorie.routes')); 
+app.use('/api/users', userRoutes);
+app.use('/api/formularAdvisor', formularAdvisorRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
 
 const port = process.env.PORT || 3000;
 

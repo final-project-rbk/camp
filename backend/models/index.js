@@ -17,14 +17,19 @@ const Media = require("./media")(connection, DataTypes);
 const Categorie = require("./categorie")(connection, DataTypes);
 const Chat = require("./Chat")(connection, DataTypes);
 const Advisor = require("./advisor")(connection, DataTypes);
-const Citiria = require("./critiria")(connection, DataTypes);
-const Review = require("./review")(connection, DataTypes);
-const PlaceUser = require("./PlaceUser")(connection, DataTypes);
-const PlaceCategorie = require("./PlaceCategorie")(connection, DataTypes);
-const Blog = require("./blog")(connection, DataTypes);
+const Citiria=require("./critiria")(connection,DataTypes)
+const Review=require("./review")(connection,DataTypes)
+const PlaceUser=require("./PlaceUser")(connection,DataTypes)
+const PlaceCategorie = require("./PlaceCategorie")(connection,DataTypes)
+const Blog = require("./blog")(connection,DataTypes)
+const Comment = require("./Comment")(connection, DataTypes);
+
 const MarketplaceItem = require("./marcketPlaceItem")(connection, DataTypes);
 const MarketplaceCategorie = require("./marcketPlaceCategorie")(connection, DataTypes);
 const MarketplaceItemCategorie = require("./marcketPlaceItemCategorie")(connection, DataTypes);
+
+const FormularAdvisor = require("./FormularAdvisor")(connection, DataTypes);
+const AdvisorMedia = require("./AdvisorMedia")(connection, DataTypes);
 
 // Define relationships
 const defineAssociations = () => {
@@ -77,9 +82,14 @@ const defineAssociations = () => {
   User.hasMany(Blog, { foreignKey: "userId" });
   Blog.belongsTo(User, { foreignKey: "userId" });
 
-  // MarketPlace Item relationships
-  User.hasMany(MarketplaceItem, { foreignKey: "sellerId", as: "itemsSold" });
-  MarketplaceItem.belongsTo(User, { foreignKey: "sellerId", as: "seller" });
+Blog.hasMany(Comment, { foreignKey: "blogId" });
+Comment.belongsTo(Blog, { foreignKey: "blogId" });
+
+User.hasMany(Comment, { foreignKey: "userId" });
+Comment.belongsTo(User, { foreignKey: "userId" });
+
+User.hasMany(MarketplaceItem, { foreignKey: 'sellerId', as: 'itemsSold' });
+MarketplaceItem.belongsTo(User, { foreignKey: 'sellerId', as: 'seller' });
 
   User.hasMany(MarketplaceItem, { foreignKey: "buyerId", as: "itemsBought" });
   MarketplaceItem.belongsTo(User, { foreignKey: "buyerId", as: "buyer" });
@@ -121,6 +131,17 @@ const defineAssociations = () => {
   // Chat relationships for marketplace
   MarketplaceItem.hasMany(Chat, { foreignKey: "itemId", onDelete: "CASCADE" });
   Chat.belongsTo(MarketplaceItem, { foreignKey: "itemId" });
+// FormularAdvisor associations
+User.hasOne(FormularAdvisor, { foreignKey: "userId" });
+FormularAdvisor.belongsTo(User, { foreignKey: "userId" });
+
+// AdvisorMedia associations
+FormularAdvisor.hasOne(AdvisorMedia, { foreignKey: "formularId" });
+AdvisorMedia.belongsTo(FormularAdvisor, { foreignKey: "formularId" });
+
+// Link FormularAdvisor to Advisor
+Advisor.hasOne(FormularAdvisor, { foreignKey: "advisorId" });
+FormularAdvisor.belongsTo(Advisor, { foreignKey: "advisorId" });
 
   User.hasMany(Chat, { foreignKey: "senderId", as: "sentChats" });
   Chat.belongsTo(User, { foreignKey: "senderId", as: "sender" });
@@ -172,7 +193,10 @@ module.exports = {
   PlaceUser,
   PlaceCategorie,
   Blog,
+  Comment,
   MarketplaceItem,
   MarketplaceCategorie,
-  MarketplaceItemCategorie
+  MarketplaceItemCategorie,
+  FormularAdvisor,
+  AdvisorMedia
 };
