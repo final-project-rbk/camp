@@ -14,10 +14,11 @@ import {
   Dimensions,
   StatusBar
 } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { EXPO_PUBLIC_API_URL } from '../config';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface UserProfile {
   id: number;
@@ -78,27 +79,59 @@ const EditModal = ({ visible, onClose, onSave, value, field }: EditModalProps) =
 const { width, height } = Dimensions.get('window');
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [editField, setEditField] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [imageModalVisible, setImageModalVisible] = useState(false);
-  const id = 3;
+  const [hasExistingApplication, setHasExistingApplication] = useState(false);
 
   useEffect(() => {
-    fetchProfile();
+    checkAuthAndFetchProfile();
   }, []);
 
-  const fetchProfile = async () => {
+  const checkAuthAndFetchProfile = async () => {
     try {
-      const response = await fetch(`${EXPO_PUBLIC_API_URL}users/${id}`);
+      const userToken = await AsyncStorage.getItem('userToken');
+      const userData = await AsyncStorage.getItem('userData');
+
+      console.log('Checking stored data:', { userToken, userData }); // Debug log
+
+      if (!userToken || !userData) {
+        console.log('No auth data found, redirecting to auth'); // Debug log
+        router.replace('/auth');
+        return;
+      }
+
+      const user = JSON.parse(userData);
+      console.log('Found user data:', user); // Debug log
+
+      // Fetch the profile data
+      const response = await fetch(`${EXPO_PUBLIC_API_URL}users/${user.id}`, {
+        headers: {
+          'Authorization': `Bearer ${userToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
       const data = await response.json();
+      console.log('Profile response:', data); // Debug log
+
       if (data.success) {
         setProfile(data.data);
       } else {
-        Alert.alert('Error', 'Failed to fetch profile');
+        console.log('Failed to fetch profile:', data); // Debug log
+        if (response.status === 401) {
+          // Token expired or invalid
+          await AsyncStorage.multiRemove(['userToken', 'userData']);
+          router.replace('/auth');
+        } else {
+          Alert.alert('Error', 'Failed to fetch profile');
+        }
       }
     } catch (error) {
+      console.error('Profile fetch error:', error);
       Alert.alert('Error', 'Something went wrong');
     } finally {
       setLoading(false);
@@ -107,45 +140,94 @@ export default function ProfileScreen() {
 
   const handleUpdate = async (field: string, value: string) => {
     try {
-      const response = await fetch(`${EXPO_PUBLIC_API_URL}users/${id}`, {
+      const userToken = await AsyncStorage.getItem('userToken');
+      const userData = await AsyncStorage.getItem('userData');
+      
+      if (!userData || !userToken) {
+        router.replace('/auth');
+        return;
+      }
+
+      const user = JSON.parse(userData);
+      const response = await fetch(`${EXPO_PUBLIC_API_URL}users/${user.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${userToken}`,
         },
         body: JSON.stringify({ [field]: value }),
       });
+      
       const data = await response.json();
       if (data.success) {
         setProfile(data.data);
+        // Update stored user data
+        await AsyncStorage.setItem('userData', JSON.stringify(data.data));
         Alert.alert('Success', 'Profile updated successfully');
       } else {
         Alert.alert('Error', 'Failed to update profile');
       }
     } catch (error) {
+      console.error('Update error:', error);
       Alert.alert('Error', 'Something went wrong');
     }
   };
 
   const pickImage = async () => {
     try {
-      // Request permissions
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Sorry, we need camera roll permissions to make this work!');
-        return;
-      }
+      // Show action sheet for image source selection
+      Alert.alert(
+        "Select Image Source",
+        "Choose where you want to take the image from",
+        [
+          {
+            text: "Camera",
+            onPress: async () => {
+              const { status } = await ImagePicker.requestCameraPermissionsAsync();
+              if (status !== 'granted') {
+                Alert.alert('Sorry, we need camera permissions to make this work!');
+                return;
+              }
+              
+              const result = await ImagePicker.launchCameraAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 1,
+              });
 
-      // Pick the image
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 1,
-      });
+              if (!result.canceled) {
+                uploadImage(result.assets[0].uri);
+              }
+            }
+          },
+          {
+            text: "Photo Library",
+            onPress: async () => {
+              const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+              if (status !== 'granted') {
+                Alert.alert('Sorry, we need camera roll permissions to make this work!');
+                return;
+              }
 
-      if (!result.canceled) {
-        uploadImage(result.assets[0].uri);
-      }
+              const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 1,
+              });
+
+              if (!result.canceled) {
+                uploadImage(result.assets[0].uri);
+              }
+            }
+          },
+          {
+            text: "Cancel",
+            style: "cancel"
+          }
+        ]
+      );
     } catch (error) {
       Alert.alert('Error', 'Failed to pick image');
     }
@@ -195,7 +277,7 @@ export default function ProfileScreen() {
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
     try {
-      await fetchProfile();
+      await checkAuthAndFetchProfile();
     } finally {
       setRefreshing(false);
     }
@@ -224,6 +306,76 @@ export default function ProfileScreen() {
     </Modal>
   );
 
+  const checkExistingApplication = async (userId: number) => {
+    try {
+      const userToken = await AsyncStorage.getItem('userToken');
+      
+      // Updated endpoint URL to match backend
+      const response = await fetch(`${EXPO_PUBLIC_API_URL}formularAdvisor/user/${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${userToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        console.log('Response not OK:', response.status);
+        return null;
+      }
+
+      const data = await response.json();
+      console.log('Application check response:', data);
+      
+      setHasExistingApplication(!!data.data);
+      return data.data;
+    } catch (error) {
+      console.error('Error checking application:', error);
+      return null;
+    }
+  };
+
+  const handleCreateFormular = async () => {
+    try {
+      const userData = await AsyncStorage.getItem('userData');
+      if (!userData) {
+        router.replace('/auth');
+        return;
+      }
+
+      const user = JSON.parse(userData);
+      const existingApplication = await checkExistingApplication(user.id);
+      
+      if (existingApplication) {
+        router.push({
+          pathname: '/formular-create',
+          params: { 
+            mode: 'edit',
+            existingData: JSON.stringify(existingApplication)
+          }
+        });
+      } else {
+        router.push({
+          pathname: '/formular-create',
+          params: { mode: 'create' }
+        });
+      }
+    } catch (error) {
+      console.error('Error handling formular creation:', error);
+      Alert.alert('Error', 'Failed to check application status');
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await AsyncStorage.removeItem('userToken');
+      await AsyncStorage.removeItem('userData');
+      router.replace('/auth');
+    } catch (error) {
+      console.error('Logout error:', error);
+      Alert.alert('Error', 'Failed to logout');
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -239,6 +391,11 @@ export default function ProfileScreen() {
           title: 'Profile',
           headerStyle: { backgroundColor: '#0A192F' },
           headerTintColor: '#64FFDA',
+          headerRight: () => (
+            <TouchableOpacity onPress={handleLogout} style={{ marginRight: 15 }}>
+              <Ionicons name="log-out-outline" size={24} color="#64FFDA" />
+            </TouchableOpacity>
+          ),
         }}
       />
       <ScrollView 
@@ -303,6 +460,15 @@ export default function ProfileScreen() {
             </Text>
           </View>
         </View>
+
+        <TouchableOpacity 
+          style={styles.createFormularButton}
+          onPress={handleCreateFormular}
+        >
+          <Text style={styles.createFormularButtonText}>
+            {hasExistingApplication ? 'Update Advisor Application' : 'Create Advisor Application'}
+          </Text>
+        </TouchableOpacity>
 
         <EditModal
           visible={!!editField}
@@ -461,5 +627,18 @@ const styles = StyleSheet.create({
     padding: 10,
     backgroundColor: 'rgba(29, 45, 80, 0.8)',
     borderRadius: 20,
+  },
+  createFormularButton: {
+    backgroundColor: '#64FFDA',
+    marginHorizontal: 16,
+    marginBottom: 20,
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  createFormularButtonText: {
+    color: '#0A192F',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 }); 

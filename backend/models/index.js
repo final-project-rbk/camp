@@ -30,6 +30,9 @@ const Comment = require("./Comment")(connection, DataTypes);
 const MarketplaceItem = require("./marcketPlaceItem")(connection, DataTypes);
 const MarketplaceItemCategorie = require("./marcketPlaceItemCategorie")(connection, DataTypes);
 
+const FormularAdvisor = require("./FormularAdvisor")(connection, DataTypes);
+const AdvisorMedia = require("./AdvisorMedia")(connection, DataTypes);
+
 // Define relationships
 const defineAssociations = () => {
   // User relationships
@@ -113,6 +116,18 @@ Categorie.belongsToMany(MarketplaceItem, {
   foreignKey: 'categorieId' 
 });
 
+// FormularAdvisor associations
+User.hasOne(FormularAdvisor, { foreignKey: "userId" });
+FormularAdvisor.belongsTo(User, { foreignKey: "userId" });
+
+// AdvisorMedia associations
+FormularAdvisor.hasOne(AdvisorMedia, { foreignKey: "formularId" });
+AdvisorMedia.belongsTo(FormularAdvisor, { foreignKey: "formularId" });
+
+// Link FormularAdvisor to Advisor
+Advisor.hasOne(FormularAdvisor, { foreignKey: "advisorId" });
+FormularAdvisor.belongsTo(Advisor, { foreignKey: "advisorId" });
+
 };
 
 // Call the function to define associations
@@ -157,6 +172,7 @@ module.exports = {
   Blog,
   Comment,
   MarketplaceItem,
-  MarketplaceItemCategorie
- 
+  MarketplaceItemCategorie,
+  FormularAdvisor,
+  AdvisorMedia
 };

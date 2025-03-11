@@ -19,3 +19,12 @@ body {
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Add these new styles */
+input, button {
+  transition: all 0.2s ease-in-out;
+}
+
+input:focus {
+  outline: none;
+}

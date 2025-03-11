@@ -3,7 +3,10 @@ import { useState, useEffect } from "react";
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { EXPO_PUBLIC_API_URL } from '../config';
-import React from "react";
+import React, { memo } from "react";
+import { FlashList } from "@shopify/flash-list";
+import FastImage from 'react-native-fast-image';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Comment {
     id: number;
@@ -34,6 +37,47 @@ interface Blog {
 
 const DEFAULT_PROFILE_IMAGE = 'https://johannesippen.com/img/blog/humans-not-users/header.jpg';
 
+const CommentItem = memo(({ comment, onMorePress }: { 
+    comment: Comment, 
+    onMorePress: (id: number, content: string) => void 
+}) => (
+    <View style={styles.commentCard}>
+        <View style={styles.commentHeaderRow}>
+            <View style={styles.commentAuthorContainer}>
+                <Image 
+                    source={{ uri: comment.user?.profile_image || DEFAULT_PROFILE_IMAGE }} 
+                    style={styles.commentAuthorImage}
+                />
+                <Text style={styles.commentAuthor}>
+                    {comment.user?.first_name || 'Anonymous'} {comment.user?.last_name || ''}
+                </Text>
+            </View>
+            <TouchableOpacity onPress={() => onMorePress(comment.id, comment.content)}>
+                <Icon name="more-vert" size={20} color="#64FFDA" />
+            </TouchableOpacity>
+        </View>
+        <Text style={styles.commentContent}>{comment.content}</Text>
+        <Text style={styles.commentDate}>{new Date(comment.createdAt).toLocaleString()}</Text>
+    </View>
+));
+
+const decodeJWT = (token: string) => {
+    try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(
+            atob(base64)
+                .split('')
+                .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+                .join('')
+        );
+        return JSON.parse(jsonPayload);
+    } catch (error) {
+        console.error('Manual JWT decode error:', error);
+        return null;
+    }
+};
+
 export default function StoryDetail() {
     const router = useRouter();
     const { id } = useLocalSearchParams();
@@ -45,10 +89,34 @@ export default function StoryDetail() {
     const [isDropdownVisible, setIsDropdownVisible] = useState(false);
     const [editCommentText, setEditCommentText] = useState('');
     const [refreshing, setRefreshing] = useState(false);
+    const [token, setToken] = useState<string | null>(null);
+    const [userId, setUserId] = useState<number | null>(null);
+
+    const getToken = async () => {
+        try {
+            const storedToken = await AsyncStorage.getItem('userToken');
+            if (storedToken) {
+                setToken(storedToken);
+                const decoded = decodeJWT(storedToken);
+                if (decoded && decoded.id) {
+                    setUserId(decoded.id);
+                    return true;
+                }
+            }
+            return false;
+        } catch (error) {
+            console.error('Error getting token:', error);
+            return false;
+        }
+    };
 
     const fetchBlogDetails = async () => {
         try {
-            const response = await fetch(`${EXPO_PUBLIC_API_URL}blogs/${id}`);
+            const response = await fetch(`${EXPO_PUBLIC_API_URL}blogs/${id}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const result = await response.json();
             if (result.success) setBlog(result.data);
@@ -65,13 +133,20 @@ export default function StoryDetail() {
             Alert.alert('Error', 'Comment cannot be empty');
             return;
         }
+        if (!userId) {
+            Alert.alert('Error', 'Please login to comment');
+            return;
+        }
         try {
             const response = await fetch(`${EXPO_PUBLIC_API_URL}blogs/comments/${id}`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({ 
                     content: newComment, 
-                    userId: 3
+                    userId: userId
                 }),
             });
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -89,7 +164,10 @@ export default function StoryDetail() {
         try {
             const response = await fetch(`${EXPO_PUBLIC_API_URL}blogs/comments/${commentId}`, {
                 method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
             });
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const result = await response.json();
@@ -108,7 +186,10 @@ export default function StoryDetail() {
         try {
             const response = await fetch(`${EXPO_PUBLIC_API_URL}blogs/comments/${commentId}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({ content: editCommentText }),
             });
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -124,12 +205,21 @@ export default function StoryDetail() {
     };
 
     const toggleLike = async () => {
-        if (!blog) return;
+        if (!blog || !userId) {
+            Alert.alert('Error', 'Please login to like blogs');
+            return;
+        }
         try {
             const response = await fetch(`${EXPO_PUBLIC_API_URL}blogs/${id}/like`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: 3, liked: !blog.liked }),
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ 
+                    userId: userId, 
+                    liked: !blog.liked 
+                }),
             });
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const result = await response.json();
@@ -154,7 +244,17 @@ export default function StoryDetail() {
     }, []);
 
     useEffect(() => {
-        fetchBlogDetails();
+        const initializeData = async () => {
+            const isAuthenticated = await getToken();
+            if (!isAuthenticated) {
+                Alert.alert('Authentication Error', 'Please log in to continue');
+                router.replace('/auth');
+                return;
+            }
+            fetchBlogDetails();
+        };
+
+        initializeData();
     }, [id]);
 
     if (loading) {
@@ -197,7 +297,12 @@ export default function StoryDetail() {
                             By: {blog.user?.first_name || 'Anonymous'} {blog.user?.last_name || ''}
                         </Text>
                     </View>
-                    {blog.image && <Image source={{ uri: blog.image }} style={styles.blogImage} resizeMode="cover" />}
+                    {blog.image && (
+                        <Image 
+                            source={{ uri: blog.image }} 
+                            style={styles.blogImage}
+                        />
+                    )}
                     <Text style={styles.contentText}>{blog.content}</Text>
                     <View style={styles.metaContainer}>
                         <TouchableOpacity style={styles.likeButton} onPress={toggleLike}>
@@ -221,28 +326,17 @@ export default function StoryDetail() {
                                 <Text style={styles.submitButtonText}>Post</Text>
                             </TouchableOpacity>
                         </View>
-                        {[...(blog.comments || [])]
-                            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                            .map((comment) => (
-                            <View key={comment.id} style={styles.commentCard}>
-                                <View style={styles.commentHeaderRow}>
-                                    <View style={styles.commentAuthorContainer}>
-                                        <Image 
-                                            source={{ uri: comment.user?.profile_image || DEFAULT_PROFILE_IMAGE }} 
-                                            style={styles.commentAuthorImage}
-                                        />
-                                        <Text style={styles.commentAuthor}>
-                                            {comment.user?.first_name || 'Anonymous'} {comment.user?.last_name || ''}
-                                        </Text>
-                                    </View>
-                                    <TouchableOpacity onPress={() => showDropdown(comment.id, comment.content)}>
-                                        <Icon name="more-vert" size={20} color="#64FFDA" />
-                                    </TouchableOpacity>
-                                </View>
-                                <Text style={styles.commentContent}>{comment.content}</Text>
-                                <Text style={styles.commentDate}>{new Date(comment.createdAt).toLocaleString()}</Text>
-                            </View>
-                        ))}
+                        <FlashList
+                            data={blog.comments.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())}
+                            renderItem={({ item }) => (
+                                <CommentItem 
+                                    comment={item} 
+                                    onMorePress={showDropdown}
+                                />
+                            )}
+                            estimatedItemSize={100}
+                            keyExtractor={(item) => item.id.toString()}
+                        />
                     </View>
                 </View>
             </ScrollView>
@@ -278,13 +372,20 @@ const styles = StyleSheet.create({
         height: 40,
         borderRadius: 20,
         marginRight: 10,
+        resizeMode: 'cover'
     },
     authorText: {
         color: '#8892B0',
         fontSize: 16,
         fontStyle: 'italic',
     },
-    blogImage: { width: '100%', height: 200, borderRadius: 8, marginBottom: 15 },
+    blogImage: { 
+        width: '100%', 
+        height: 200, 
+        borderRadius: 8, 
+        marginBottom: 15,
+        resizeMode: 'cover'
+    },
     contentText: { color: '#CCD6F6', fontSize: 16, lineHeight: 24, marginBottom: 20 },
     metaContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
     likeButton: { flexDirection: 'row', alignItems: 'center', marginRight: 15 },
@@ -307,6 +408,7 @@ const styles = StyleSheet.create({
         height: 30,
         borderRadius: 15,
         marginRight: 8,
+        resizeMode: 'cover'
     },
     commentAuthor: {
         color: '#64FFDA',
