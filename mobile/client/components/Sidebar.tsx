@@ -33,6 +33,7 @@ export default function Sidebar({ isVisible, onClose }: SidebarProps) {
     { icon: 'home', label: 'Home', route: '/(tabs)/home' },
     { icon: 'compass', label: 'Explore', route: '/(tabs)/market' },
     { icon: 'heart', label: 'Favorites', route: '/(tabs)/favorites' },
+    { icon: 'person', label: 'Profile', route: '/profile' },
     { icon: 'help-circle', label: 'Help', route: '/(tabs)/hints' },
     { icon: 'settings', label: 'Settings', route: '/setting' },
   ];
