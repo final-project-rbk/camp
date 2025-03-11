@@ -16,7 +16,7 @@ const app = express();
 
 // Configure CORS
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: '*',  // Be careful with this in production
   credentials: true
 }));
 

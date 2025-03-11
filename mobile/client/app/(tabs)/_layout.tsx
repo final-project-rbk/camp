@@ -36,16 +36,7 @@ export default function TabLayout() {
         options={{
           title: 'Market',
           tabBarIcon: ({ size, color }) => (
-            <Ionicons name="cart" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="favorites"
-        options={{
-          title: 'Favorites',
-          tabBarIcon: ({ size, color }) => (
-            <Ionicons name="heart" size={size} color={color} />
+            <Ionicons name="storefront" size={size} color={color} />
           ),
         }}
       />
@@ -55,6 +46,15 @@ export default function TabLayout() {
           title: 'Hints',
           tabBarIcon: ({ size, color }) => (
             <Ionicons name="bulb" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="favorites"
+        options={{
+          title: 'Favorites',
+          tabBarIcon: ({ size, color }) => (
+            <Ionicons name="heart" size={size} color={color} />
           ),
         }}
       />
