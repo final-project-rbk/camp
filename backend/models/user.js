@@ -14,7 +14,12 @@ module.exports = (sequelize, DataTypes) => {
      
     
       created_at: { type: DataTypes.DATE, defaultValue: sequelize.literal('CURRENT_TIMESTAMP') },
-      updated_at: { type: DataTypes.DATE, defaultValue: sequelize.literal('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP') }
+      updated_at: { type: DataTypes.DATE, defaultValue: sequelize.literal('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP') },
+      isBanned: { 
+        type: DataTypes.BOOLEAN, 
+        defaultValue: false,
+        allowNull: false
+      }
     });
   
     return User;

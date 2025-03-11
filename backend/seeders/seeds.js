@@ -121,15 +121,6 @@ module.exports = {
         }
       ]);
 
-      // Then seed placeCategories
-      console.log('Seeding placeCategories...');
-      await queryInterface.bulkInsert('placeCategories', [
-        { placeId: 1, categorieId: 1, createdAt: now, updatedAt: now },
-        { placeId: 1, categorieId: 3, createdAt: now, updatedAt: now },
-        { placeId: 2, categorieId: 2, createdAt: now, updatedAt: now },
-        { placeId: 2, categorieId: 3, createdAt: now, updatedAt: now }
-      ]);
-
       // Users
       console.log('Seeding users...');
       await queryInterface.bulkInsert('users', [

@@ -6,6 +6,7 @@ import EssentialsTab from '../../components/EssentialsTab';
 import SafetyTab from '../../components/SafetyTab';
 import WeatherTab from '../../components/WeatherTab';
 import TutorialGalleryModal from '../../components/TutorialGalleryModal';
+import React from "react";
 
 interface Tutorial {
   id: number;

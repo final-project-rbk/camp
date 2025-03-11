@@ -6,6 +6,9 @@ import { useRouter } from 'expo-router';
 import React from "react";
 import * as ImagePicker from 'expo-image-picker';
 import { Platform } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
+import { jwtDecode } from "jwt-decode";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Add this constant at the top of the file, after the imports
 const DEFAULT_PROFILE_IMAGE = 'https://johannesippen.com/img/blog/humans-not-users/header.jpg';
@@ -52,7 +55,8 @@ export default function Story() {
     const [updateModalVisible, setUpdateModalVisible] = useState(false);
     const [blogToUpdate, setBlogToUpdate] = useState<Blog | null>(null);
     const [refreshing, setRefreshing] = useState(false);
-
+    const [token, setToken] = useState<string | null>(null);
+    const [userId, setUserId] = useState<number | null>(null);
 
     // Sort blogs by createdAt descending (newest first)
     const sortBlogs = (blogs: Blog[]) => {
@@ -61,10 +65,42 @@ export default function Story() {
         );
     };
 
+    // Update getToken function
+    const getToken = async () => {
+        try {
+            const storedToken = await AsyncStorage.getItem('userToken');
+            if (storedToken) {
+                setToken(storedToken);
+                try {
+                    const decoded = jwtDecode(storedToken);
+                    console.log('Decoded token:', decoded);
+                    if (decoded.id) {
+                        setUserId(decoded.id);
+                        console.log('Token is valid, userId set to:', decoded.id);
+                        return true;
+                    }
+                } catch (decodeError) {
+                    console.error('Error decoding token:', decodeError);
+                    return false;
+                }
+            } else {
+                console.log('No token found in AsyncStorage');
+            }
+            return false;
+        } catch (error) {
+            console.error('Error in getToken:', error);
+            return false;
+        }
+    };
+
     // Fetch blogs
     const fetchBlogData = async () => {
         try {
-            const response = await fetch(`${EXPO_PUBLIC_API_URL}blogs/`);
+            const response = await fetch(`${EXPO_PUBLIC_API_URL}blogs/`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -132,8 +168,19 @@ export default function Story() {
         }
     };
 
-    // Update createBlog function
+    // Update createBlog with more logging
     const createBlog = async () => {
+        console.log('=== Create Blog Debug Info ===');
+        
+        // Force token refresh before proceeding
+        const isAuthenticated = await getToken();
+        if (!isAuthenticated || !token) {
+            Alert.alert('Authentication Error', 'Please log in again to continue');
+            // Redirect to auth instead of login
+            router.replace('/auth');
+            return;
+        }
+
         try {
             let imageUrl = '';
             if (newBlog.image) {
@@ -143,19 +190,31 @@ export default function Story() {
             const blogToSubmit = {
                 ...newBlog,
                 image: imageUrl,
-                userId: 3,
+                userId: userId,
             };
 
             const response = await fetch(`${EXPO_PUBLIC_API_URL}blogs/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify(blogToSubmit),
             });
 
+            if (response.status === 401) {
+                // Token expired or invalid
+                Alert.alert('Session Expired', 'Please log in again');
+                // Clear token from AsyncStorage instead of SecureStore
+                await AsyncStorage.removeItem('userToken');
+                // Redirect to auth
+                router.replace('/auth');
+                return;
+            }
+
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                const errorData = await response.json();
+                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
             }
 
             const result = await response.json();
@@ -163,11 +222,15 @@ export default function Story() {
                 setCreateModalVisible(false);
                 setNewBlog({ title: '', content: '', image: '' });
                 fetchBlogData();
+                Alert.alert('Success', 'Blog created successfully');
             } else {
                 throw new Error(result.message || 'Failed to create blog');
             }
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Failed to create blog');
+            console.error('Create blog error:', err);
+            const errorMessage = err instanceof Error ? err.message : 'Failed to create blog';
+            Alert.alert('Error', errorMessage);
+            setError(errorMessage);
         }
     };
 
@@ -178,6 +241,7 @@ export default function Story() {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
                 },
             });
 
@@ -211,18 +275,23 @@ export default function Story() {
 
     // Like/Unlike blog
     const toggleLike = async (blogId: number) => {
+        if (!userId || !token) {
+            Alert.alert('Error', 'Please login to like blogs');
+            return;
+        }
+
         try {
             const blog = blogData.find(b => b.id === blogId);
             const newLikedState = !blog?.liked;
 
-            // Make API call to update likes
             const response = await fetch(`${EXPO_PUBLIC_API_URL}blogs/${blogId}/like`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
-                    userId: 3, // Replace with actual user ID from your auth system
+                    userId: userId,
                     liked: newLikedState
                 }),
             });
@@ -269,7 +338,7 @@ export default function Story() {
 
     // Update updateBlog function
     const updateBlog = async () => {
-        if (!blogToUpdate) return;
+        if (!blogToUpdate || !token) return;
 
         try {
             let imageUrl = blogToUpdate.image;
@@ -288,6 +357,7 @@ export default function Story() {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
                     title: blogToUpdate.title,
@@ -319,9 +389,24 @@ export default function Story() {
         fetchBlogData().finally(() => setRefreshing(false));
     }, []);
 
-    // Fetch data on mount
+    // Update useEffect with more logging
     useEffect(() => {
-        fetchBlogData();
+        const initializeData = async () => {
+            console.log('=== Component Initialization ===');
+            const isAuthenticated = await getToken();
+            console.log('Initial authentication check:', isAuthenticated);
+            
+            if (!isAuthenticated) {
+                console.log('Initial authentication failed');
+                Alert.alert('Authentication Error', 'Please log in to continue');
+                return;
+            }
+            
+            console.log('Proceeding to fetch blog data');
+            fetchBlogData();
+        };
+
+        initializeData();
     }, []);
 
     // Loading state
