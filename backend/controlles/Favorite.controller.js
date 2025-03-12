@@ -5,11 +5,12 @@ const favoriteController = {
     try {
       const { userId } = req.params;
       
+      // Find all favorites with associated place data
       const favorites = await Favorite.findAll({
         where: { userId: parseInt(userId) },
         include: [{
           model: Place,
-          as: 'place',
+          required: true, // Only return favorites that have associated places
           include: [
             {
               model: Media,
@@ -25,26 +26,20 @@ const favoriteController = {
         }]
       });
 
-      if (!favorites || favorites.length === 0) {
-        return res.status(200).json({
-          success: true,
-          data: []
-        });
-      }
-
       // Format the response data
-      const formattedFavorites = favorites.map(fav => {
-        const place = fav.place;
+      const formattedFavorites = favorites.map(favorite => {
+        const place = favorite.place;
         if (!place) return null;
 
-        // Get the first image URL
-        const imageUrl = place.Media && place.Media.length > 0 
-          ? place.Media[0].url 
+        // Get the first image URL or use placeholder
+        const imageUrl = place.media && place.media.length > 0 
+          ? place.media[0].url 
           : 'https://via.placeholder.com/400';
 
         // Calculate average rating
-        const rating = place.Reviews && place.Reviews.length > 0
-          ? Number((place.Reviews.reduce((acc, rev) => acc + rev.rating, 0) / place.Reviews.length).toFixed(1))
+        const ratings = place.reviews || [];
+        const rating = ratings.length > 0
+          ? Number((ratings.reduce((acc, rev) => acc + rev.rating, 0) / ratings.length).toFixed(1))
           : 0;
 
         return {
@@ -54,7 +49,7 @@ const favoriteController = {
           image: imageUrl,
           rating: rating
         };
-      }).filter(item => item !== null);
+      }).filter(Boolean); // Remove any null entries
 
       res.status(200).json({
         success: true,

@@ -51,13 +51,16 @@ export default function AllPlacesScreen() {
     try {
       setLoading(true);
       const queryParams = category ? `?category=${category}` : '';
-      const response = await fetch(`${ EXPO_PUBLIC_API_URL }places${queryParams}`);
+      console.log('Fetching places with query:', queryParams);
+      const response = await fetch(`${EXPO_PUBLIC_API_URL}places${queryParams}`);
       const data = await response.json();
+      console.log('Places data:', data);
       if (data.success) {
         setPlaces(data.data);
       }
     } catch (error) {
-    throw error
+      console.error('Error fetching places:', error);
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -68,6 +71,7 @@ export default function AllPlacesScreen() {
   }, []);
 
   useEffect(() => {
+    console.log('Selected category changed:', selectedCategory);
     fetchPlaces(selectedCategory || undefined);
   }, [selectedCategory]);
 

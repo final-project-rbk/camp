@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Image, Pressable, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Image, Pressable, ActivityIndicator, ScrollView } from 'react-native';
 import { Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { EXPO_PUBLIC_API_URL } from '../../config';
@@ -17,19 +17,29 @@ interface Place {
 export default function Favorites() {
   const [favorites, setFavorites] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const userId = 1;
 
   const fetchFavorites = async () => {
     try {
       setLoading(true);
+      setError(null);
       const response = await fetch(`${EXPO_PUBLIC_API_URL}favorites/user/${userId}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch favorites');
+      }
+      
       const data = await response.json();
       
       if (data.success) {
         setFavorites(data.data);
+      } else {
+        throw new Error(data.error || 'Failed to fetch favorites');
       }
     } catch (error) {
       console.error('Error fetching favorites:', error);
+      setError(error instanceof Error ? error.message : 'An error occurred');
     } finally {
       setLoading(false);
     }
@@ -44,102 +54,124 @@ export default function Favorites() {
 
   const renderFavoriteItem = ({ item }: { item: Place }) => (
     <Link href={`/place/${item.id}`} asChild>
-      <Pressable style={styles.favoriteCard}>
-        <FavoriteButton placeId={item.id} initialIsFavorite={true} />
-        <Image source={{ uri: item.image }} style={styles.placeImage} />
-        <View style={styles.placeInfo}>
-          <Text style={styles.placeName}>{item.name}</Text>
-          <View style={styles.locationContainer}>
-            <Ionicons name="location" size={16} color="#8892B0" />
-            <Text style={styles.location}>{item.location}</Text>
+      <Pressable style={styles.listItem}>
+        <Image
+          source={{ uri: item.image }}
+          style={styles.listImage}
+          onError={() => console.log('Failed to load image')}
+        />
+        <View style={styles.listContent}>
+          <Text style={styles.listTitle}>{item.name}</Text>
+          <View style={styles.listDetails}>
+            <View style={styles.loadingContainer}>
+              <Ionicons name="location" size={22} color="#8892B0" />
+              <Text style={styles.listLocation}>{item.location}</Text>
+            </View>
+            <View style={styles.ratingContainer}>
+              <Ionicons name="star" size={22} color="#FFD700" />
+              <Text style={styles.rating}>{item.rating}</Text>
+            </View>
           </View>
-          <View style={styles.ratingContainer}>
-            <Ionicons name="star" size={16} color="#FFD700" />
-            <Text style={styles.rating}>{item.rating}</Text>
-          </View>
+          <FavoriteButton placeId={item.id} initialIsFavorite={true} style={styles.favoriteButton} />
         </View>
       </Pressable>
     </Link>
   );
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#64FFDA" />
-      </View>
-    );
-  }
-
   return (
-    <View style={styles.container}>
-      {favorites.length === 0 ? (
+    <ScrollView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.sectionTitle}>Your Favorites</Text>
+      </View>
+
+      {loading ? (
+        <ActivityIndicator color="#64FFDA" />
+      ) : error ? (
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={64} color="#FF6B6B" />
+          <Text style={styles.errorText}>{error}</Text>
+          <Pressable style={styles.retryButton} onPress={fetchFavorites}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </Pressable>
+        </View>
+      ) : favorites.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Ionicons name="heart-outline" size={64} color="#64FFDA" />
           <Text style={styles.emptyText}>No favorites yet</Text>
         </View>
       ) : (
-        <FlatList
-          data={favorites}
-          renderItem={renderFavoriteItem}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContainer}
-          refreshing={loading}
-          onRefresh={fetchFavorites}
-        />
+        <View style={styles.listContainer}>
+          {favorites.map((item) => (
+            <View key={item.id}>
+              {renderFavoriteItem({ item })}
+            </View>
+          ))}
+        </View>
       )}
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     backgroundColor: '#0A192F',
   },
-  text: {
-    color: '#64FFDA',
-    fontSize: 20,
+  header: {
+    padding: 20,
+    paddingTop: 60,
   },
-  favoriteCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2A3347',
-  },
-  placeImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 10,
-    marginRight: 10,
-  },
-  placeInfo: {
-    flex: 1,
-  },
-  placeName: {
-    fontSize: 18,
+  sectionTitle: {
+    fontSize: 24,
+    color: '#CCD6F6',
     fontWeight: 'bold',
-    color: '#64FFDA',
   },
-  locationContainer: {
+  listContainer: {
+    padding: 20,
+  },
+  listItem: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 20,
+    marginBottom: 24,
+    overflow: 'hidden',
+  },
+  listImage: {
+    width: '100%',
+    height: 200,
+  },
+  listContent: {
+    padding: 20,
+    position: 'relative',
+  },
+  listTitle: {
+    fontSize: 24,
+    color: '#CCD6F6',
+    fontWeight: 'bold',
+    marginBottom: 12,
+  },
+  listDetails: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 5,
   },
-  location: {
+  listLocation: {
     color: '#8892B0',
-    marginLeft: 5,
+    fontSize: 18,
+    marginLeft: 8,
+  },
+  favoriteButton: {
+    position: 'absolute',
+    top: -40,
+    right: 20,
   },
   ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 5,
+    gap: 8,
   },
   rating: {
-    color: '#FFD700',
-    marginLeft: 5,
+    color: '#CCD6F6',
+    fontSize: 18,
   },
   loadingContainer: {
     flex: 1,
@@ -150,20 +182,38 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
   },
   emptyText: {
     color: '#64FFDA',
     fontSize: 18,
     marginTop: 20,
+    textAlign: 'center',
   },
-  listContainer: {
-    padding: 10,
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#0A192F',
+    padding: 20,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#64FFDA',
+  errorText: {
+    color: '#FF6B6B',
+    fontSize: 16,
+    textAlign: 'center',
+    marginTop: 10,
     marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#64FFDA',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#0A192F',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
     

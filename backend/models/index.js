@@ -25,8 +25,14 @@ const Review=require("./review")(connection,DataTypes)
 const PlaceUser=require("./PlaceUser")(connection,DataTypes)
 const PlaceCategorie = require("./PlaceCategorie")(connection,DataTypes)
 const Blog = require("./blog")(connection,DataTypes)
+const Comment = require("./Comment")(connection, DataTypes);
+
 const MarketplaceItem = require("./marcketPlaceItem")(connection, DataTypes);
 const MarketplaceItemCategorie = require("./marcketPlaceItemCategorie")(connection, DataTypes);
+
+const FormularAdvisor = require("./FormularAdvisor")(connection, DataTypes);
+const AdvisorMedia = require("./AdvisorMedia")(connection, DataTypes);
+
 // Define relationships
 const defineAssociations = () => {
   // User relationships
@@ -78,7 +84,12 @@ Favorite.belongsTo(User, { foreignKey: "userId" });
 User.hasMany(Blog, { foreignKey: "userId" });
 Blog.belongsTo(User, { foreignKey: "userId" });
 
-// In defineAssociations function
+Blog.hasMany(Comment, { foreignKey: "blogId" });
+Comment.belongsTo(Blog, { foreignKey: "blogId" });
+
+User.hasMany(Comment, { foreignKey: "userId" });
+Comment.belongsTo(User, { foreignKey: "userId" });
+
 User.hasMany(MarketplaceItem, { foreignKey: 'sellerId', as: 'itemsSold' });
 MarketplaceItem.belongsTo(User, { foreignKey: 'sellerId', as: 'seller' });
 
@@ -105,8 +116,20 @@ Categorie.belongsToMany(MarketplaceItem, {
   foreignKey: 'categorieId' 
 });
 
-  
-  
+// FormularAdvisor associations
+User.hasOne(FormularAdvisor, { foreignKey: "userId" });
+FormularAdvisor.belongsTo(User, { foreignKey: "userId" });
+
+// AdvisorMedia associations
+FormularAdvisor.hasOne(AdvisorMedia, { foreignKey: "formularId" });
+AdvisorMedia.belongsTo(FormularAdvisor, { foreignKey: "formularId" });
+
+// Link FormularAdvisor to Advisor
+Advisor.hasOne(FormularAdvisor, { foreignKey: "advisorId" });
+FormularAdvisor.belongsTo(Advisor, { foreignKey: "advisorId" });
+
+Place.hasMany(Favorite, { foreignKey: "placeId" });
+Favorite.belongsTo(Place, { foreignKey: "placeId" });
 
 };
 
@@ -125,13 +148,13 @@ connection
   });
 
 // Sync the database (uncomment to create tables)
-connection
-  .sync({ force: true }) // Use { force: true } to drop and recreate tables; remove in production
-  .then(() => console.log("Tables are created"))
-  .catch((err) => {
-    console.error("Error syncing tables:", err);
-    throw err;
-  });
+// connection
+//   .sync({ force: true }) // Use { force: true } to drop and recreate tables; remove in production
+//   .then(() => console.log("Tables are created"))
+//   .catch((err) => {
+//     console.error("Error syncing tables:", err);
+//     throw err;
+//   });
 
 // Export models and connection
 module.exports = {
@@ -150,7 +173,9 @@ module.exports = {
   PlaceUser,
   PlaceCategorie,
   Blog,
+  Comment,
   MarketplaceItem,
-  MarketplaceItemCategorie
- 
+  MarketplaceItemCategorie,
+  FormularAdvisor,
+  AdvisorMedia
 };

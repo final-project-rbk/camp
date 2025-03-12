@@ -7,6 +7,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Sidebar from '../../components/Sidebar';
 import {  EXPO_PUBLIC_API_URL  } from '../../config';
 import FavoriteButton from '../../components/FavoriteButton';
+import Events from '../event';
 
 // Define navigation type
 type RootStackParamList = {
@@ -44,6 +45,16 @@ interface MarketplacePreview {
   seller: string;
 }
 
+interface Event {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  location: string;
+  images: string[];
+  status: 'pending' | 'approved' | 'rejected';
+}
+
 export default function DiscoverScreen() {
   const [places, setPlaces] = useState<Place[]>([]);
   const [weatherData, setWeatherData] = useState<{ [key: string]: WeatherData }>({});
@@ -54,18 +65,26 @@ export default function DiscoverScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredPlaces, setFilteredPlaces] = useState<Place[]>([]);
   const [isSidebarVisible, setSidebarVisible] = useState(false);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(true);
+  const [allPlaces, setAllPlaces] = useState<Place[]>([]);
+  const [popularPlaces, setPopularPlaces] = useState<Place[]>([]);
 
   const fetchPlaces = async () => {
     try {
-      const limit = showAllPlaces ? '' : '5';
-      const response = await fetch(`${ EXPO_PUBLIC_API_URL }places?limit=${limit}`);
-      const data = await response.json();
-      if (data.success) {
-        if (showAllPlaces) {
-          console.log('Navigate to all places screen');
-        } else {
-          setPlaces(data.data.slice(0, 5));
-        }
+      setPlacesLoading(true);
+      
+      // Fetch all places for Latest Discoveries
+      const allPlacesResponse = await fetch(`${EXPO_PUBLIC_API_URL}places`);
+      const allPlacesData = await allPlacesResponse.json();
+      
+      // Fetch top 5 places for Popular Destinations
+      const popularPlacesResponse = await fetch(`${EXPO_PUBLIC_API_URL}places?limit=5`);
+      const popularPlacesData = await popularPlacesResponse.json();
+      
+      if (allPlacesData.success && popularPlacesData.success) {
+        setAllPlaces(allPlacesData.data); // State for all places
+        setPopularPlaces(popularPlacesData.data); // State for top 5 places
       }
     } catch (error) {
       console.error('Error fetching places:', error);
@@ -90,6 +109,24 @@ export default function DiscoverScreen() {
     } catch (error) {
       console.error('Error fetching weather:', error);
       return null;
+    }
+  };
+
+  const fetchEvents = async () => {
+    try {
+      setEventsLoading(true);
+      const response = await fetch(`${EXPO_PUBLIC_API_URL}events`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setEvents(data.data);
+      } else {
+        console.error('Failed to fetch events:', data.error);
+      }
+    } catch (error) {
+      console.error('Error fetching events:', error);
+    } finally {
+      setEventsLoading(false);
     }
   };
 
@@ -132,6 +169,10 @@ export default function DiscoverScreen() {
       setFilteredPlaces(filtered);
     }
   }, [searchQuery, places]);
+
+  useEffect(() => {
+    fetchEvents();
+  }, []);
 
   const getWeatherIcon = (condition: string) => {
     // Map weather conditions to Ionicons
@@ -210,9 +251,8 @@ export default function DiscoverScreen() {
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              style={styles.destinationsScroll}
             >
-              {filteredPlaces.map((place) => (
+              {popularPlaces.map(place => (
                 <Link
                   key={place.id}
                   href={`/place/${place.id}`}
@@ -245,30 +285,62 @@ export default function DiscoverScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Latest Discoveries</Text>
-          {filteredPlaces.map((place) => (
-            <View key={place.id} style={styles.discoveryCard}>
-              <Image source={{ uri: place.image }} style={styles.discoveryImage} />
-              <View style={styles.discoveryInfo}>
-                <Text style={styles.discoveryName}>{place.name}</Text>
-                <Text style={styles.discoveryLocation}>{place.location}</Text>
-                <View style={styles.discoveryDetails}>
-                  <View style={styles.ratingContainer}>
-                    <Ionicons name="star" size={14} color="#64FFDA" />
-                    <Text style={styles.rating}>{place.rating}</Text>
-                  </View>
-                  <View style={styles.weatherInfo}>
-                    <Ionicons name="thermometer" size={14} color="#64FFDA" />
-                    <Text style={styles.discoveryTemp}>
-                      {weatherData[place.location.split(',')[0]]?.temp_c 
-                        ? `${Math.round(weatherData[place.location.split(',')[0]].temp_c)}°` 
-                        : '--°'}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-          ))}
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Latest Discoveries</Text>
+          </View>
+          
+          {placesLoading ? (
+            <ActivityIndicator color="#64FFDA" />
+          ) : (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+            >
+              {allPlaces.map(place => (
+                <Link
+                  key={place.id}
+                  href={`/place/${place.id}`}
+                  asChild
+                >
+                  <Pressable style={styles.destinationCard}>
+                    <FavoriteButton placeId={place.id} />
+                    <Image
+                      source={{ uri: place.image }}
+                      style={styles.destinationImage}
+                    />
+                    <View style={styles.destinationInfo}>
+                      <Text style={styles.destinationName}>{place.name}</Text>
+                      <View style={styles.destinationDetails}>
+                        <View style={styles.locationContainer}>
+                          <Ionicons name="location" size={14} color="#8892B0" />
+                          <Text style={styles.destinationLocation}>{place.location}</Text>
+                        </View>
+                        <View style={styles.ratingContainer}>
+                          <Ionicons name="star" size={14} color="#FFD700" />
+                          <Text style={styles.rating}>{place.rating}</Text>
+                        </View>
+                      </View>
+                      <View style={styles.weatherInfo}>
+                        <Ionicons name="thermometer" size={14} color="#64FFDA" />
+                        <Text style={styles.discoveryTemp}>
+                          {weatherData[place.location.split(',')[0]]?.temp_c 
+                            ? `${Math.round(weatherData[place.location.split(',')[0]].temp_c)}°` 
+                            : '--°'}
+                        </Text>
+                      </View>
+                    </View>
+                  </Pressable>
+                </Link>
+              ))}
+            </ScrollView>
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Upcoming Events</Text>
+          </View>
+          <Events />
         </View>
       </ScrollView>
     </>
@@ -393,36 +465,6 @@ const styles = StyleSheet.create({
     color: '#CCD6F6',
     fontSize: 14,
   },
-  discoveryCard: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 16,
-  },
-  discoveryImage: {
-    width: 100,
-    height: 100,
-  },
-  discoveryInfo: {
-    flex: 1,
-    padding: 16,
-  },
-  discoveryName: {
-    fontSize: 16,
-    color: '#CCD6F6',
-    fontWeight: 'bold',
-  },
-  discoveryLocation: {
-    fontSize: 14,
-    color: '#8892B0',
-    marginBottom: 8,
-  },
-  discoveryDetails: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
   weatherInfo: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -460,5 +502,14 @@ const styles = StyleSheet.create({
   marketplaceSeller: {
     fontSize: 14,
     color: '#8892B0',
+  },
+  dateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  eventDate: {
+    color: '#CCD6F6',
+    fontSize: 14,
   },
 });

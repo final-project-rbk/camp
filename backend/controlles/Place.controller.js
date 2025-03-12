@@ -5,29 +5,40 @@ const placeController = {
   getAllPlaces: async (req, res) => {
     try {
       const { limit, category } = req.query;
+      console.log('Fetching places with category:', category);
       
-      const places = await Place.findAll({
-        include: [
-          {
-            model: Media,
-            attributes: ['url', 'type'],
-            required: false
-          },
-          {
-            model: Review,
-            attributes: ['rating'],
-            required: false
-          },
-          {
-            model: Categorie,
-            through: { attributes: [] },
-            attributes: ['name', 'icon'],
-            required: false
-          }
-        ],
-        where: {
-          status: 'approved'
+      const include = [
+        {
+          model: Media,
+          attributes: ['url', 'type'],
+          required: false
+        },
+        {
+          model: Review,
+          attributes: ['rating'],
+          required: false
+        },
+        {
+          model: Categorie,
+          through: { attributes: [] },
+          attributes: ['name', 'icon'],
+          required: category ? true : false // Make it required only when filtering by category
         }
+      ];
+
+      const whereClause = {
+        status: 'approved'
+      };
+
+      // If category is specified, add it to the include conditions
+      if (category) {
+        include[2].where = { name: category };
+      }
+
+      const places = await Place.findAll({
+        include,
+        where: whereClause,
+        distinct: true // Add this to avoid duplicate places
       });
 
       const formattedPlaces = places.map(place => {
