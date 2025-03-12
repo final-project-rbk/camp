@@ -10,6 +10,5 @@ router.put('/:id', authMiddleware, userController.updateUser);
 // Admin routes
 router.get('/', authMiddleware, userController.getAllUsers); // Get all users
 router.put('/:id/ban', authMiddleware, userController.toggleUserBan); // Ban/unban user
-router.put('/:id/role', authMiddleware, userController.updateUserRole); // Update user role
 
 module.exports = router; 

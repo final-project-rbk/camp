@@ -393,9 +393,8 @@ module.exports = {
 
       // Marketplace Items
       console.log('Seeding marketplace_items...');
-      console.log('Seeding marketplace_items...');
-await queryInterface.bulkInsert('marketplaceitems', [
-  {
+      await queryInterface.bulkInsert('marketplace_items', [
+        {
           id: 1,
           title: 'Two-Person Camping Tent',
           description: 'Lightweight and durable tent, perfect for backpacking in the mountains or beaches.',
@@ -449,66 +448,13 @@ await queryInterface.bulkInsert('marketplaceitems', [
         }
       ]);
 
-      // Marketplace Categories
-      console.log('Seeding marketplace categories...');
-      await queryInterface.bulkInsert('marketplace_categorie', [
-        { 
-          id: 1,
-          name: 'Tents & Shelters',
-          icon: '⛺',
-          description: 'Camping tents, tarps, and shelter solutions',
-          createdAt: now,
-          updatedAt: now
-        },
-        { 
-          id: 2,
-          name: 'Sleeping Gear',
-          icon: '🛏️',
-          description: 'Sleeping bags, pads, and camping pillows',
-          createdAt: now,
-          updatedAt: now
-        },
-        { 
-          id: 3,
-          name: 'Cooking Equipment',
-          icon: '🍳',
-          description: 'Stoves, cookware, and kitchen accessories',
-          createdAt: now,
-          updatedAt: now
-        },
-        { 
-          id: 4,
-          name: 'Lighting',
-          icon: '🔦',
-          description: 'Lanterns, headlamps, and camping lights',
-          createdAt: now,
-          updatedAt: now
-        },
-        { 
-          id: 5,
-          name: 'Backpacks & Bags',
-          icon: '🎒',
-          description: 'Hiking backpacks and camping bags',
-          createdAt: now,
-          updatedAt: now
-        },
-        { 
-          id: 6,
-          name: 'Tools & Equipment',
-          icon: '🔧',
-          description: 'Multi-tools, knives, and camping gear',
-          createdAt: now,
-          updatedAt: now
-        }
-      ]);
-
-      // Update marketplace item categories to use new category IDs
-      console.log('Updating marketplace item categories...');
+      // Marketplace Item Categories
+      console.log('Seeding marketplace_item_categories...');
       await queryInterface.bulkInsert('marketplace_item_categories', [
-        { marketplaceItemId: 1, marketplaceCategorieId: 1, createdAt: now, updatedAt: now }, // Tent -> Tents & Shelters
-        { marketplaceItemId: 2, marketplaceCategorieId: 3, createdAt: now, updatedAt: now }, // Stove -> Cooking Equipment
-        { marketplaceItemId: 3, marketplaceCategorieId: 2, createdAt: now, updatedAt: now }, // Sleeping Bag -> Sleeping Gear
-        { marketplaceItemId: 4, marketplaceCategorieId: 3, createdAt: now, updatedAt: now }  // Cookware -> Cooking Equipment
+        { marketplaceItemId: 1, categorieId: 3, createdAt: now, updatedAt: now }, // Tent -> Tents
+        { marketplaceItemId: 2, categorieId: 4, createdAt: now, updatedAt: now }, // Stove -> Cooking Gear
+        { marketplaceItemId: 3, categorieId: 5, createdAt: now, updatedAt: now }, // Sleeping Bag -> Sleeping Gear
+        { marketplaceItemId: 4, categorieId: 4, createdAt: now, updatedAt: now }  // Cookware -> Cooking Gear
       ]);
 
       // PlaceCategories
@@ -568,15 +514,6 @@ await queryInterface.bulkInsert('marketplaceitems', [
           userId: 2,
           eventId: 1,
           placeId: 2,
-          createdAt: now,
-          updatedAt: now
-        },
-        {
-          url: 'https://example.com/marketplace-item-photo.jpg',
-          type: 'image',
-          userId: 2,
-          placeId: 3, // Add a valid placeId (e.g., Cap Serrat Beach Camp)
-          marketplaceItemId: 1,
           createdAt: now,
           updatedAt: now
         }
@@ -840,8 +777,6 @@ await queryInterface.bulkInsert('marketplaceitems', [
     }
   },
 
-
-  
   down: async (queryInterface, Sequelize) => {
     try {
       console.log('Reverting seeds...');
@@ -864,7 +799,7 @@ await queryInterface.bulkInsert('marketplaceitems', [
         'advisors',
         'users'
       ];
-  
+
       for (const table of tables) {
         try {
           console.log(`Deleting ${table}...`);
@@ -877,11 +812,11 @@ await queryInterface.bulkInsert('marketplaceitems', [
           throw error;
         }
       }
-  
+
       console.log('✅ Seeds reverted successfully!');
     } catch (error) {
       console.error('❌ Seed reversion failed:', error);
       throw error;
     }
   }
-}
+};

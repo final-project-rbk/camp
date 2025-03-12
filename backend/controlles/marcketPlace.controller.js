@@ -1,184 +1,10 @@
-const { MarketplaceItem, User, Chat, Review,MarketplaceItemCategorie,Categorie, Media, MarketplaceCategorie } = require('../models');
-const { connection } = require('../models'); 
-const {Op,Sequelize}=require('sequelize');
-
+const { MarketplaceItem, User, Chat, Review,MarketplaceItemCategorie,Categorie, Media } = require('../models');
 
 // Get all available items
-
-module.exports.getItemById = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    if (!id) {
-      return res.status(400).json({ error: 'Item ID is required' });
-    }
-
-    const item = await MarketplaceItem.findByPk(id, {
-      include: [
-        {
-          model: User,
-          as: 'seller',
-          attributes: ['id', 'first_name', 'last_name', 'profile_image'],
-        },
-        {
-          model: MarketplaceCategorie,
-          as: 'categories',
-          through: { attributes: [] },
-          attributes: ['id', 'name'],
-        },
-      ],
-    });
-
-    if (!item) {
-      return res.status(404).json({ error: 'Item not found' });
-    }
-
-    res.status(200).json(item);
-  } catch (error) {
-    console.error('Error fetching item by ID:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-};
-
-
 module.exports.getAllItems = async (req, res) => {
-  try {
-    const items = await MarketplaceItem.findAll({
-      where: { status: 'available' },
-      include: [
-        {
-          model: User,
-          as: 'seller',
-          attributes: ['id', 'first_name', 'last_name', 'profile_image'],
-        },
-        {
-          model: MarketplaceCategorie,
-          as: 'categories',
-          through: { attributes: [] },
-          attributes: ['id', 'name'],
-        },
-        {
-          model: Media,
-          as: 'media',
-        }
-      ],
-    });
-    res.status(200).json(items);
-  } catch (error) {
-    console.error('Error fetching marketplace items:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-};
-
-module.exports.getItemsByCategory = async (req, res) => {
-  try {
-    const { categoryId } = req.params;
-    
-    const category = await MarketplaceCategorie.findByPk(categoryId);
-    if (!category) {
-      return res.status(404).json({ error: 'Category not found' });
-    }
-
-    const items = await MarketplaceItem.findAll({
-      where: { 
-        status: 'available'
-      },
-      include: [
-        {
-          model: User,
-          as: 'seller',
-          attributes: ['id', 'first_name', 'last_name', 'profile_image']
-        },
-        {
-          model: MarketplaceCategorie,
-          as: 'categories',
-          where: { id: categoryId },
-          through: { attributes: [] },
-          attributes: ['id', 'name', 'icon']
-        },
-        {
-          model: Media,
-          as: 'media',
-        }
-      ]
-    });
-
-    res.status(200).json(items);
-  } catch (error) {
-    console.error('Error fetching items by category:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-};
-
-
-module.exports.createItem = async (req, res) => {
-  try {
-    const { title, description, price, location, categoryIds, images } = req.body;
-    const { sellerId } = req.params;
-
-    // Input validation
-    if (!title || !description || !price || !location) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
-
-    // Validate sellerId
-    if (!sellerId || isNaN(sellerId)) {
-      return res.status(400).json({ error: 'Valid sellerId is required' });
-    }
-
-    // Validate categoryIds
-    if (!Array.isArray(categoryIds) || categoryIds.length === 0) {
-      return res.status(400).json({ error: 'At least one category is required' });
-    }
-
-    // Validate images
-    if (!Array.isArray(images) || images.length === 0) {
-      return res.status(400).json({ error: 'At least one image is required' });
-    }
-
-    // Start transaction
-    const result = await connection.transaction(async (t) => {
-      // Create the item
-      const item = await MarketplaceItem.create({
-        title,
-        description,
-        price: parseFloat(price),
-        location,
-        sellerId: parseInt(sellerId),
-        status: 'available',
-        imageURL: images[0] // Set first image as main image (optional)
-      }, { transaction: t });
-
-      // Create media entries
-      const mediaEntries = images.map((imageUrl) => ({
-        url: imageUrl,
-        type: 'image',
-        marketplaceItemId: item.id
-      }));
-      await Media.bulkCreate(mediaEntries, { transaction: t });
-
-      // Find and validate categories
-      const categories = await MarketplaceCategorie.findAll({
-        where: { 
-          id: categoryIds.map(id => parseInt(id)) 
-        },
-        transaction: t
-      });
-
-      if (categories.length !== categoryIds.length) {
-        throw new Error('One or more invalid category IDs');
-      }
-
-      // Create category associations
-      await Promise.all(categories.map(category =>
-        MarketplaceItemCategorie.create({
-          marketplaceItemId: item.id,
-          marketplaceCategorieId: category.id
-        }, { transaction: t })
-      ));
-
-      // Fetch complete item with associations
-      return await MarketplaceItem.findByPk(item.id, {
+    try {
+      const items = await MarketplaceItem.findAll({
+        where: { status: 'available' },
         include: [
           {
             model: User,
@@ -186,38 +12,79 @@ module.exports.createItem = async (req, res) => {
             attributes: ['id', 'first_name', 'last_name', 'profile_image']
           },
           {
-            model: MarketplaceCategorie,
-            as: 'categories',
+            model: Categorie,
+            as: 'categories', // Add this line to specify the alias
             through: { attributes: [] },
             attributes: ['id', 'name']
-          },
-          {
-            model: Media,
-            as: 'media',
-            attributes: ['id', 'url', 'type']
           }
         ],
-        transaction: t
       });
-    });
-
-    res.status(201).json(result);
-  } catch (error) {
-    console.error('Error creating item:', error);
-    if (error.message === 'One or more invalid category IDs') {
-      res.status(400).json({ error: error.message });
-    } else if (error.name === 'SequelizeValidationError') {
-      res.status(400).json({ error: 'Validation error', details: error.errors });
-    } else if (error.name === 'SequelizeForeignKeyConstraintError') {
-      res.status(400).json({ error: 'Invalid seller ID or category ID' });
-    } else {
-      res.status(500).json({ 
-        error: 'Internal server error', 
-        details: error.message 
-      });
+      res.status(200).json(items);
+    } catch (error) {
+      console.error('Error fetching marketplace items:', error);
+      res.status(500).json({ error: 'Internal server error' });
     }
-  }
-};
+  },
+module.exports.getItemsByCategory = async (req, res) => {
+    try {
+      const { categoryId } = req.params;
+      const items = await MarketplaceItem.findAll({
+        where: { 
+          status: 'available',
+          '$categories.id$': categoryId // This assumes the alias is 'categories'
+        },
+        include: [
+          {
+            model: User,
+            as: 'seller',
+            attributes: ['id', 'first_name', 'last_name', 'profile_image']
+          },
+          {
+            model: Categorie, // Fixed typo from Category to Categorie
+            as: 'categories', // Add the alias here
+            through: { attributes: [] }
+          }
+        ]
+      });
+      res.status(200).json(items);
+    } catch (error) {
+      console.error('Error fetching items by category:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  };
+
+// Create a new item listing
+module.exports.createItem = async (req, res) => {
+    try {
+      const { title, description, price, location, categoryIds } = req.body; // Added location and categoryIds
+      const sellerId = req.user.id; // Requires auth middleware
+  
+      const item = await MarketplaceItem.create({ 
+        title, 
+        description, 
+        price, 
+        location, // New field
+        sellerId, 
+        status: 'available' 
+      });
+  
+      // Associate categories if provided
+      if (categoryIds && Array.isArray(categoryIds)) {
+        await MarketplaceItemCategorie.bulkCreate(
+          categoryIds.map(categorieId => ({
+            marketplaceItemId: item.id,
+            categorieId
+          }))
+        );
+      }
+  
+      res.status(201).json(item);
+    } catch (error) {
+      console.error('Error creating item:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  };
+
 // Purchase an item
 module.exports.buyItem = async (req, res) => {
   try {
@@ -303,169 +170,41 @@ module.exports.getChatHistory = async (req, res) => {
 // Search for an item by name
 module.exports.searchItemByName = async (req, res) => {
   try {
-    const { name, minPrice, maxPrice, category, status = 'available' } = req.query;
+    const { name } = req.query; // Assuming the name comes from the query string (e.g., /search?name=someItem)
 
-    const whereClause = {
-      status: status
-    };
-
-    // Add title search if name is provided
-    if (name) {
-      whereClause.title = { [Sequelize.Op.like]: `%${name}%` };
+    if (!name) {
+      return res.status(400).json({ error: 'Please provide a name to search for' });
     }
 
-    // Add price range if provided
-    if (minPrice || maxPrice) {
-      whereClause.price = {};
-      if (minPrice) whereClause.price[Op.gte] = minPrice;
-      if (maxPrice) whereClause.price[Op.lte] = maxPrice;
-    }
-
-    // Add category filter if provided
-    const includeClause = [
-      {
-        model: User,
-        as: 'seller',
-        attributes: ['id', 'first_name', 'last_name', 'profile_image']
+    const item = await MarketplaceItem.findOne({
+      where: {
+        title: {
+          [Sequelize.Op.like]: `%${name}%` // Case-insensitive partial match
+        },
+        status: 'available' // Optionally restrict to available items
       },
-      {
-        model: MarketplaceCategorie,
-        as: 'categories',
-        through: { attributes: [] },
-        attributes: ['id', 'name']
-      }
-    ];
-
-    if (category) {
-      includeClause.push({
-        model: MarketplaceCategorie,
-        as: 'categories',
-        where: { id: category },
-        through: { attributes: [] },
-        attributes: ['id', 'name']
-      });
-    }
-
-    const items = await MarketplaceItem.findAll({
-      where: whereClause,
-      include: includeClause,
-      order: [['createdAt', 'DESC']]
-    });
-
-    if (!items || items.length === 0) {
-      return res.status(404).json({ error: 'No items found' });
-    }
-
-    return res.status(200).json(items);
-  } catch (error) {
-    console.error('Error searching for marketplace items:', error.message, error.stack);
-    return res.status(500).json({ 
-      error: 'Internal server error', 
-      details: error.message
-    });
-  }
-};
-
-// Get all marketplace categories
-module.exports.getAllMarketplaceCategories = async (req, res) => {
-  try {
-    const categories = await MarketplaceCategorie.findAll({
-      attributes: ['id', 'name', 'icon', 'description'],
       include: [
         {
-          model: MarketplaceItem,
-          as: 'items',
-          attributes: ['id', 'title'],
-          through: { attributes: [] }
+          model: User,
+          as: 'seller',
+          attributes: ['id', 'first_name', 'last_name', 'profile_image']
+        },
+        {
+          model: Categorie,
+          as: 'categories',
+          through: { attributes: [] },
+          attributes: ['id', 'name']
         }
-        
       ]
     });
-    res.status(200).json(categories);
+
+    if (!item) {
+      return res.status(404).json({ error: 'No item found with that name' });
+    }
+
+    return res.status(200).json(item);
   } catch (error) {
-    console.error('Error fetching marketplace categories:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-};
-
-// Create new marketplace category
-module.exports.createMarketplaceCategory = async (req, res) => {
-  try {
-    const { name, icon, description } = req.body;
-
-    // Check if category with same name exists
-    const existingCategory = await MarketplaceCategorie.findOne({ where: { name } });
-    if (existingCategory) {
-      return res.status(400).json({ error: 'Category with this name already exists' });
-    }
-
-    const category = await MarketplaceCategorie.create({
-      name,
-      icon,
-      description
-    });
-
-    res.status(201).json(category);
-  } catch (error) {
-    console.error('Error creating marketplace category:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-};
-
-// Update marketplace category
-module.exports.updateMarketplaceCategory = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { name, icon, description } = req.body;
-
-    const category = await MarketplaceCategorie.findByPk(id);
-    if (!category) {
-      return res.status(404).json({ error: 'Category not found' });
-    }
-
-    // Check if new name conflicts with existing category
-    if (name && name !== category.name) {
-      const existingCategory = await MarketplaceCategorie.findOne({ where: { name } });
-      if (existingCategory) {
-        return res.status(400).json({ error: 'Category with this name already exists' });
-      }
-    }
-
-    await category.update({
-      name: name || category.name,
-      icon: icon || category.icon,
-      description: description || category.description
-    });
-
-    res.status(200).json(category);
-  } catch (error) {
-    console.error('Error updating marketplace category:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-};
-
-// Delete marketplace category
-module.exports.deleteMarketplaceCategory = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const category = await MarketplaceCategorie.findByPk(id);
-    if (!category) {
-      return res.status(404).json({ error: 'Category not found' });
-    }
-
-    // Check if category has items
-    const itemCount = await category.countItems();
-    if (itemCount > 0) {
-      return res.status(400).json({ 
-        error: 'Cannot delete category with associated items. Please remove items first.' 
-      });
-    }
-
-    await category.destroy();
-    res.status(200).json({ message: 'Category deleted successfully' });
-  } catch (error) {
-    console.error('Error deleting marketplace category:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Error searching for marketplace item:', error);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 };

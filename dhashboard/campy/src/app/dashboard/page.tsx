@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
+import Image from 'next/image';
 
 interface User {
   id: number;
@@ -51,6 +52,7 @@ export default function Dashboard() {
   const [roleFilter, setRoleFilter] = useState('all');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [modalPage, setModalPage] = useState(1);
+  const [userData, setUserData] = useState<User | null>(null);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -64,6 +66,33 @@ export default function Dashboard() {
     }
     fetchUsers();
     fetchAdvisorFormulars();
+  }, []);
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const token = localStorage.getItem('userToken');
+        const storedUserData = localStorage.getItem('userData');
+        if (storedUserData) {
+          const user = JSON.parse(storedUserData);
+          const response = await fetch(`${API_URL}users/${user.id}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            setUserData(data.data);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      }
+    };
+
+    fetchUserData();
   }, []);
 
   const fetchUsers = async () => {
@@ -162,26 +191,6 @@ export default function Dashboard() {
     }
   };
 
-  const handleUpdateRole = async (userId: number, newRole: string) => {
-    try {
-      const token = localStorage.getItem('userToken');
-      const response = await fetch(`${API_URL}users/${userId}/role`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ role: newRole }),
-      });
-
-      if (!response.ok) throw new Error('Failed to update user role');
-      fetchUsers();
-    } catch (error) {
-      console.error('Error updating user role:', error);
-      setError('Failed to update user role');
-    }
-  };
-
   const filteredUsers = users.filter(user => {
     const searchLower = searchQuery.toLowerCase();
     const fullName = `${user.first_name} ${user.last_name}`.toLowerCase();
@@ -217,6 +226,53 @@ export default function Dashboard() {
             <h1 className="text-xl font-bold" style={{ color: '#64FFDA' }}>
               Users Dashboard
             </h1>
+          </div>
+          <div className="flex items-center space-x-4">
+            {/* Profile Section */}
+            <div className="relative group">
+              <button
+                className="flex items-center space-x-2 px-3 py-2 rounded-full hover:bg-opacity-20 hover:bg-white transition-all"
+              >
+                {userData?.profile_image ? (
+                  <Image
+                    src={userData.profile_image}
+                    alt="Profile"
+                    width={32}
+                    height={32}
+                    className="rounded-full"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-[#64FFDA] flex items-center justify-center">
+                    <span className="text-[#0A192F] font-semibold">
+                      {userData?.first_name?.[0]?.toUpperCase() || 'U'}
+                    </span>
+                  </div>
+                )}
+                <span className="text-[#64FFDA] hidden md:block">
+                  {userData?.first_name || 'User'}
+                </span>
+              </button>
+              
+              {/* Dropdown Menu */}
+              <div className="absolute right-0 mt-2 w-48 py-2 bg-[#112240] rounded-md shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                <div className="px-4 py-2 text-sm text-[#8892B0] border-b border-[#1D2D50]">
+                  Signed in as<br />
+                  <span className="text-[#64FFDA]">{userData?.email}</span>
+                </div>
+                <button
+                  onClick={() => router.push('/dashboard/profile')}
+                  className="w-full text-left px-4 py-2 text-sm text-[#CCD6F6] hover:bg-[#1D2D50] transition-colors"
+                >
+                  Your Profile
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-2 text-sm text-[#CCD6F6] hover:bg-[#1D2D50] transition-colors"
+                >
+                  Sign Out
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -263,7 +319,6 @@ export default function Dashboard() {
             <table className="w-full">
               <thead>
                 <tr style={{ backgroundColor: 'rgba(100, 255, 218, 0.1)' }}>
-                  <th className="px-6 py-3 text-left text-xs font-medium" style={{ color: '#64FFDA' }}>Profile</th>
                   <th className="px-6 py-3 text-left text-xs font-medium" style={{ color: '#64FFDA' }}>ID</th>
                   <th className="px-6 py-3 text-left text-xs font-medium" style={{ color: '#64FFDA' }}>Name</th>
                   <th className="px-6 py-3 text-left text-xs font-medium" style={{ color: '#64FFDA' }}>Email</th>
@@ -275,27 +330,6 @@ export default function Dashboard() {
               <tbody>
                 {filteredUsers.map((user) => (
                   <tr key={user.id} className="border-t border-gray-700">
-                    <td className="px-6 py-4">
-                      <div className="w-10 h-10 rounded-full overflow-hidden">
-                        {user.profile_image ? (
-                          <img
-                            src={user.profile_image}
-                            alt={`${user.first_name}'s profile`}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              target.src = 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
-                            }}
-                          />
-                        ) : (
-                          <div 
-                            className="w-full h-full flex items-center justify-center bg-gray-700 text-[#64FFDA]"
-                          >
-                            {user.first_name[0]?.toUpperCase() || '?'}
-                          </div>
-                        )}
-                      </div>
-                    </td>
                     <td className="px-6 py-4" style={{ color: '#CCD6F6' }}>
                       {user.id}
                     </td>
@@ -305,21 +339,8 @@ export default function Dashboard() {
                     <td className="px-6 py-4" style={{ color: '#CCD6F6' }}>
                       {user.email}
                     </td>
-                    <td className="px-6 py-4">
-                      <select
-                        value={user.role}
-                        onChange={(e) => handleUpdateRole(user.id, e.target.value)}
-                        className="px-3 py-1 rounded-md text-sm mr-2"
-                        style={{
-                          backgroundColor: 'rgba(100, 255, 218, 0.1)',
-                          color: '#64FFDA',
-                          border: '1px solid #64FFDA'
-                        }}
-                      >
-                        <option value="user">User</option>
-                        <option value="advisor">Advisor</option>
-                        <option value="admin">Admin</option>
-                      </select>
+                    <td className="px-6 py-4" style={{ color: '#CCD6F6' }}>
+                      {user.role}
                     </td>
                     <td className="px-6 py-4">
                       <span
@@ -465,35 +486,22 @@ export default function Dashboard() {
                 </div>
 
                 <div className="flex space-x-2">
-                  {(() => {
-                    const user = users.find(u => u.id === selectedFormular.userId);
-                    if (user) {
-                      if (user.role === 'user') {
-                        return (
-                          <button
-                            onClick={() => handleAdvisorStatus(selectedFormular.id, 'approved')}
-                            className="px-4 py-2 rounded-md bg-green-500 text-white hover:bg-green-600"
-                          >
-                            Accept Demand
-                          </button>
-                        );
-                      } else if (user.role === 'advisor') {
-                        return (
-                          <button
-                            onClick={() => {
-                              handleUpdateRole(user.id, 'user');
-                              setShowModal(false);
-                              setModalPage(1);
-                            }}
-                            className="px-4 py-2 rounded-md bg-yellow-500 text-white hover:bg-yellow-600"
-                          >
-                            Switch to User
-                          </button>
-                        );
-                      }
-                    }
-                    return null;
-                  })()}
+                  {selectedFormular.status === 'pending' && (
+                    <>
+                      <button
+                        onClick={() => handleAdvisorStatus(selectedFormular.id, 'approved')}
+                        className="px-4 py-2 rounded-md bg-green-500 text-white hover:bg-green-600"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => handleAdvisorStatus(selectedFormular.id, 'rejected')}
+                        className="px-4 py-2 rounded-md bg-red-500 text-white hover:bg-red-600"
+                      >
+                        Reject
+                      </button>
+                    </>
+                  )}
                   <button
                     onClick={() => {
                       setShowModal(false);

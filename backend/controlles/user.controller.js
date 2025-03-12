@@ -157,8 +157,7 @@ const userController = {
           'email', 
           'role', 
           'isBanned',
-          'created_at',
-          'profile_image'
+          'created_at'
         ]
       });
 
@@ -214,50 +213,7 @@ const userController = {
         error: 'Error updating user ban status'
       });
     }
-  },
-
-  // Update user role (admin only)
-  updateUserRole: async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { role } = req.body;
-
-      // Validate role
-      const validRoles = ['user', 'advisor', 'admin'];
-      if (!validRoles.includes(role)) {
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid role specified'
-        });
-      }
-
-      const user = await User.findByPk(id);
-
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          error: 'User not found'
-        });
-      }
-
-      await user.update({ role });
-
-      res.status(200).json({
-        success: true,
-        message: 'User role updated successfully',
-        data: {
-          id: user.id,
-          role: user.role
-        }
-      });
-    } catch (error) {
-      console.error('Error in updateUserRole:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Error updating user role'
-      });
-    }
-  },
+  }
 };
 
 module.exports = userController; 
