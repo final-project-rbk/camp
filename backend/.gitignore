@@ -9,7 +9,7 @@ node_modules
 !.yarn/releases
 !.yarn/versions
 .env
-.config/config.json
+config/config.js
 
 testing
 /coverage
