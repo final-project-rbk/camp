@@ -14,6 +14,7 @@ import { AuthProvider } from '../context/AuthContext';
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  const colorScheme = useColorScheme();
   const [loaded, error] = useFonts({
     // Add your fonts here
   });
