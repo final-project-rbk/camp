@@ -48,7 +48,7 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="p-4">
+        <nav className="p-4 space-y-2">
           <div
             onClick={() => router.push('/dashboard')}
             className={`flex items-center space-x-4 text-gray-300 hover:bg-white/10 rounded-lg p-3 cursor-pointer transition-colors ${
@@ -69,6 +69,83 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
               />
             </svg>
             {isOpen && <span className="text-[#8892B0]">Users Dashboard</span>}
+          </div>
+
+          {/* New Blog Management Link */}
+          <div
+            onClick={() => router.push('/dashboard/blogs')}
+            className={`flex items-center space-x-4 text-gray-300 hover:bg-white/10 rounded-lg p-3 cursor-pointer transition-colors ${
+              isOpen ? 'justify-start' : 'justify-center'
+            }`}
+          >
+            <svg 
+              className="w-6 h-6 text-[#64FFDA]" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={2} 
+                d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9.5a2 2 0 00-2-2h-2" 
+              />
+            </svg>
+            {isOpen && <span className="text-[#8892B0]">Blog Management</span>}
+          </div>
+
+          {/* Places Management Link */}
+          <div
+            onClick={() => router.push('/dashboard/places')}
+            className={`flex items-center space-x-4 text-gray-300 hover:bg-white/10 rounded-lg p-3 cursor-pointer transition-colors ${
+              isOpen ? 'justify-start' : 'justify-center'
+            }`}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+              />
+            </svg>
+            {isOpen && <span>Places</span>}
+          </div>
+
+          {/* Marketplace Management Link */}
+          <div
+            onClick={() => router.push('/dashboard/marketplace')}
+            className={`flex items-center space-x-4 text-gray-300 hover:bg-white/10 rounded-lg p-3 cursor-pointer transition-colors ${
+              isOpen ? 'justify-start' : 'justify-center'
+            }`}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-6 w-6 text-[#64FFDA]"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+              />
+            </svg>
+            {isOpen && <span>Marketplace</span>}
           </div>
         </nav>
 

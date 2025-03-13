@@ -2,7 +2,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
-import Image from 'next/image';
 
 interface User {
   id: number;
@@ -12,7 +11,6 @@ interface User {
   role: string;
   isBanned: boolean;
   created_at: string;
-  profile_image?: string;
 }
 
 interface AdvisorFormular {
@@ -52,40 +50,38 @@ export default function Dashboard() {
   const [roleFilter, setRoleFilter] = useState('all');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [modalPage, setModalPage] = useState(1);
-  const [userData, setUserData] = useState<User | null>(null);
+  const [userData, setUserData] = useState(null);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
   useEffect(() => {
-    const token = localStorage.getItem('userToken');
-    if (!token) {
-      router.push('/');
-      return;
-    }
-    fetchUsers();
-    fetchAdvisorFormulars();
-  }, []);
-
-  useEffect(() => {
     const fetchUserData = async () => {
+      const token = localStorage.getItem('userToken');
+      if (!token) {
+        router.push('/');
+        return;
+      }
+
       try {
-        const token = localStorage.getItem('userToken');
         const storedUserData = localStorage.getItem('userData');
         if (storedUserData) {
-          const user = JSON.parse(storedUserData);
-          const response = await fetch(`${API_URL}users/${user.id}`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            setUserData(data.data);
-          }
+          setUserData(JSON.parse(storedUserData));
+        }
+
+        // Fetch user data from API if needed
+        const response = await fetch(`${API_URL}users/me`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setUserData(data.data);
+          localStorage.setItem('userData', JSON.stringify(data.data));
         }
       } catch (error) {
         console.error('Error fetching user data:', error);
@@ -93,6 +89,8 @@ export default function Dashboard() {
     };
 
     fetchUserData();
+    fetchUsers();
+    fetchAdvisorFormulars();
   }, []);
 
   const fetchUsers = async () => {
@@ -223,7 +221,7 @@ export default function Dashboard() {
         {/* Header */}
         <div className="bg-opacity-10 bg-white p-4 flex justify-between items-center">
           <div className="flex items-center">
-            <h1 className="text-xl font-bold" style={{ color: '#64FFDA' }}>
+            <h1 className="text-xl font-bold text-[#64FFDA]">
               Users Dashboard
             </h1>
           </div>
@@ -232,44 +230,39 @@ export default function Dashboard() {
             <div className="relative group">
               <button
                 className="flex items-center space-x-2 px-3 py-2 rounded-full hover:bg-opacity-20 hover:bg-white transition-all"
+                onClick={() => router.push('/dashboard/adminprofile')}
               >
                 {userData?.profile_image ? (
-                  <Image
+                  <img
                     src={userData.profile_image}
                     alt="Profile"
-                    width={32}
-                    height={32}
-                    className="rounded-full"
+                    className="w-8 h-8 rounded-full object-cover border-2 border-[#64FFDA]"
                   />
                 ) : (
                   <div className="w-8 h-8 rounded-full bg-[#64FFDA] flex items-center justify-center">
                     <span className="text-[#0A192F] font-semibold">
-                      {userData?.first_name?.[0]?.toUpperCase() || 'U'}
+                      {userData?.first_name?.[0]?.toUpperCase() || 'A'}
                     </span>
                   </div>
                 )}
                 <span className="text-[#64FFDA] hidden md:block">
-                  {userData?.first_name || 'User'}
+                  {userData?.first_name || 'Admin'} Profile
                 </span>
               </button>
-              
-              {/* Dropdown Menu */}
-              <div className="absolute right-0 mt-2 w-48 py-2 bg-[#112240] rounded-md shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                <div className="px-4 py-2 text-sm text-[#8892B0] border-b border-[#1D2D50]">
-                  Signed in as<br />
-                  <span className="text-[#64FFDA]">{userData?.email}</span>
-                </div>
+
+              {/* Optional: Dropdown menu on hover */}
+              <div className="absolute right-0 mt-2 w-48 py-2 bg-[#112240] rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
                 <button
-                  onClick={() => router.push('/dashboard/profile')}
-                  className="w-full text-left px-4 py-2 text-sm text-[#CCD6F6] hover:bg-[#1D2D50] transition-colors"
+                  onClick={() => router.push('/dashboard/adminprofile')}
+                  className="block w-full px-4 py-2 text-left text-[#CCD6F6] hover:bg-[#1D2D50] transition-colors"
                 >
-                  Your Profile
+                  View Profile
                 </button>
                 <button
                   onClick={handleLogout}
-                  className="w-full text-left px-4 py-2 text-sm text-[#CCD6F6] hover:bg-[#1D2D50] transition-colors"
+                  className="block w-full px-4 py-2 text-left text-[#CCD6F6] hover:bg-[#1D2D50] transition-colors"
                 >
-                  Sign Out
+                  Logout
                 </button>
               </div>
             </div>

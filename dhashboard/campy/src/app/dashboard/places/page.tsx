@@ -1,0 +1,763 @@
+'use client';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Sidebar from '@/components/Sidebar';
+import Image from 'next/image';
+
+interface Category {
+  id: number;
+  name: string;
+  icon: string;
+}
+
+interface Place {
+  id: string;
+  name: string;
+  description: string;
+  location: string;
+  image: string;
+  rating: number;
+  status: 'pending' | 'approved' | 'rejected';
+  categories: Category[];
+  reviews: {
+    id: number;
+    rating: number;
+    comment: string;
+    user: {
+      first_name: string;
+      last_name: string;
+    };
+    createdAt: string;
+  }[];
+}
+
+interface PlaceFormData {
+  name: string;
+  description: string;
+  location: string;
+  image: string;
+  categoryIds: number[];
+}
+
+export default function PlaceManagement() {
+  const router = useRouter();
+  const [places, setPlaces] = useState<Place[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [placeToDelete, setPlaceToDelete] = useState<string | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const API_URL = process.env.NEXT_PUBLIC_API_URL;
+  const [activeStatus, setActiveStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+
+  const [formData, setFormData] = useState<PlaceFormData>({
+    name: '',
+    description: '',
+    location: '',
+    image: '',
+    categoryIds: [],
+  });
+
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+
+  useEffect(() => {
+    fetchPlaces();
+    fetchCategories();
+  }, []);
+
+  useEffect(() => {
+    const shouldLockScroll = showAddModal || showEditModal || showDeleteModal || showDetailModal;
+    
+    if (shouldLockScroll) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showAddModal, showEditModal, showDeleteModal, showDetailModal]);
+
+  const fetchCategories = async () => {
+    try {
+      const token = localStorage.getItem('userToken');
+      const response = await fetch(`${API_URL}categories`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      if (data.success) {
+        setCategories(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+
+  // Proxy function to handle API calls
+  const proxyFetch = async (endpoint: string, options: RequestInit) => {
+    try {
+      const response = await fetch(`http://192.168.1.15:3000/api${endpoint}`, {
+        ...options,
+        headers: {
+          ...options.headers,
+          'Origin': 'http://192.168.1.15:3000',
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      const data = await response.json();
+      return { response, data };
+    } catch (error) {
+      console.error('Proxy fetch error:', error);
+      throw error;
+    }
+  };
+
+  const fetchPlaces = async () => {
+    try {
+      const token = localStorage.getItem('userToken');
+      if (!token) {
+        router.push('/');
+        return;
+      }
+
+      const { response, data } = await proxyFetch('/places/admin', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch places');
+      setPlaces(data.data);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching places:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load places');
+      setLoading(false);
+    }
+  };
+
+  const handleAddPlace = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('userToken');
+      if (!token) {
+        router.push('/');
+        return;
+      }
+
+      // Debug log
+      console.log('Sending data:', {
+        name: formData.name,
+        description: formData.description,
+        location: formData.location,
+        images: formData.image,
+        categories: formData.categoryIds
+      });
+
+      const { response, data } = await proxyFetch('/places', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          description: formData.description,
+          location: formData.location,
+          images: formData.image,
+          categories: formData.categoryIds
+        }),
+      });
+
+      // Debug log
+      console.log('Response status:', response.status);
+      console.log('Response data:', data);
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to add place');
+      }
+
+      if (data.success) {
+        await fetchPlaces();
+        setShowAddModal(false);
+        setFormData({
+          name: '',
+          description: '',
+          location: '',
+          image: '',
+          categoryIds: [],
+        });
+        setError(null);
+      } else {
+        throw new Error(data.error || 'Failed to add place');
+      }
+    } catch (error) {
+      console.error('Detailed error:', error);
+      setError(error instanceof Error ? error.message : 'Failed to add place');
+    }
+  };
+
+  const handleUpdatePlace = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPlace) return;
+
+    try {
+      const token = localStorage.getItem('userToken');
+      const response = await fetch(`${API_URL}places/${selectedPlace.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) throw new Error('Failed to update place');
+      await fetchPlaces();
+      setShowEditModal(false);
+    } catch (error) {
+      console.error('Error updating place:', error);
+      setError(error instanceof Error ? error.message : 'Failed to update place');
+    }
+  };
+
+  const handleEditClick = (place: Place) => {
+    setSelectedPlace(place);
+    setFormData({
+      name: place.name,
+      description: place.description,
+      location: place.location,
+      image: place.image,
+      categoryIds: place.categories.map(cat => cat.id),
+    });
+    setShowEditModal(true);
+  };
+
+  const handleDeleteClick = (placeId: string) => {
+    setPlaceToDelete(placeId);
+    setShowDeleteModal(true);
+  };
+
+  const handleDelete = async () => {
+    if (!placeToDelete) return;
+
+    try {
+      const token = localStorage.getItem('userToken');
+      const response = await fetch(`${API_URL}places/${placeToDelete}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) throw new Error('Failed to delete place');
+      await fetchPlaces();
+      setShowDeleteModal(false);
+      setPlaceToDelete(null);
+    } catch (error) {
+      console.error('Error deleting place:', error);
+      setError(error instanceof Error ? error.message : 'Failed to delete place');
+    }
+  };
+
+  const handlePlaceClick = async (placeId: string) => {
+    try {
+      const token = localStorage.getItem('userToken');
+      const response = await fetch(`${API_URL}places/${placeId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch place details');
+      const data = await response.json();
+      setSelectedPlace(data.data);
+      setShowDetailModal(true);
+    } catch (error) {
+      console.error('Error fetching place details:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load place details');
+    }
+  };
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      setUploading(true);
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', 'Ghassen123');
+      formData.append('cloud_name', 'dqh6arave');
+
+      const response = await fetch(
+        'https://api.cloudinary.com/v1_1/dqh6arave/image/upload',
+        {
+          method: 'POST',
+          body: formData,
+        }
+      );
+
+      const data = await response.json();
+      
+      if (data.secure_url) {
+        setFormData(prev => ({ ...prev, image: data.secure_url }));
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      setError('Failed to upload image');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleStatusUpdate = async (placeId: string, newStatus: 'pending' | 'approved' | 'rejected') => {
+    try {
+      const token = localStorage.getItem('userToken');
+      const { response, data } = await proxyFetch(`/places/${placeId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update status');
+      await fetchPlaces();
+    } catch (error) {
+      console.error('Error updating status:', error);
+      setError(error instanceof Error ? error.message : 'Failed to update status');
+    }
+  };
+
+  const filteredPlaces = places.filter(place => 
+    activeStatus === 'all' ? true : place.status === activeStatus
+  );
+
+  const statusCounts = {
+    all: places.length,
+    pending: places.filter(p => p.status === 'pending').length,
+    approved: places.filter(p => p.status === 'approved').length,
+    rejected: places.filter(p => p.status === 'rejected').length,
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#0A192F' }}>
+        <div className="text-white">Loading...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-screen" style={{ backgroundColor: '#0A192F' }}>
+      <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
+
+      <div className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-16'}`}>
+        <div className="p-8">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold text-[#64FFDA]">Place Management</h1>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="px-4 py-2 bg-[#64FFDA] text-[#0A192F] rounded-lg hover:bg-opacity-90 transition-colors"
+            >
+              Add New Place
+            </button>
+          </div>
+
+          <div className="mb-6 flex space-x-4">
+            {(['all', 'pending', 'approved', 'rejected'] as const).map((status) => (
+              <button
+                key={status}
+                onClick={() => setActiveStatus(status)}
+                className={`px-4 py-2 rounded-lg transition-colors ${
+                  activeStatus === status
+                    ? 'bg-[#64FFDA] text-[#0A192F]'
+                    : 'bg-[#112240] text-[#CCD6F6] hover:bg-[#1D2D50]'
+                }`}
+              >
+                {status.charAt(0).toUpperCase() + status.slice(1)}
+                <span className="ml-2 px-2 py-1 rounded-full bg-[#1D2D50] text-[#64FFDA] text-sm">
+                  {statusCounts[status]}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {error && (
+            <div className="mb-4 p-4 bg-red-500 bg-opacity-10 text-red-400 rounded-lg">
+              {error}
+            </div>
+          )}
+
+          <div className="grid gap-6">
+            {filteredPlaces.map((place) => (
+              <div 
+                key={place.id}
+                className={`bg-[#112240] rounded-lg p-6 shadow-lg border-l-4 ${
+                  place.status === 'pending' ? 'border-yellow-500' :
+                  place.status === 'approved' ? 'border-green-500' :
+                  'border-red-500'
+                }`}
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h2 className="text-xl text-[#CCD6F6] font-semibold mb-2">
+                      {place.name}
+                    </h2>
+                    <p className="text-[#8892B0] text-sm">
+                      {place.location}
+                    </p>
+                    <span className={`inline-block mt-2 px-3 py-1 rounded-full text-sm ${
+                      place.status === 'pending' ? 'bg-yellow-500/20 text-yellow-500' :
+                      place.status === 'approved' ? 'bg-green-500/20 text-green-500' :
+                      'bg-red-500/20 text-red-500'
+                    }`}>
+                      {place.status.charAt(0).toUpperCase() + place.status.slice(1)}
+                    </span>
+                  </div>
+                  <div className="flex space-x-2">
+                    <div className="flex space-x-2 mr-4">
+                      {place.status !== 'approved' && (
+                        <button
+                          onClick={() => handleStatusUpdate(place.id, 'approved')}
+                          className="px-3 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                        >
+                          Approve
+                        </button>
+                      )}
+                      {place.status !== 'rejected' && (
+                        <button
+                          onClick={() => handleStatusUpdate(place.id, 'rejected')}
+                          className="px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                        >
+                          Reject
+                        </button>
+                      )}
+                      {place.status !== 'pending' && (
+                        <button
+                          onClick={() => handleStatusUpdate(place.id, 'pending')}
+                          className="px-3 py-1 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors"
+                        >
+                          Pending
+                        </button>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => handleEditClick(place)}
+                      className="px-4 py-2 bg-[#64FFDA] text-[#0A192F] rounded-lg hover:bg-opacity-90 transition-colors"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteClick(place.id)}
+                      className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+
+                {place.image && (
+                  <img
+                    src={place.image}
+                    alt={place.name}
+                    className="w-full h-48 object-cover rounded-lg mb-4"
+                  />
+                )}
+
+                <p className="text-[#CCD6F6] mb-4">{place.description}</p>
+
+                <div className="flex flex-wrap gap-2">
+                  {place.categories.map((category, index) => (
+                    <span
+                      key={index}
+                      className="bg-[#1D2D50] text-[#64FFDA] px-2 py-1 rounded-full text-sm"
+                    >
+                      {category.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Add/Edit Place Modal */}
+      {(showAddModal || showEditModal) && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-hidden">
+          <div className="bg-[#112240] p-6 rounded-lg max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-xl text-[#64FFDA] font-semibold mb-4">
+              {showAddModal ? 'Add New Place' : 'Edit Place'}
+            </h3>
+            <form onSubmit={showAddModal ? handleAddPlace : handleUpdatePlace} className="space-y-4">
+              <div>
+                <label className="block text-[#CCD6F6] mb-2">Name</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full p-2 rounded-lg bg-[#1D2D50] text-[#CCD6F6] border border-[#64FFDA]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-[#CCD6F6] mb-2">Description</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="w-full p-2 rounded-lg bg-[#1D2D50] text-[#CCD6F6] border border-[#64FFDA] h-32"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-[#CCD6F6] mb-2">Location</label>
+                <input
+                  type="text"
+                  value={formData.location}
+                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                  className="w-full p-2 rounded-lg bg-[#1D2D50] text-[#CCD6F6] border border-[#64FFDA]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-[#CCD6F6] mb-2">Image</label>
+                <div className="relative">
+                  {formData.image && (
+                    <div className="w-full h-48 mb-4 relative rounded-lg overflow-hidden">
+                      <img
+                        src={formData.image}
+                        alt="Place preview"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                  <label 
+                    htmlFor="place-image-upload" 
+                    className="px-4 py-2 bg-[#1D2D50] text-[#CCD6F6] rounded-lg cursor-pointer hover:bg-opacity-80 transition-all duration-200 inline-flex items-center"
+                  >
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      className="h-5 w-5 mr-2 text-[#64FFDA]" 
+                      fill="none" 
+                      viewBox="0 0 24 24" 
+                      stroke="currentColor"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" 
+                      />
+                    </svg>
+                    Upload Image
+                  </label>
+                  <input
+                    id="place-image-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                  {uploading && (
+                    <div className="mt-2 text-[#64FFDA] text-sm flex items-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#64FFDA] mr-2"></div>
+                      Uploading...
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[#CCD6F6] mb-2">Categories</label>
+                <div className="flex flex-wrap gap-2">
+                  {categories.map((category) => (
+                    <label key={category.id} className="inline-flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={formData.categoryIds.includes(category.id)}
+                        onChange={(e) => {
+                          const newCategoryIds = e.target.checked
+                            ? [...formData.categoryIds, category.id]
+                            : formData.categoryIds.filter(id => id !== category.id);
+                          setFormData({ ...formData, categoryIds: newCategoryIds });
+                        }}
+                        className="mr-2"
+                      />
+                      <span className="text-[#CCD6F6]">{category.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddModal(false);
+                    setShowEditModal(false);
+                    setFormData({
+                      name: '',
+                      description: '',
+                      location: '',
+                      image: '',
+                      categoryIds: [],
+                    });
+                  }}
+                  className="px-4 py-2 bg-[#1D2D50] text-[#CCD6F6] rounded-lg hover:bg-opacity-80 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-[#64FFDA] text-[#0A192F] rounded-lg hover:bg-opacity-90 transition-colors"
+                >
+                  {showAddModal ? 'Add Place' : 'Update Place'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Place Detail Modal */}
+      {showDetailModal && selectedPlace && (
+        <div 
+          className="fixed inset-0 z-50 overflow-hidden"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.75)' }}
+        >
+          <div className="fixed inset-0 flex items-center justify-center p-4">
+            <div 
+              className="bg-[#112240] rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6 border-b border-[#1D2D50]">
+                <div className="flex justify-between items-start">
+                  <h2 className="text-2xl font-bold text-[#64FFDA]">{selectedPlace.name}</h2>
+                  <button
+                    onClick={() => setShowDetailModal(false)}
+                    className="text-[#8892B0] hover:text-[#64FFDA]"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6">
+                {selectedPlace.image && (
+                  <img
+                    src={selectedPlace.image}
+                    alt={selectedPlace.name}
+                    className="w-full h-64 object-cover rounded-lg mb-4"
+                  />
+                )}
+
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-[#64FFDA] font-semibold mb-2">Location</h3>
+                    <p className="text-[#CCD6F6]">{selectedPlace.location}</p>
+                  </div>
+
+                  <div>
+                    <h3 className="text-[#64FFDA] font-semibold mb-2">Description</h3>
+                    <p className="text-[#CCD6F6]">{selectedPlace.description}</p>
+                  </div>
+
+                  <div>
+                    <h3 className="text-[#64FFDA] font-semibold mb-2">Categories</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedPlace.categories.map((category, index) => (
+                        <span
+                          key={index}
+                          className="bg-[#1D2D50] text-[#64FFDA] px-2 py-1 rounded-full text-sm"
+                        >
+                          {category.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-[#64FFDA] font-semibold mb-2">
+                      Reviews ({selectedPlace.reviews.length})
+                    </h3>
+                    <div className="space-y-4">
+                      {selectedPlace.reviews.map((review, index) => (
+                        <div key={index} className="bg-[#1D2D50] rounded-lg p-4">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="text-[#CCD6F6] font-semibold">
+                                {review.user.first_name} {review.user.last_name}
+                              </div>
+                              <div className="text-[#8892B0] text-sm">
+                                {new Date(review.createdAt).toLocaleString()}
+                              </div>
+                            </div>
+                            <div className="text-[#64FFDA]">
+                              Rating: {review.rating}/5
+                            </div>
+                          </div>
+                          <p className="text-[#CCD6F6] mt-2">{review.comment}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-hidden">
+          <div className="bg-[#112240] p-6 rounded-lg max-w-md w-full mx-4">
+            <h3 className="text-xl text-[#64FFDA] font-semibold mb-4">
+              Confirm Delete
+            </h3>
+            <p className="text-[#CCD6F6] mb-6">
+              Are you sure you want to delete this place? This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-4">
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setPlaceToDelete(null);
+                }}
+                className="px-4 py-2 bg-[#1D2D50] text-[#CCD6F6] rounded-lg hover:bg-opacity-80 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}   
