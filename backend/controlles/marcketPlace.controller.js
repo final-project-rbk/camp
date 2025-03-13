@@ -1,6 +1,6 @@
-const { MarketplaceItem, User, Chat, Review,MarketplaceItemCategorie,Categorie, Media, MarketplaceCategorie } = require('../models');
+const { MarketplaceItem, User, Chat, Review, MarketplaceCategorie, Media ,MarketplaceItemCategorie} = require('../models');
 const { connection } = require('../models'); 
-const {Op,Sequelize}=require('sequelize');
+const { Op, Sequelize } = require('sequelize');
 
 
 // Get all available items
@@ -114,16 +114,11 @@ module.exports.getItemsByCategory = async (req, res) => {
 module.exports.createItem = async (req, res) => {
   try {
     const { title, description, price, location, categoryIds, images } = req.body;
-    const { sellerId } = req.params;
+    const sellerId = req.user.id; // Get from auth middleware instead of params
 
     // Input validation
     if (!title || !description || !price || !location) {
       return res.status(400).json({ error: 'Missing required fields' });
-    }
-
-    // Validate sellerId
-    if (!sellerId || isNaN(sellerId)) {
-      return res.status(400).json({ error: 'Valid sellerId is required' });
     }
 
     // Validate categoryIds
@@ -138,15 +133,14 @@ module.exports.createItem = async (req, res) => {
 
     // Start transaction
     const result = await connection.transaction(async (t) => {
-      // Create the item
       const item = await MarketplaceItem.create({
         title,
         description,
         price: parseFloat(price),
         location,
-        sellerId: parseInt(sellerId),
+        sellerId, // Using authenticated user's ID
         status: 'available',
-        imageURL: images[0] // Set first image as main image (optional)
+        imageURL: images[0]
       }, { transaction: t });
 
       // Create media entries
@@ -159,9 +153,7 @@ module.exports.createItem = async (req, res) => {
 
       // Find and validate categories
       const categories = await MarketplaceCategorie.findAll({
-        where: { 
-          id: categoryIds.map(id => parseInt(id)) 
-        },
+        where: { id: categoryIds },
         transaction: t
       });
 
@@ -177,7 +169,6 @@ module.exports.createItem = async (req, res) => {
         }, { transaction: t })
       ));
 
-      // Fetch complete item with associations
       return await MarketplaceItem.findByPk(item.id, {
         include: [
           {
@@ -204,31 +195,35 @@ module.exports.createItem = async (req, res) => {
     res.status(201).json(result);
   } catch (error) {
     console.error('Error creating item:', error);
-    if (error.message === 'One or more invalid category IDs') {
-      res.status(400).json({ error: error.message });
-    } else if (error.name === 'SequelizeValidationError') {
-      res.status(400).json({ error: 'Validation error', details: error.errors });
-    } else if (error.name === 'SequelizeForeignKeyConstraintError') {
-      res.status(400).json({ error: 'Invalid seller ID or category ID' });
-    } else {
-      res.status(500).json({ 
-        error: 'Internal server error', 
-        details: error.message 
-      });
-    }
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
-// Purchase an item
+
+// Buy item using auth header
 module.exports.buyItem = async (req, res) => {
   try {
-    const item = await MarketplaceItem.findByPk(req.params.id);
-    if (!item) return res.status(404).json({ error: 'Item not found' });
-    if (item.status !== 'available') return res.status(400).json({ error: 'Item not available' });
+    const { itemId } = req.params;
+    const buyerId = req.user.id; // Get from auth middleware
 
-    const buyerId = req.user.id; // Requires auth middleware
-    if (buyerId === item.sellerId) return res.status(400).json({ error: 'Cannot buy your own item' });
+    const item = await MarketplaceItem.findByPk(itemId);
+    if (!item) {
+      return res.status(404).json({ error: 'Item not found' });
+    }
 
-    await item.update({ status: 'sold', buyerId });
+    if (item.status !== 'available') {
+      return res.status(400).json({ error: 'Item not available' });
+    }
+
+    if (buyerId === item.sellerId) {
+      return res.status(400).json({ error: 'Cannot buy your own item' });
+    }
+
+    await item.update({ 
+      status: 'sold', 
+      buyerId,
+      soldAt: new Date()
+    });
+
     res.status(200).json({ message: 'Item purchased successfully', item });
   } catch (error) {
     console.error('Error buying item:', error);
@@ -255,20 +250,26 @@ module.exports.getSellerProfile = async (req, res) => {
   }
 };
 
-// Start or send a chat message
+// Send chat message using auth header
 module.exports.sendChatMessage = async (req, res) => {
   try {
     const { itemId, message } = req.body;
-    const senderId = req.user.id; // Requires auth middleware
+    const senderId = req.user.id; // Get from auth middleware
+
     const item = await MarketplaceItem.findByPk(itemId);
-    if (!item) return res.status(404).json({ error: 'Item not found' });
+    if (!item) {
+      return res.status(404).json({ error: 'Item not found' });
+    }
+
+    const recipientId = item.sellerId === senderId ? item.buyerId : item.sellerId;
 
     const chat = await Chat.create({
       message,
       senderId,
-      recipientId: item.sellerId === senderId ? item.buyerId : item.sellerId, // Chat with buyer or seller
-      itemId,
+      recipientId,
+      itemId
     });
+
     res.status(201).json(chat);
   } catch (error) {
     console.error('Error sending chat message:', error);
@@ -276,24 +277,36 @@ module.exports.sendChatMessage = async (req, res) => {
   }
 };
 
-// Get chat history for an item
+// Get chat history using auth header
 module.exports.getChatHistory = async (req, res) => {
   try {
-    const itemId = req.params.itemId;
-    const userId = req.user.id; // Requires auth middleware
+    const { itemId } = req.params;
+    const userId = req.user.id; // Get from auth middleware
+
     const chats = await Chat.findAll({
-      where: { itemId },
+      where: {
+        itemId,
+        [Op.or]: [
+          { senderId: userId },
+          { recipientId: userId }
+        ]
+      },
       include: [
-        { model: User, as: 'sender', attributes: ['id', 'first_name', 'last_name'] },
-        { model: User, as: 'recipient', attributes: ['id', 'first_name', 'last_name'] },
+        {
+          model: User,
+          as: 'sender',
+          attributes: ['id', 'first_name', 'last_name', 'profile_image']
+        },
+        {
+          model: User,
+          as: 'recipient',
+          attributes: ['id', 'first_name', 'last_name', 'profile_image']
+        }
       ],
+      order: [['createdAt', 'ASC']]
     });
 
-    // Filter chats to only those involving the current user
-    const userChats = chats.filter(chat => 
-      chat.senderId === userId || chat.recipientId === userId
-    );
-    res.status(200).json(userChats);
+    res.status(200).json(chats);
   } catch (error) {
     console.error('Error fetching chat history:', error);
     res.status(500).json({ error: 'Internal server error' });

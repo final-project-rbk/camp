@@ -10,8 +10,11 @@ const placeRoutes = require('./routes/Place.routes');
 const userRoutes = require('./routes/user.routes');
 const formularAdvisorRoutes = require('./routes/formularAdvisor.routes');
 const authRoutes = require('./routes/auth.routes');
+const uploadRoutes = require('./routes/upload');
 // const advisorMediaRoutes = require('./routes/advisorMedia.routes');
 const adminRoutes = require('./routes/admin.routes');
+
+
 const app = express();
 
 // Configure CORS
@@ -26,6 +29,7 @@ app.use(express.urlencoded({extended: true}))
 
 // Connect all our routes to our application
 app.use('/api/advisor', advisorRoutes);
+app.use('/api/upload', uploadRoutes);
 app.use('/api/marketplace', marcketPlaceRoutes);
 
 // Test database connection
@@ -48,6 +52,8 @@ app.use('/api/users', userRoutes);
 app.use('/api/formularAdvisor', formularAdvisorRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/marketplace', marcketPlaceRoutes);
+
 
 const port = process.env.PORT || 3000;
 
