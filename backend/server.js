@@ -7,11 +7,11 @@ const db = require("./models/index");
 const blogRoutes = require('./routes/blogs.routes');
 const marcketPlaceRoutes = require('./routes/marchetPlace.routes');
 const placeRoutes = require('./routes/Place.routes');
-const { Place, Media, Review, Categorie, Critiria, PlaceUser } = require('./models');
+
 const userRoutes = require('./routes/user.routes');
 const formularAdvisorRoutes = require('./routes/formularAdvisor.routes');
 const authRoutes = require('./routes/auth.routes');
-const uploadRoutes = require('./routes/upload');
+
 // const advisorMediaRoutes = require('./routes/advisorMedia.routes');
 const adminRoutes = require('./routes/admin.routes');
 const eventRoutes = require('./routes/event.routes');
@@ -29,7 +29,7 @@ app.use(express.urlencoded({extended: true}))
 
 // Connect all our routes to our application
 app.use('/api/advisor', advisorRoutes);
-app.use('/api/upload', uploadRoutes);
+
 app.use('/api/marketplace', marcketPlaceRoutes);
 
 // Test database connection
