@@ -5,6 +5,8 @@ import { BookOpen, PlusCircle, Pencil, Trash2, TrendingUp, Eye, Search, Clock, F
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { getAllHints, createHint, updateHint, deleteHint, Hint } from '@/services/hintsService';
 import { Toaster, toast } from 'react-hot-toast';
+import CloudinaryUpload from '@/components/CloudinaryUpload';
+import GalleryUpload from '@/components/GalleryUpload';
 
 const DIFFICULTY_COLORS = {
   beginner: 'bg-green-500',
@@ -33,6 +35,12 @@ export default function HintsDashboard() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  const [formImageUrl, setFormImageUrl] = useState<string>('');
+  const [gallerySteps, setGallerySteps] = useState<any[]>([]);
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [hintToDelete, setHintToDelete] = useState<number | null>(null);
 
   const categories = ['fire', 'shelter', 'food', 'gear'] as const;
   const difficulties = ['beginner', 'intermediate', 'advanced'] as const;
@@ -70,6 +78,17 @@ export default function HintsDashboard() {
     // Clean up on unmount
     return () => clearInterval(interval);
   }, [fetchHints]);
+
+  // Update to initialize state when editing
+  useEffect(() => {
+    if (editingHint) {
+      setFormImageUrl(editingHint.image || '');
+      setGallerySteps(editingHint.gallerySteps || []);
+    } else {
+      setFormImageUrl('');
+      setGallerySteps([]);
+    }
+  }, [editingHint]);
 
   const filteredHints = hints
     .filter(hint => 
@@ -135,18 +154,25 @@ export default function HintsDashboard() {
   };
 
   const handleDeleteHint = async (id: number) => {
-    if (window.confirm('Are you sure you want to delete this hint?')) {
-      try {
-        setLoading(true);
-        await deleteHint(id);
-        setHints(hints.filter((hint) => hint.id !== id));
-        toast.success('Hint deleted successfully!');
-      } catch (error) {
-        console.error('Error deleting hint:', error);
-        toast.error('Failed to delete hint. Please try again.');
-      } finally {
-        setLoading(false);
-      }
+    setHintToDelete(id);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!hintToDelete) return;
+    
+    try {
+      setIsSubmitting(true);
+      await deleteHint(hintToDelete);
+      setHints(hints.filter((hint) => hint.id !== hintToDelete));
+      toast.success('Hint deleted successfully!');
+      setShowDeleteModal(false);
+      setHintToDelete(null);
+    } catch (error) {
+      console.error('Error deleting hint:', error);
+      toast.error('Failed to delete hint. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -459,22 +485,14 @@ export default function HintsDashboard() {
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
-                    const formData = new FormData(e.currentTarget);
                     
-                    // Start with empty gallery steps
-                    let gallerySteps = [];
-                    
-                    // Try to parse gallery steps from form
-                    try {
-                      const galleryStepsText = formData.get('gallerySteps') as string;
-                      if (galleryStepsText && galleryStepsText.trim() !== '') {
-                        gallerySteps = JSON.parse(galleryStepsText);
-                      }
-                    } catch (error) {
-                      console.error('Error parsing gallery steps:', error);
-                      alert('Invalid JSON format for gallery steps. Please check and try again.');
+                    // Validate required fields
+                    if (!formImageUrl) {
+                      toast.error('Please upload an image');
                       return;
                     }
+                    
+                    const formData = new FormData(e.currentTarget);
                     
                     const hintData = {
                       title: formData.get('title') as string,
@@ -482,8 +500,8 @@ export default function HintsDashboard() {
                       category: formData.get('category') as 'fire' | 'shelter' | 'food' | 'gear',
                       difficulty: formData.get('difficulty') as 'beginner' | 'intermediate' | 'advanced',
                       timeToComplete: formData.get('timeToComplete') as string,
-                      image: formData.get('image') as string,
-                      gallerySteps
+                      image: formImageUrl,
+                      gallerySteps: gallerySteps
                     };
                     
                     if (editingHint) {
@@ -592,49 +610,19 @@ export default function HintsDashboard() {
                       <label className="block text-sm font-medium mb-1" style={{ color: '#CCD6F6' }}>
                         Image URL
                       </label>
-                      <input
-                        type="url"
-                        name="image"
-                        defaultValue={editingHint?.image}
-                        className="w-full px-3 py-2 rounded-md focus:outline-none focus:ring-2"
-                        style={{
-                          backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                          color: '#CCD6F6',
-                          borderColor: 'rgba(255, 255, 255, 0.1)'
-                        }}
-                        required
+                      <CloudinaryUpload
+                        onImageUpload={(url) => setFormImageUrl(url)}
+                        currentImage={formImageUrl}
                       />
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-1" style={{ color: '#CCD6F6' }}>
-                        Gallery Steps (JSON format)
+                        Gallery Steps
                       </label>
-                      <textarea
-                        name="gallerySteps"
-                        defaultValue={editingHint?.gallerySteps ? JSON.stringify(editingHint.gallerySteps, null, 2) : '[]'}
-                        className="w-full px-3 py-2 rounded-md focus:outline-none focus:ring-2 font-mono text-sm"
-                        style={{
-                          backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                          color: '#CCD6F6',
-                          borderColor: 'rgba(255, 255, 255, 0.1)'
-                        }}
-                        rows={5}
-                        placeholder='[
-  { 
-    "title": "Step 1", 
-    "description": "First step description", 
-    "image": "https://example.com/image1.jpg" 
-  },
-  { 
-    "title": "Step 2", 
-    "description": "Second step description", 
-    "image": "https://example.com/image2.jpg" 
-  }
-]'
+                      <GalleryUpload
+                        initialSteps={gallerySteps}
+                        onChange={(steps) => setGallerySteps(steps)}
                       />
-                      <p className="text-xs mt-1" style={{ color: '#8892B0' }}>
-                        Enter an array of steps with title, description, and image properties.
-                      </p>
                     </div>
                   </div>
                   <div className="flex justify-end gap-2 mt-6">
@@ -643,6 +631,11 @@ export default function HintsDashboard() {
                       onClick={() => {
                         setShowAddModal(false);
                         setEditingHint(null);
+                        // Clear form state if not editing
+                        if (!editingHint) {
+                          setFormImageUrl('');
+                          setGallerySteps([]);
+                        }
                       }}
                       className="px-4 py-2 text-gray-400 hover:text-white"
                       style={{ color: '#8892B0' }}
@@ -670,6 +663,69 @@ export default function HintsDashboard() {
                     </button>
                   </div>
                 </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+            <div 
+              className="bg-[#112240] rounded-lg max-w-md w-full overflow-hidden shadow-xl transform transition-all"
+              style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}
+            >
+              <div className="p-6">
+                <div className="flex items-center justify-center mb-4 text-red-500">
+                  <Trash2 size={40} />
+                </div>
+                <h3 className="text-xl font-semibold mb-2 text-center" style={{ color: '#CCD6F6' }}>
+                  Confirm Deletion
+                </h3>
+                <p className="text-center mb-6" style={{ color: '#8892B0' }}>
+                  Are you sure you want to delete this hint? This action cannot be undone.
+                </p>
+                <div className="flex justify-center gap-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowDeleteModal(false);
+                      setHintToDelete(null);
+                    }}
+                    className="px-4 py-2 rounded-md border transition-colors"
+                    style={{ 
+                      borderColor: 'rgba(100, 255, 218, 0.3)',
+                      color: '#64FFDA' 
+                    }}
+                    disabled={isSubmitting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmDelete}
+                    className="px-4 py-2 rounded-md transition-colors flex items-center gap-2"
+                    style={{
+                      backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                      color: '#FF6B6B',
+                      borderColor: '#FF6B6B',
+                      border: '1px solid'
+                    }}
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <div className="animate-spin h-4 w-4 border-2 border-red-400 border-l-transparent rounded-full"></div>
+                        <span>Deleting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 size={16} />
+                        <span>Delete</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
