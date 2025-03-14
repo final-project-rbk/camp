@@ -13,10 +13,11 @@ const authRoutes = require('./routes/auth.routes');
 // const advisorMediaRoutes = require('./routes/advisorMedia.routes');
 const adminRoutes = require('./routes/admin.routes');
 const app = express();
+const hintRoutes = require('./routes/hintRoutes');
 
 // Configure CORS
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: '*',  // Be careful with this in production
   credentials: true
 }));
 
@@ -48,6 +49,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/formularAdvisor', formularAdvisorRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/hints', hintRoutes);
 
 const port = process.env.PORT || 3000;
 
