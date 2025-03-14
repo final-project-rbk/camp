@@ -176,6 +176,36 @@ const hintController = {
                 error: 'Error inserting hints'
             });
         }
+    },
+
+    // Increment view count for a hint
+    incrementViewCount: async (req, res) => {
+        try {
+            const hint = await Hint.findByPk(req.params.id);
+            if (!hint) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'Hint not found'
+                });
+            }
+            
+            // Increment the views count
+            hint.views = (hint.views || 0) + 1;
+            await hint.save();
+            
+            // Return the updated hint
+            res.status(200).json({
+                success: true,
+                message: 'View count incremented successfully',
+                data: hint
+            });
+        } catch (error) {
+            console.error('Error incrementing view count:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Error incrementing view count'
+            });
+        }
     }
 };
 

@@ -145,6 +145,9 @@ AdvisorMedia.belongsTo(FormularAdvisor, { foreignKey: "formularId" });
 Advisor.hasOne(FormularAdvisor, { foreignKey: "advisorId" });
 FormularAdvisor.belongsTo(Advisor, { foreignKey: "advisorId" });
 
+Place.hasMany(Favorite, { foreignKey: "placeId" });
+Favorite.belongsTo(Place, { foreignKey: "placeId" });
+
   User.hasMany(Chat, { foreignKey: "senderId", as: "sentChats" });
   Chat.belongsTo(User, { foreignKey: "senderId", as: "sender" });
 

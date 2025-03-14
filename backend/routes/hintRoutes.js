@@ -13,4 +13,7 @@ router.get('/', hintController.getAllHints);
 router.get('/most-viewed', hintController.getMostViewedHints);
 router.get('/:id', hintController.getHintById);
 
+// View increment route
+router.post('/:id/view', hintController.incrementViewCount);
+
 module.exports = router;

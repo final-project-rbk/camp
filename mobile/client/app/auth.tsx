@@ -8,26 +8,34 @@ import {
   Dimensions,
   KeyboardAvoidingView,
   Platform,
-  Alert
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { EXPO_PUBLIC_API_URL } from '../config';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { validatePassword } from '../utils/passwordValidation';
+import { useAuth } from '../context/AuthContext';
 
 const { width } = Dimensions.get('window');
 
 export default function Auth() {
   const router = useRouter();
   const [isLogin, setIsLogin] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     firstName: '',
     lastName: '',
   });
+  const [passwordStrength, setPasswordStrength] = useState<'weak' | 'medium' | 'strong' | null>(null);
+  const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
+  const { signIn } = useAuth();
 
   const handleAuth = async () => {
     try {
+      setLoading(true);
+      
       // Basic validation
       if (!formData.email || !formData.password) {
         Alert.alert('Error', 'Please fill in all required fields');
@@ -41,21 +49,20 @@ export default function Auth() {
 
       const endpoint = isLogin ? 'login' : 'signup';
       
-      // Transform the data to match backend expectations
+      // Prepare request body
       const requestBody = isLogin 
         ? { 
             email: formData.email, 
             password: formData.password 
           }
         : {
-            first_name: formData.firstName,  // Changed to match backend
-            last_name: formData.lastName,    // Changed to match backend
+            first_name: formData.firstName,
+            last_name: formData.lastName,
             email: formData.email,
             password: formData.password
           };
 
       console.log('Sending request to:', `${EXPO_PUBLIC_API_URL}auth/${endpoint}`);
-      console.log('Request body:', requestBody);
 
       const response = await fetch(`${EXPO_PUBLIC_API_URL}auth/${endpoint}`, {
         method: 'POST',
@@ -68,21 +75,40 @@ export default function Auth() {
       const data = await response.json();
       console.log('Response:', data);
 
-      if (data.success) {
-        // Make sure we're storing both token and user data
-        await AsyncStorage.setItem('userToken', data.data.token);
-        await AsyncStorage.setItem('userData', JSON.stringify(data.data.user));
-        
-        console.log('Stored user data:', data.data.user); // Debug log
-        console.log('Stored token:', data.data.token); // Debug log
-        
+      if (data.success && data.data) {
+        // Store auth data using the context
+        await signIn(data.data.accessToken || data.data.token, data.data.user);
         router.replace('/home');
       } else {
         Alert.alert('Error', data.error || 'Authentication failed');
       }
     } catch (error) {
       console.error('Authentication error:', error);
-      Alert.alert('Error', 'Connection failed. Please check your network and try again.');
+      Alert.alert('Error', 'Connection failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasswordChange = (text: string) => {
+    setFormData(prev => ({ ...prev, password: text }));
+    
+    if (text.length > 0) {
+      const validation = validatePassword(text);
+      setPasswordStrength(validation.strength);
+      setPasswordErrors(validation.errors);
+    } else {
+      setPasswordStrength(null);
+      setPasswordErrors([]);
+    }
+  };
+
+  const getStrengthColor = () => {
+    switch (passwordStrength) {
+      case 'strong': return '#64FFDA';
+      case 'medium': return '#FFB347';
+      case 'weak': return '#FF6B6B';
+      default: return '#8892B0';
     }
   };
 
@@ -130,22 +156,55 @@ export default function Auth() {
           placeholder="Password"
           placeholderTextColor="#8892B0"
           value={formData.password}
-          onChangeText={(text) => setFormData(prev => ({ ...prev, password: text }))}
+          onChangeText={handlePasswordChange}
           secureTextEntry
         />
 
+        {formData.password.length > 0 && (
+          <View style={styles.passwordFeedback}>
+            <View style={styles.strengthIndicator}>
+              <Text style={styles.strengthLabel}>Strength:</Text>
+              <View style={[
+                styles.strengthBar,
+                { backgroundColor: getStrengthColor() }
+              ]} />
+              <Text style={[
+                styles.strengthText,
+                { color: getStrengthColor() }
+              ]}>
+                {passwordStrength || 'weak'}
+              </Text>
+            </View>
+            {passwordErrors.length > 0 && (
+              <View style={styles.errorList}>
+                {passwordErrors.map((error, index) => (
+                  <Text key={index} style={styles.errorText}>
+                    • {error}
+                  </Text>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
         <TouchableOpacity 
-          style={styles.button}
+          style={[styles.button, loading && styles.buttonDisabled]}
           onPress={handleAuth}
+          disabled={loading}
         >
-          <Text style={styles.buttonText}>
-            {isLogin ? 'Log In' : 'Sign Up'}
-          </Text>
+          {loading ? (
+            <ActivityIndicator color="#0A192F" />
+          ) : (
+            <Text style={styles.buttonText}>
+              {isLogin ? 'Log In' : 'Sign Up'}
+            </Text>
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity 
           style={styles.switchButton}
           onPress={() => setIsLogin(!isLogin)}
+          disabled={loading}
         >
           <Text style={styles.switchText}>
             {isLogin ? "Don't have an account? Sign Up" : "Already have an account? Log In"}
@@ -201,5 +260,40 @@ const styles = StyleSheet.create({
   switchText: {
     color: '#64FFDA',
     fontSize: 14,
+  },
+  passwordFeedback: {
+    width: '100%',
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  strengthIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  strengthLabel: {
+    color: '#8892B0',
+    marginRight: 8,
+  },
+  strengthBar: {
+    height: 4,
+    width: 100,
+    borderRadius: 2,
+    marginRight: 8,
+  },
+  strengthText: {
+    fontSize: 14,
+    textTransform: 'capitalize',
+  },
+  errorList: {
+    marginTop: 8,
+  },
+  errorText: {
+    color: '#FF6B6B',
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  buttonDisabled: {
+    opacity: 0.7,
   },
 }); 
