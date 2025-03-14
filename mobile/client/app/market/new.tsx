@@ -16,8 +16,6 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
 import { EXPO_PUBLIC_API_URL } from '../../config';
-import { useAuth } from '../../context/AuthContext';
-
 
 interface Category {
   id: string;
@@ -38,7 +36,6 @@ const axiosInstance = axios.create({
 
 export default function NewItem() {
   const router = useRouter();
-  const { accessToken, user } = useAuth();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
@@ -51,21 +48,12 @@ export default function NewItem() {
   const [uploadProgress, setUploadProgress] = useState(0);
 
   useEffect(() => {
-    if (!accessToken) {
-      Alert.alert('Error', 'Please login to create an item');
-      router.replace('/auth');
-      return;
-    }
     fetchCategories();
   }, []);
 
   const fetchCategories = async () => {
     try {
-      const response = await axiosInstance.get(`${EXPO_PUBLIC_API_URL}marketplace/categories`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
-        }
-      });
+      const response = await axios.get(`${EXPO_PUBLIC_API_URL}marketplace/categories`);
       setCategories(response.data);
     } catch (error) {
       console.error('Error fetching categories:', error);
@@ -87,59 +75,43 @@ export default function NewItem() {
       const formData = new FormData();
       const ext = compressedImage.uri.split('.').pop() || 'jpg';
       
-      // Prepare the file
       formData.append('file', {
         uri: compressedImage.uri,
         type: `image/${ext}`,
         name: `marketplace_${Date.now()}.${ext}`,
       } as any);
-
-      // Use the correct unsigned upload preset
       formData.append('upload_preset', 'Ghassen123');
+      formData.append('cloud_name', 'dqh6arave');
 
-      console.log('Starting upload to Cloudinary...'); // Debug log
-
-      const response = await fetch(
+      const response = await axios.post(
         'https://api.cloudinary.com/v1_1/dqh6arave/image/upload',
+        formData,
         {
-          method: 'POST',
-          body: formData,
           headers: {
-            'Accept': 'application/json',
             'Content-Type': 'multipart/form-data',
+          },
+          onUploadProgress: (progressEvent) => {
+            const progress = progressEvent.total 
+              ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
+              : 0;
+            setUploadProgress(progress);
           },
         }
       );
 
-      const data = await response.json();
-      console.log('Cloudinary response:', data); // Debug: Check response
+      console.log('Cloudinary response:', response.data); // Debug: Check response
 
-      if (!data?.secure_url) {
-        console.error('Invalid Cloudinary response:', data);
-        throw new Error(data.error?.message || 'Failed to upload image');
+      if (!response.data?.secure_url) {
+        throw new Error('Invalid response from Cloudinary');
       }
 
-      return data.secure_url;
+      return response.data.secure_url;
     } catch (error: any) {
-      console.error('Upload error details:', error.response?.data || error.message);
-      Alert.alert(
-        'Error',
-        'Failed to upload image. Please try again later.'
-      );
-      throw error;
+      throw error// Detailed error logging
     }
   };
 
   const handleSubmit = async () => {
-    console.log('Current accessToken:', accessToken); // Debug log
-    console.log('Current user:', user); // Debug log
-
-    if (!accessToken) {
-      Alert.alert('Error', 'Please login to create an item');
-      router.replace('/auth');
-      return;
-    }
-
     if (!title || !description || !price || !location || selectedCategories.length === 0) {
       Alert.alert('Error', 'Please fill in all required fields and select at least one category');
       return;
@@ -152,34 +124,15 @@ export default function NewItem() {
 
     setSubmitting(true);
     try {
-      console.log('Submitting data:', {
+      const userId = '1'; // Temporary user ID
+      const response = await axiosInstance.post(`${EXPO_PUBLIC_API_URL}marketplace/items/${userId}`, {
         title,
         description,
-        price,
+        price: parseFloat(price),
         location,
-        categoryIds: selectedCategories,
-        images,
+        categoryIds: selectedCategories.map(id => parseInt(id)),
+        images: images,
       });
-
-      const response = await axiosInstance.post(
-        `${EXPO_PUBLIC_API_URL}marketplace/items`,
-        {
-          title,
-          description,
-          price: parseFloat(price),
-          location,
-          categoryIds: selectedCategories.map(id => parseInt(id)),
-          images: images,
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      console.log('Server response:', response.data); // Debug log
 
       if (response.data) {
         Alert.alert(
@@ -192,9 +145,10 @@ export default function NewItem() {
       console.error('Error creating item:', error);
       let errorMessage = 'Failed to create item. Please try again.';
       
-      if (error.response) {
-        console.log('Error response:', error.response.data);
-        errorMessage = error.response.data.error || error.response.data.details || errorMessage;
+      if (error.code === 'ECONNABORTED') {
+        errorMessage = 'Request timed out. Please check your internet connection and try again.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
       }
       
       Alert.alert('Error', errorMessage);
@@ -204,12 +158,6 @@ export default function NewItem() {
   };
 
   const pickImage = async () => {
-    if (!accessToken) {
-      Alert.alert('Error', 'Please login to upload images');
-      router.replace('/auth');
-      return;
-    }
-
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,

@@ -58,25 +58,31 @@ export default function Dashboard() {
 
   useEffect(() => {
     const fetchUserData = async () => {
+      const token = localStorage.getItem('userToken');
+      if (!token) {
+        router.push('/');
+        return;
+      }
+
       try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          throw new Error('No token found');
+        const storedUserData = localStorage.getItem('userData');
+        if (storedUserData) {
+          setUserData(JSON.parse(storedUserData));
         }
 
-        const response = await fetch('http://192.168.1.15:3000/api/users/me', {
+        // Fetch user data from API if needed
+        const response = await fetch(`${API_URL}users/me`, {
           headers: {
             'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
+            'Content-Type': 'application/json',
+          },
         });
 
-        if (!response.ok) {
-          throw new Error('Failed to fetch user data');
+        if (response.ok) {
+          const data = await response.json();
+          setUserData(data.data);
+          localStorage.setItem('userData', JSON.stringify(data.data));
         }
-
-        const data = await response.json();
-        setUserData(data);
       } catch (error) {
         console.error('Error fetching user data:', error);
       }
@@ -89,24 +95,17 @@ export default function Dashboard() {
 
   const fetchUsers = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('No token found');
-      }
-
-      const response = await fetch('http://192.168.1.15:3000/api/users', {
+      const token = localStorage.getItem('userToken');
+      const response = await fetch(`${API_URL}users`, {
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+        },
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch users');
-      }
-
+      if (!response.ok) throw new Error('Failed to fetch users');
       const data = await response.json();
-      setUsers(data);
+      setUsers(data.data);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -117,24 +116,17 @@ export default function Dashboard() {
 
   const fetchAdvisorFormulars = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('No token found');
-      }
-
-      const response = await fetch('http://192.168.1.15:3000/api/formularAdvisor', {
+      const token = localStorage.getItem('userToken');
+      const response = await fetch(`${API_URL}formularAdvisor`, {
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+        },
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch advisor applications');
-      }
-
+      if (!response.ok) throw new Error('Failed to fetch advisor applications');
       const data = await response.json();
-      setFormulars(data);
+      setFormulars(data.data);
     } catch (error) {
       console.error('Error fetching advisor applications:', error);
       setError('Failed to load advisor applications');

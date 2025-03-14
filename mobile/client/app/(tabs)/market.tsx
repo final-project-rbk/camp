@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, RefreshControl, ActivityIndicator, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, RefreshControl, ActivityIndicator, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
 import { EXPO_PUBLIC_API_URL } from '../../config';
-import { useAuth } from '../../hooks/useAuth';
 
 interface Category {
   id: string;
@@ -56,7 +55,6 @@ export default function Market() {
   const [isSearching, setIsSearching] = useState(false);
   const [searchFilters, setSearchFilters] = useState<SearchFilters>({});
   const router = useRouter();
-  const { isAuthenticated, user } = useAuth();
 
   const fetchCategories = async () => {
     try {
@@ -170,22 +168,6 @@ export default function Market() {
     fetchItems(selectedCategory).finally(() => setRefreshing(false));
   }, [selectedCategory]);
 
-  const handleChatPress = (sellerId: number) => {
-    if (!isAuthenticated) {
-      Alert.alert('Error', 'Please login to chat with sellers');
-      return;
-    }
-    router.push(`/chat/${sellerId}` as any);
-  };
-
-  const handleNewItemPress = () => {
-    if (!isAuthenticated) {
-      Alert.alert('Error', 'Please login to create listings');
-      return;
-    }
-    router.push('/market/new' as any);
-  };
-
   if (loading) {
     return (
       <View style={styles.centerContainer}>
@@ -205,7 +187,7 @@ export default function Market() {
         <Text style={styles.title}>Marketplace</Text>
         <TouchableOpacity 
           style={styles.addButton}
-          onPress={handleNewItemPress}
+          onPress={() => router.push('/market/new' as any)}
         >
           <Ionicons name="add-circle-outline" size={24} color="#64FFDA" />
           <Text style={styles.addButtonText}>Sell Item</Text>
@@ -335,7 +317,7 @@ export default function Market() {
                     style={styles.chatButton}
                     onPress={(e) => {
                       e.stopPropagation();
-                      handleChatPress(item.sellerId);
+                      router.push(`/chat/${item.sellerId}` as any);
                     }}
                   >
                     <Ionicons name="chatbubble-outline" size={20} color="#64FFDA" />

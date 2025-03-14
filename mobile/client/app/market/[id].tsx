@@ -4,7 +4,6 @@ import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { EXPO_PUBLIC_API_URL } from '../../config';
-import { useAuth } from '../../context/AuthContext';
 
 interface Category {
   id: number;
@@ -32,7 +31,6 @@ interface MarketplaceItem {
 export default function MarketplaceItemDetails() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-  const { accessToken, user } = useAuth();
   const [item, setItem] = useState<MarketplaceItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -55,21 +53,8 @@ export default function MarketplaceItemDetails() {
   };
 
   const handleBuyItem = async () => {
-    if (!accessToken) {
-      Alert.alert('Error', 'Please login to purchase items');
-      return;
-    }
-
     try {
-      await axios.put(
-        `${EXPO_PUBLIC_API_URL}marketplace/items/${id}/buy`,
-        { itemId: id },
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          }
-        }
-      );
+      await axios.put(`${EXPO_PUBLIC_API_URL}marketplace/items/${id}/buy`);
       Alert.alert('Success', 'Item purchased successfully!');
       router.back();
     } catch (error) {
