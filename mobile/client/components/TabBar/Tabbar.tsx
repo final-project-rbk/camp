@@ -12,11 +12,11 @@ const AnimatedSvg = Animated.createAnimatedComponent(Svg);
 
 // Define our tab configurations
 const tabs = [
-  { name: 'Market', ionIconName: 'cart-outline', route: '/(tabs)/market' },
+  { name: 'Market', ionIconName: 'storefront-outline', route: '/(tabs)/market' },
   { name: 'Favorites', ionIconName: 'heart', route: '/(tabs)/favorites' },
   { name: 'Home', ionIconName: 'home', route: '/(tabs)/home' },
-  { name: 'Hints', ionIconName: 'bulb', route: '/(tabs)/hints' },
   { name: 'Story', ionIconName: 'book', route: '/(tabs)/story' },
+  { name: 'Profile', ionIconName: 'person', route: '/(tabs)/profile' },
 ];
 
 const tabWidth = width / tabs.length;

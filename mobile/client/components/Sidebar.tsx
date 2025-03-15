@@ -30,9 +30,8 @@ type RouteType =
   | '/(tabs)/home'
   | '/(tabs)/market'
   | '/(tabs)/story'
-  | '/(tabs)/hints'
   | '/(tabs)/favorites'
-  | '/profile'
+  | '/(tabs)/profile'
   | '/setting';
 
 interface MenuItem {
@@ -74,15 +73,9 @@ export default function Sidebar({ isVisible, onClose }: SidebarProps) {
       description: 'Share your experiences'
     },
     { 
-      icon: 'bulb-outline', 
-      label: 'Hints', 
-      route: '/(tabs)/hints',
-      description: 'Learn to camp better'
-    },
-    { 
       icon: 'person-outline', 
       label: 'Profile', 
-      route: '/profile',
+      route: '/(tabs)/profile',
       description: 'Your account'
     },
     { 

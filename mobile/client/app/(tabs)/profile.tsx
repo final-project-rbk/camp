@@ -14,10 +14,10 @@ import {
   Dimensions,
   StatusBar
 } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { EXPO_PUBLIC_API_URL } from '../config';
+import { EXPO_PUBLIC_API_URL } from '../../config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface UserProfile {
@@ -42,7 +42,6 @@ interface EditModalProps {
 
 const EditModal = ({ visible, onClose, onSave, value, field }: EditModalProps) => {
   const [newValue, setNewValue] = useState(value);
-  const id = 3;
 
   return (
     <Modal visible={visible} transparent animationType="slide">
@@ -385,104 +384,97 @@ export default function ProfileScreen() {
   }
 
   return (
-    <>
-      <Stack.Screen
-        options={{
-          title: 'Profile',
-          headerStyle: { backgroundColor: '#0A192F' },
-          headerTintColor: '#64FFDA',
-          headerRight: () => (
-            <TouchableOpacity onPress={handleLogout} style={{ marginRight: 15 }}>
-              <Ionicons name="log-out-outline" size={24} color="#64FFDA" />
-            </TouchableOpacity>
-          ),
-        }}
-      />
-      <ScrollView 
-        style={styles.container}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#64FFDA"
-            colors={['#64FFDA']}
-            progressBackgroundColor="#112240"
-          />
-        }
-      >
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => setImageModalVisible(true)}>
-            <Image
-              source={{ 
-                uri: profile?.profile_image || 'https://via.placeholder.com/150'
-              }}
-              style={styles.profileImage}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.editImageButton}
-            onPress={pickImage}
-          >
-            <Ionicons name="camera" size={24} color="#64FFDA" />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.infoSection}>
-          {[
-            { label: 'First Name', value: profile?.first_name, field: 'first_name' },
-            { label: 'Last Name', value: profile?.last_name, field: 'last_name' },
-            { label: 'Email', value: profile?.email, field: 'email' },
-            { label: 'Phone', value: profile?.phone_number, field: 'phone_number' },
-            { label: 'Bio', value: profile?.bio, field: 'bio' },
-          ].map((item) => (
-            <View key={item.field} style={styles.infoRow}>
-              <View style={styles.infoContent}>
-                <Text style={styles.label}>{item.label}</Text>
-                <Text style={styles.value}>{item.value || 'Not set'}</Text>
-              </View>
-              <TouchableOpacity onPress={() => setEditField(item.field)}>
-                <Ionicons name="create-outline" size={24} color="#64FFDA" />
-              </TouchableOpacity>
-            </View>
-          ))}
-        </View>
-
-        <View style={styles.statsSection}>
-          <Text style={styles.statsTitle}>Stats</Text>
-          <View style={styles.statsRow}>
-            <Text style={styles.statsLabel}>Points</Text>
-            <Text style={styles.statsValue}>{profile?.points || 0}</Text>
-          </View>
-          <View style={styles.statsRow}>
-            <Text style={styles.statsLabel}>Member since</Text>
-            <Text style={styles.statsValue}>
-              {new Date(profile?.created_at || '').toLocaleDateString()}
-            </Text>
-          </View>
-        </View>
-
-        <TouchableOpacity 
-          style={styles.createFormularButton}
-          onPress={handleCreateFormular}
-        >
-          <Text style={styles.createFormularButtonText}>
-            {hasExistingApplication ? 'Update Advisor Application' : 'Create Advisor Application'}
-          </Text>
-        </TouchableOpacity>
-
-        <EditModal
-          visible={!!editField}
-          onClose={() => setEditField(null)}
-          onSave={(value) => {
-            if (editField) handleUpdate(editField, value);
-          }}
-          value={profile?.[editField as keyof UserProfile]?.toString() || ''}
-          field={editField || ''}
+    <ScrollView 
+      style={styles.container}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor="#64FFDA"
+          colors={['#64FFDA']}
+          progressBackgroundColor="#112240"
         />
-        
-        <ImageViewModal />
-      </ScrollView>
-    </>
+      }
+    >
+      <View style={styles.pageHeader}>
+        <Text style={styles.pageTitle}>Profile</Text>
+        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+          <Ionicons name="log-out-outline" size={24} color="#64FFDA" />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => setImageModalVisible(true)}>
+          <Image
+            source={{ 
+              uri: profile?.profile_image || 'https://via.placeholder.com/150'
+            }}
+            style={styles.profileImage}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.editImageButton}
+          onPress={pickImage}
+        >
+          <Ionicons name="camera" size={24} color="#64FFDA" />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.infoSection}>
+        {[
+          { label: 'First Name', value: profile?.first_name, field: 'first_name' },
+          { label: 'Last Name', value: profile?.last_name, field: 'last_name' },
+          { label: 'Email', value: profile?.email, field: 'email' },
+          { label: 'Phone', value: profile?.phone_number, field: 'phone_number' },
+          { label: 'Bio', value: profile?.bio, field: 'bio' },
+        ].map((item) => (
+          <View key={item.field} style={styles.infoRow}>
+            <View style={styles.infoContent}>
+              <Text style={styles.label}>{item.label}</Text>
+              <Text style={styles.value}>{item.value || 'Not set'}</Text>
+            </View>
+            <TouchableOpacity onPress={() => setEditField(item.field)}>
+              <Ionicons name="create-outline" size={24} color="#64FFDA" />
+            </TouchableOpacity>
+          </View>
+        ))}
+      </View>
+
+      <View style={styles.statsSection}>
+        <Text style={styles.statsTitle}>Stats</Text>
+        <View style={styles.statsRow}>
+          <Text style={styles.statsLabel}>Points</Text>
+          <Text style={styles.statsValue}>{profile?.points || 0}</Text>
+        </View>
+        <View style={styles.statsRow}>
+          <Text style={styles.statsLabel}>Member since</Text>
+          <Text style={styles.statsValue}>
+            {new Date(profile?.created_at || '').toLocaleDateString()}
+          </Text>
+        </View>
+      </View>
+
+      <TouchableOpacity 
+        style={styles.createFormularButton}
+        onPress={handleCreateFormular}
+      >
+        <Text style={styles.createFormularButtonText}>
+          {hasExistingApplication ? 'Update Advisor Application' : 'Create Advisor Application'}
+        </Text>
+      </TouchableOpacity>
+
+      <EditModal
+        visible={!!editField}
+        onClose={() => setEditField(null)}
+        onSave={(value) => {
+          if (editField) handleUpdate(editField, value);
+        }}
+        value={profile?.[editField as keyof UserProfile]?.toString() || ''}
+        field={editField || ''}
+      />
+      
+      <ImageViewModal />
+    </ScrollView>
   );
 }
 
@@ -490,6 +482,22 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0A192F',
+  },
+  pageHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 20,
+  },
+  pageTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#CCD6F6',
+  },
+  logoutButton: {
+    padding: 8,
   },
   loadingContainer: {
     flex: 1,
