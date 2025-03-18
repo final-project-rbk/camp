@@ -4,7 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
 import { EXPO_PUBLIC_API_URL } from '../../config';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../../hooks/useAuth'
+import { useAuth as auth } from '../../context/AuthContext'
 
 interface Category {
   id: string;
@@ -57,6 +58,7 @@ export default function Market() {
   const [searchFilters, setSearchFilters] = useState<SearchFilters>({});
   const router = useRouter();
   const { isAuthenticated, user } = useAuth();
+   const { accessToken } = auth();
 
   const fetchCategories = async () => {
     try {
@@ -170,12 +172,29 @@ export default function Market() {
     fetchItems(selectedCategory).finally(() => setRefreshing(false));
   }, [selectedCategory]);
 
-  const handleChatPress = (sellerId: number) => {
+  console.log('EXPO_PUBLIC_API_URL',EXPO_PUBLIC_API_URL);
+  
+  const handleChatPress = async (sellerId: number) => {
     if (!isAuthenticated) {
       Alert.alert('Error', 'Please login to chat with sellers');
       return;
     }
-    router.push(`/chat/${sellerId}` as any);
+    try {
+      // Create or get chat room first
+      const response = await axios.post(`${EXPO_PUBLIC_API_URL}chat/rooms/get-or-create`, { userId: sellerId }, {
+      
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      const roomId = response.data.id;
+      // Navigate to chat with the room ID
+      router.push({
+        pathname: `/chat/${roomId}`,
+        params: { roomId }
+      } as any);
+    } catch (error) {
+      console.error('Error starting chat:', error);
+      Alert.alert('Error', 'Could not start chat. Please try again.');
+    }
   };
 
   const handleNewItemPress = () => {
