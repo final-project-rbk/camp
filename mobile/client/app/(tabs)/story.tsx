@@ -9,6 +9,7 @@ import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { jwtDecode } from "jwt-decode";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import TokenDebug from '../../components/TokenDebug';
 
 // Add this constant at the top of the file, after the imports
 const DEFAULT_PROFILE_IMAGE = 'https://johannesippen.com/img/blog/humans-not-users/header.jpg';
@@ -65,30 +66,41 @@ export default function Story() {
         );
     };
 
-    // Update getToken function
-    const getToken = async () => {
+    // Update getToken function with redirect option
+    const getToken = async (shouldRedirect = false) => {
         try {
             const storedToken = await AsyncStorage.getItem('userToken');
+            console.log('Token retrieval attempt in story.tsx:', storedToken ? 'Token found' : 'No token');
+            
             if (storedToken) {
                 setToken(storedToken);
+                
                 try {
-                    const decoded = jwtDecode(storedToken);
+                    const decoded = jwtDecode<{ id: number }>(storedToken);
                     console.log('Decoded token:', decoded);
-                    if (decoded.id) {
+                    
+                    if (decoded && decoded.id) {
                         setUserId(decoded.id);
                         console.log('Token is valid, userId set to:', decoded.id);
                         return true;
+                    } else {
+                        console.warn('Token format issue: no ID in decoded token');
+                        if (shouldRedirect) router.replace('/auth');
+                        return false;
                     }
                 } catch (decodeError) {
                     console.error('Error decoding token:', decodeError);
+                    if (shouldRedirect) router.replace('/auth');
                     return false;
                 }
             } else {
                 console.log('No token found in AsyncStorage');
+                if (shouldRedirect) router.replace('/auth');
+                return false;
             }
-            return false;
         } catch (error) {
             console.error('Error in getToken:', error);
+            if (shouldRedirect) router.replace('/auth');
             return false;
         }
     };
@@ -345,7 +357,8 @@ export default function Story() {
             // Check if we need to upload a new image
             if (blogToUpdate.image) {
                 if (Platform.OS === 'web') {
-                    if (blogToUpdate.image instanceof File) {
+                    // On web, check if image is a File object
+                    if (typeof blogToUpdate.image === 'object') {
                         imageUrl = await uploadImage(blogToUpdate.image);
                     }
                 } else if (typeof blogToUpdate.image === 'string' && blogToUpdate.image.startsWith('file://')) {
@@ -389,24 +402,48 @@ export default function Story() {
         fetchBlogData().finally(() => setRefreshing(false));
     }, []);
 
+    // Immediately check for token on component mount - this is for debugging
+    useEffect(() => {
+        const inspectToken = async () => {
+            try {
+                const allKeys = await AsyncStorage.getAllKeys();
+                console.log('All AsyncStorage keys:', allKeys);
+                
+                const token = await AsyncStorage.getItem('userToken');
+                console.log('Token in AsyncStorage:', token ? 'Found' : 'Not found');
+                
+                if (token) {
+                    try {
+                        const decoded = jwtDecode(token);
+                        console.log('Decoded token:', decoded);
+                    } catch (e) {
+                        console.error('Error decoding token:', e);
+                    }
+                }
+            } catch (e) {
+                console.error('Token inspection error:', e);
+            }
+        };
+        
+        inspectToken();
+    }, []);
+
     // Update useEffect with more logging
     useEffect(() => {
-        const initializeData = async () => {
-            console.log('=== Component Initialization ===');
+        const checkAuthentication = async () => {
+            console.log('Checking authentication in story.tsx');
             const isAuthenticated = await getToken();
-            console.log('Initial authentication check:', isAuthenticated);
-            
-            if (!isAuthenticated) {
-                console.log('Initial authentication failed');
-                Alert.alert('Authentication Error', 'Please log in to continue');
-                return;
+            if (isAuthenticated) {
+                console.log('Authentication successful, fetching data...');
+                fetchBlogData();
+            } else {
+                console.log('Authentication failed, redirecting to auth screen');
+                // Redirect to auth screen when not authenticated
+                router.replace('/auth');
             }
-            
-            console.log('Proceeding to fetch blog data');
-            fetchBlogData();
         };
-
-        initializeData();
+        
+        checkAuthentication();
     }, []);
 
     // Loading state

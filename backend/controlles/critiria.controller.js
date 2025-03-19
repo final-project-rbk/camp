@@ -80,6 +80,84 @@ const critiriaController = {
         details: error.message
       });
     }
+  },
+
+  // Submit a new criteria rating
+  submitCritiriaRating: async (req, res) => {
+    try {
+      const { userId, placeId, ratings } = req.body;
+      
+      console.log('Rating submission received:', { userId, placeId, ratingsCount: ratings?.length });
+      
+      // Validate PlaceUser model
+      if (!PlaceUser) {
+        console.error('PlaceUser model is not defined');
+        return res.status(500).json({
+          success: false,
+          error: 'Server configuration error: PlaceUser model not found'
+        });
+      }
+      
+      if (!userId || !placeId || !ratings || !Array.isArray(ratings)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid request. Required fields: userId, placeId, ratings (array)'
+        });
+      }
+
+      // Process each rating
+      const results = await Promise.all(
+        ratings.map(async ({ criteriaId, value }) => {
+          console.log('Processing rating:', { criteriaId, value });
+          
+          if (!criteriaId || typeof value !== 'number') {
+            return { error: true, message: 'Invalid rating data' };
+          }
+
+          try {
+            // Find or create a PlaceUser record
+            const [placeUser, created] = await PlaceUser.findOrCreate({
+              where: {
+                userId,
+                placeId,
+                critiriaId: criteriaId
+              },
+              defaults: {
+                value
+              }
+            });
+
+            // Update if it already exists
+            if (!created) {
+              await placeUser.update({ value });
+            }
+
+            return { criteriaId, success: true };
+          } catch (err) {
+            console.error('Error processing individual rating:', err);
+            return { 
+              criteriaId, 
+              success: false, 
+              error: err.message,
+              errorDetail: err.toString()
+            };
+          }
+        })
+      );
+
+      res.status(200).json({
+        success: true,
+        data: results
+      });
+    } catch (error) {
+      console.error('Error in submitCritiriaRating:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error submitting ratings',
+        details: error.message,
+        stack: process.env.NODE_ENV !== 'production' ? error.stack : undefined
+      });
+    }
   }
 };
 
