@@ -1,33 +1,44 @@
-const { Place, Media, Review, Categorie } = require('../models');
+const { Place, Media, Review, Categorie, Citiria, PlaceUser, User } = require('../models');
 
 const placeController = {
   // Get all places with related data
   getAllPlaces: async (req, res) => {
     try {
       const { limit, category } = req.query;
+      console.log('Fetching places with category:', category);
       
-      const places = await Place.findAll({
-        include: [
-          {
-            model: Media,
-            attributes: ['url', 'type'],
-            required: false
-          },
-          {
-            model: Review,
-            attributes: ['rating'],
-            required: false
-          },
-          {
-            model: Categorie,
-            through: { attributes: [] },
-            attributes: ['name', 'icon'],
-            required: false
-          }
-        ],
-        where: {
-          status: 'approved'
+      const include = [
+        {
+          model: Media,
+          attributes: ['url', 'type'],
+          required: false
+        },
+        {
+          model: Review,
+          attributes: ['rating'],
+          required: false
+        },
+        {
+          model: Categorie,
+          through: { attributes: [] },
+          attributes: ['name', 'icon'],
+          required: category ? true : false // Make it required only when filtering by category
         }
+      ];
+
+      const whereClause = {
+        status: 'approved'
+      };
+
+      // If category is specified, add it to the include conditions
+      if (category) {
+        include[2].where = { name: category };
+      }
+
+      const places = await Place.findAll({
+        include,
+        where: whereClause,
+        distinct: true // Add this to avoid duplicate places
       });
 
       const formattedPlaces = places.map(place => {
@@ -119,6 +130,15 @@ const placeController = {
         }
       }
 
+      // Add criteria data separately after fetching the place
+      const placeCriteria = await Citiria.findAll({
+        include: [{
+          model: PlaceUser,
+          where: { placeId: id },
+          required: false
+        }]
+      });
+
       const formattedPlace = {
         id: place.id,
         name: place.name,
@@ -142,7 +162,34 @@ const placeController = {
         categories: place.Categories?.map(cat => ({
           name: cat.name,
           icon: cat.icon || '🏷️'
-        })) || []
+        })) || [],
+        critiria: placeCriteria.map(crit => ({
+          id: crit.id,
+          name: crit.name,
+          percentage: crit.purcent,
+          value: crit.PlaceUsers && crit.PlaceUsers.length > 0 ? crit.PlaceUsers[0].value : 0
+        })) || [],
+        distance: 5.2,
+        amenities: ["water", "restrooms", "fire_pit", "picnic_table"],
+        terrain_type: "forest",
+        availability: "open",
+        site_type: "tent",
+        accessibility: "easy",
+        weather: {
+          current: {
+            temp: 22,
+            condition: "Sunny",
+            humidity: 40,
+          },
+          forecast: [
+            { day: "Mon", temp: 22, condition: "Sunny" },
+            { day: "Tue", temp: 20, condition: "Cloudy" },
+            { day: "Wed", temp: 18, condition: "Rain" },
+          ],
+        },
+        cost: 25,
+        user_rating: 4.2,
+        safety: ["Watch for wildlife", "Steep trails nearby"]
       };
 
       console.log('Sending place with images:', formattedPlace.images);
@@ -161,140 +208,78 @@ const placeController = {
       });
     }
   },
+
+  // Create new place
   createPlace: async (req, res) => {
     try {
-      console.log('Received request body:', req.body);
       const { name, description, location, images, categories } = req.body;
+      console.log('Received data:', { name, description, location, images, categories });
 
-      // Validate required fields
-      if (!name || !description || !location) {
-        return res.status(400).json({
-          success: false,
-          error: 'Name, description, and location are required'
-        });
-      }
-
-      // Create place with current timestamp
-      const now = new Date();
-      const place = await Place.create({
+      // Create the place without explicitly setting timestamps
+      const placeData = {
         name,
         description,
         location,
-        images,
-        status: 'pending',
-        created_at: now,
-        updated_at: now
+        images: images ? [images] : [],
+        status: 'pending'
+      };
+
+      // Remove timestamp fields from the create operation
+      const place = await Place.create(placeData, {
+        fields: ['name', 'description', 'location', 'images', 'status']
       });
 
-      console.log('Place created:', place.toJSON());
-
-      // Handle categories if provided
-      if (categories && Array.isArray(categories)) {
+      // Handle categories if they exist
+      if (categories && Array.isArray(categories) && categories.length > 0) {
         try {
-          await place.setCategories(categories);
+          await place.addCategories(categories);
         } catch (categoryError) {
-          console.error('Error setting categories:', categoryError);
+          console.error('Error adding categories:', categoryError);
         }
       }
 
-      // Get the created place with its categories
+      // Fetch the created place with its categories
       const createdPlace = await Place.findByPk(place.id, {
         include: [{
           model: Categorie,
-          through: { attributes: [] }
+          through: { attributes: [] },
+          attributes: ['id', 'name', 'icon']
         }]
       });
 
       res.status(201).json({
         success: true,
-        data: createdPlace
-      });
-
-    } catch (error) {
-      console.error('Error in createPlace:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to create place',
-        details: error.message
-      });
-    }
-  },
-
-  // Add the updatePlace method
-  updatePlace: async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { name, description, location, image, categories } = req.body;
-
-      // Find the place
-      const place = await Place.findByPk(id);
-      
-      if (!place) {
-        return res.status(404).json({
-          success: false,
-          error: 'Place not found'
-        });
-      }
-
-      // Update the place
-      await place.update({
-        name: name || place.name,
-        description: description || place.description,
-        location: location || place.location,
-        images: image || place.images
-      });
-
-      // Update categories if provided
-      if (categories && Array.isArray(categories) && categories.length > 0) {
-        await place.setCategories(categories);
-      }
-
-      // Fetch updated place with categories
-      const updatedPlace = await Place.findByPk(id, {
-        include: [
-          {
-            model: Categorie,
-            through: { attributes: [] },
-            attributes: ['id', 'name', 'icon'],
-            required: false
-          }
-        ]
-      });
-
-      res.status(200).json({
-        success: true,
         data: {
-          id: updatedPlace.id,
-          name: updatedPlace.name,
-          description: updatedPlace.description,
-          location: updatedPlace.location,
-          image: updatedPlace.images,
-          categories: updatedPlace.Categories?.map(cat => ({
+          id: createdPlace.id,
+          name: createdPlace.name,
+          description: createdPlace.description,
+          location: createdPlace.location,
+          image: createdPlace.images?.[0] || null,
+          status: createdPlace.status,
+          categories: createdPlace.Categories?.map(cat => ({
             id: cat.id,
             name: cat.name,
             icon: cat.icon
           })) || []
         }
       });
-
     } catch (error) {
-      console.error('Error in updatePlace:', error);
+      console.error('Detailed create place error:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to update place',
+        error: 'Error creating place',
         details: error.message
       });
     }
   },
 
-  // Add the deletePlace method
-  deletePlaceById: async (req, res) => {
+  // Update place
+  updatePlace: async (req, res) => {
     try {
       const { id } = req.params;
-      
-      // Find the place
+      const { name, description, location, image, categoryIds } = req.body;
+
       const place = await Place.findByPk(id);
-      
       if (!place) {
         return res.status(404).json({
           success: false,
@@ -302,25 +287,98 @@ const placeController = {
         });
       }
 
-      // Delete the place
+      await place.update({
+        name,
+        description,
+        location,
+        images: image // Store single image in images array
+      });
+
+      if (categoryIds && Array.isArray(categoryIds)) {
+        await place.setCategories(categoryIds);
+      }
+
+      res.status(200).json({
+        success: true,
+        data: place
+      });
+    } catch (error) {
+      console.error('Error in updatePlace:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error updating place',
+        details: error.message
+      });
+    }
+  },
+
+  // Delete place
+  deletePlace: async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const place = await Place.findByPk(id);
+      if (!place) {
+        return res.status(404).json({
+          success: false,
+          error: 'Place not found'
+        });
+      }
+
       await place.destroy();
 
       res.status(200).json({
         success: true,
         message: 'Place deleted successfully'
       });
-
     } catch (error) {
       console.error('Error in deletePlace:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to delete place',
+        error: 'Error deleting place',
         details: error.message
       });
     }
   },
 
-  // Add this new method to the placeController object
+  // Update place status
+  updatePlaceStatus: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+
+      if (!['pending', 'approved', 'rejected'].includes(status)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid status value'
+        });
+      }
+
+      const place = await Place.findByPk(id);
+      if (!place) {
+        return res.status(404).json({
+          success: false,
+          error: 'Place not found'
+        });
+      }
+
+      await place.update({ status });
+
+      res.status(200).json({
+        success: true,
+        data: place
+      });
+    } catch (error) {
+      console.error('Error in updatePlaceStatus:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error updating place status',
+        details: error.message
+      });
+    }
+  },
+
+  // Get places by status
   getAllPlacesAdmin: async (req, res) => {
     try {
       const places = await Place.findAll({
@@ -332,16 +390,118 @@ const placeController = {
           },
           {
             model: Review,
-            attributes: ['rating'],
+            attributes: ['id', 'rating', 'comment', 'createdAt'],
+            include: [
+              {
+                model: User,
+                attributes: ['first_name', 'last_name']
+              }
+            ],
             required: false
           },
           {
             model: Categorie,
             through: { attributes: [] },
-            attributes: ['name', 'icon'],
+            attributes: ['id', 'name', 'icon'],
             required: false
           }
-        ]
+        ],
+        order: [['createdAt', 'DESC']]
+      });
+
+      const formattedPlaces = places.map(place => {
+        // Get image from Media or fallback to images field
+        let imageUrl = 'https://via.placeholder.com/400';
+        if (place.Media && place.Media.length > 0) {
+          imageUrl = place.Media[0].url;
+        } else if (place.images && Array.isArray(place.images) && place.images.length > 0) {
+          imageUrl = place.images[0];
+        } else if (place.images && typeof place.images === 'string') {
+          imageUrl = place.images;
+        }
+
+        return {
+          id: place.id,
+          name: place.name,
+          description: place.description,
+          location: place.location,
+          image: imageUrl,
+          status: place.status || 'pending',
+          rating: Number(
+            (place.Reviews?.reduce((acc, rev) => acc + (rev.rating || 0), 0) / 
+             (place.Reviews?.length || 1)).toFixed(1)
+          ),
+          categories: place.Categories?.map(cat => ({
+            id: cat.id,
+            name: cat.name,
+            icon: cat.icon || '🏷️'
+          })) || [],
+          reviews: place.Reviews?.map(review => ({
+            id: review.id,
+            rating: review.rating,
+            comment: review.comment || '',
+            user: {
+              first_name: review.User?.first_name || 'Anonymous',
+              last_name: review.User?.last_name || 'User'
+            },
+            createdAt: review.createdAt
+          })) || [],
+          created_at: place.createdAt,
+          updated_at: place.updatedAt
+        };
+      });
+
+      res.status(200).json({
+        success: true,
+        data: formattedPlaces
+      });
+    } catch (error) {
+      console.error('Error in getAllPlacesAdmin:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error fetching places for admin',
+        details: error.message
+      });
+    }
+  },
+
+  // Add this function to get places by status for admin
+  getPlacesByStatusAdmin: async (req, res) => {
+    try {
+      const { status } = req.query;
+      
+      const whereClause = {};
+      if (status && status !== 'all') {
+        whereClause.status = status;
+      }
+
+      const places = await Place.findAll({
+        where: whereClause,
+        include: [
+          {
+            model: Media,
+            attributes: ['url', 'type'],
+            required: false
+          },
+          {
+            model: Review,
+            attributes: ['id', 'rating', 'comment', 'createdAt'],
+            include: [
+              {
+                model: User,
+                attributes: ['first_name', 'last_name']
+              }
+            ],
+            required: false
+          },
+          {
+            model: Categorie,
+            through: { attributes: [] },
+            attributes: ['id', 'name', 'icon'],
+            required: false
+          }
+        ],
+        order: [['createdAt', 'DESC']]
       });
 
       const formattedPlaces = places.map(place => {
@@ -360,15 +520,28 @@ const placeController = {
           description: place.description,
           location: place.location,
           image: imageUrl,
-          status: place.status,
+          status: place.status || 'pending',
           rating: Number(
             (place.Reviews?.reduce((acc, rev) => acc + (rev.rating || 0), 0) / 
              (place.Reviews?.length || 1)).toFixed(1)
           ),
           categories: place.Categories?.map(cat => ({
+            id: cat.id,
             name: cat.name,
-            icon: cat.icon
-          })) || []
+            icon: cat.icon || '🏷️'
+          })) || [],
+          reviews: place.Reviews?.map(review => ({
+            id: review.id,
+            rating: review.rating,
+            comment: review.comment || '',
+            user: {
+              first_name: review.User?.first_name || 'Anonymous',
+              last_name: review.User?.last_name || 'User'
+            },
+            createdAt: review.createdAt
+          })) || [],
+          created_at: place.createdAt,
+          updated_at: place.updatedAt
         };
       });
 
@@ -377,45 +550,14 @@ const placeController = {
         data: formattedPlaces
       });
     } catch (error) {
-      console.error('Error in getAllPlacesAdmin:', error);
+      console.error('Error in getPlacesByStatusAdmin:', error);
       res.status(500).json({
         success: false,
-        error: 'Error fetching places',
+        error: 'Error fetching filtered places for admin',
         details: error.message
       });
     }
   },
-
-  // Add this new method to update place status
-  updatePlaceStatus: async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { status } = req.body;
-
-      const place = await Place.findByPk(id);
-      
-      if (!place) {
-        return res.status(404).json({
-          success: false,
-          error: 'Place not found'
-        });
-      }
-
-      await place.update({ status });
-
-      res.status(200).json({
-        success: true,
-        message: 'Status updated successfully'
-      });
-    } catch (error) {
-      console.error('Error in updatePlaceStatus:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to update status',
-        details: error.message
-      });
-    }
-  }
 };
 
 module.exports = placeController;

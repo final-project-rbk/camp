@@ -42,6 +42,7 @@ interface PlaceFormData {
 export default function PlaceManagement() {
   const router = useRouter();
   const [places, setPlaces] = useState<Place[]>([]);
+  const [filteredPlaces, setFilteredPlaces] = useState<Place[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +56,12 @@ export default function PlaceManagement() {
   const [uploading, setUploading] = useState(false);
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
   const [activeStatus, setActiveStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [totalCounts, setTotalCounts] = useState({
+    all: 0,
+    pending: 0,
+    approved: 0,
+    rejected: 0
+  });
 
   const [formData, setFormData] = useState<PlaceFormData>({
     name: '',
@@ -64,13 +71,19 @@ export default function PlaceManagement() {
     categoryIds: [],
   });
 
+  const [statusCounts, setStatusCounts] = useState({
+    all: 0,
+    pending: 0,
+    approved: 0,
+    rejected: 0
+  });
+
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
   useEffect(() => {
     fetchPlaces();
-    fetchCategories();
   }, []);
 
   useEffect(() => {
@@ -86,6 +99,16 @@ export default function PlaceManagement() {
       document.body.style.overflow = 'unset';
     };
   }, [showAddModal, showEditModal, showDeleteModal, showDetailModal]);
+
+  useEffect(() => {
+    const counts = {
+      all: places.length,
+      pending: places.filter(p => p.status === 'pending').length,
+      approved: places.filter(p => p.status === 'approved').length,
+      rejected: places.filter(p => p.status === 'rejected').length
+    };
+    setStatusCounts(counts);
+  }, [places]);
 
   const fetchCategories = async () => {
     try {
@@ -124,27 +147,97 @@ export default function PlaceManagement() {
     }
   };
 
+  // Add function to calculate counts
+  const calculateCounts = (placesData: Place[]) => {
+    const counts = {
+      all: placesData.length,
+      pending: placesData.filter(p => p.status === 'pending').length,
+      approved: placesData.filter(p => p.status === 'approved').length,
+      rejected: placesData.filter(p => p.status === 'rejected').length
+    };
+    setTotalCounts(counts);
+  };
+
+  // Update fetchPlaces to calculate counts
   const fetchPlaces = async () => {
     try {
+      setLoading(true);
       const token = localStorage.getItem('userToken');
       if (!token) {
         router.push('/');
         return;
       }
 
-      const { response, data } = await proxyFetch('/places/admin', {
+      const { response, data } = await proxyFetch('/places/admin/places', {
+        method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
 
-      if (!response.ok) throw new Error('Failed to fetch places');
-      setPlaces(data.data);
-      setLoading(false);
+      if (!response.ok) {
+        throw new Error('Failed to fetch places');
+      }
+
+      if (data.success && Array.isArray(data.data)) {
+        setPlaces(data.data);
+        setFilteredPlaces(data.data);
+        calculateCounts(data.data);
+      } else {
+        setError('Invalid data format received');
+      }
     } catch (error) {
       console.error('Error fetching places:', error);
-      setError(error instanceof Error ? error.message : 'Failed to load places');
+      setError('Error fetching places');
+    } finally {
       setLoading(false);
+    }
+  };
+
+  // Update handleStatusChange to only filter places
+  const handleStatusChange = (newStatus: 'all' | 'pending' | 'approved' | 'rejected') => {
+    setActiveStatus(newStatus);
+    const filtered = newStatus === 'all' 
+      ? places 
+      : places.filter(place => place.status === newStatus);
+    setFilteredPlaces(filtered);
+  };
+
+  // Add separate function for status updates
+  const handleStatusUpdate = async (placeId: string, newStatus: 'pending' | 'approved' | 'rejected') => {
+    try {
+      const token = localStorage.getItem('userToken');
+      const { response } = await proxyFetch(`/places/${placeId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update status');
+      
+      // Update places locally
+      const updatedPlaces = places.map(place => 
+        place.id === placeId ? { ...place, status: newStatus } : place
+      );
+      setPlaces(updatedPlaces);
+      
+      // Update filtered places if needed
+      if (activeStatus === 'all' || activeStatus === newStatus) {
+        const newFiltered = activeStatus === 'all' 
+          ? updatedPlaces 
+          : updatedPlaces.filter(place => place.status === activeStatus);
+        setFilteredPlaces(newFiltered);
+      } else {
+        setFilteredPlaces(prev => prev.filter(place => place.id !== placeId));
+      }
+      
+      // Update counts
+      calculateCounts(updatedPlaces);
+    } catch (error) {
+      console.error('Error updating status:', error);
+      setError(error instanceof Error ? error.message : 'Failed to update status');
     }
   };
 
@@ -324,176 +417,147 @@ export default function PlaceManagement() {
     }
   };
 
-  const handleStatusUpdate = async (placeId: string, newStatus: 'pending' | 'approved' | 'rejected') => {
-    try {
-      const token = localStorage.getItem('userToken');
-      const { response, data } = await proxyFetch(`/places/${placeId}/status`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
+  const calculateStatusCounts = (placesData: any[]) => {
+    console.log('Calculating counts for places:', placesData); // Debug log
 
-      if (!response.ok) throw new Error('Failed to update status');
-      await fetchPlaces();
-    } catch (error) {
-      console.error('Error updating status:', error);
-      setError(error instanceof Error ? error.message : 'Failed to update status');
-    }
-  };
+    const counts = {
+      all: placesData.length,
+      pending: 0,
+      approved: 0,
+      rejected: 0
+    };
 
-  const filteredPlaces = places.filter(place => 
-    activeStatus === 'all' ? true : place.status === activeStatus
-  );
+    placesData.forEach(place => {
+      console.log('Place status:', place.status); // Debug log for each place's status
+      if (place.status === 'pending') counts.pending++;
+      else if (place.status === 'approved') counts.approved++;
+      else if (place.status === 'rejected') counts.rejected++;
+    });
 
-  const statusCounts = {
-    all: places.length,
-    pending: places.filter(p => p.status === 'pending').length,
-    approved: places.filter(p => p.status === 'approved').length,
-    rejected: places.filter(p => p.status === 'rejected').length,
+    console.log('Final counts:', counts); // Debug log for final counts
+    setStatusCounts(counts);
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#0A192F' }}>
-        <div className="text-white">Loading...</div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-red-600 text-xl">{error}</div>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen" style={{ backgroundColor: '#0A192F' }}>
+    <div className="flex min-h-screen bg-[#0A192F]">
       <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
+      
+      <div className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-16'} p-8`}>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-[#64FFDA]">Place Management</h1>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="px-4 py-2 bg-[#64FFDA] text-[#0A192F] rounded-lg hover:bg-opacity-90"
+          >
+            Add New Place
+          </button>
+        </div>
 
-      <div className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-16'}`}>
-        <div className="p-8">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold text-[#64FFDA]">Place Management</h1>
+        {/* Status Filter Buttons */}
+        <div className="mb-6 flex space-x-4">
+          {(['all', 'pending', 'approved', 'rejected'] as const).map((status) => (
             <button
-              onClick={() => setShowAddModal(true)}
-              className="px-4 py-2 bg-[#64FFDA] text-[#0A192F] rounded-lg hover:bg-opacity-90 transition-colors"
+              key={status}
+              onClick={() => handleStatusChange(status)}
+              className={`px-4 py-2 rounded-lg transition-colors ${
+                activeStatus === status
+                  ? 'bg-[#64FFDA] text-[#0A192F]'
+                  : 'bg-[#112240] text-[#CCD6F6] hover:bg-[#1D2D50]'
+              }`}
             >
-              Add New Place
+              {status.charAt(0).toUpperCase() + status.slice(1)}
+              <span className="ml-2 px-2 py-1 rounded-full bg-[#1D2D50] text-[#64FFDA] text-sm">
+                {totalCounts[status]}
+              </span>
             </button>
-          </div>
+          ))}
+        </div>
 
-          <div className="mb-6 flex space-x-4">
-            {(['all', 'pending', 'approved', 'rejected'] as const).map((status) => (
-              <button
-                key={status}
-                onClick={() => setActiveStatus(status)}
-                className={`px-4 py-2 rounded-lg transition-colors ${
-                  activeStatus === status
-                    ? 'bg-[#64FFDA] text-[#0A192F]'
-                    : 'bg-[#112240] text-[#CCD6F6] hover:bg-[#1D2D50]'
-                }`}
-              >
-                {status.charAt(0).toUpperCase() + status.slice(1)}
-                <span className="ml-2 px-2 py-1 rounded-full bg-[#1D2D50] text-[#64FFDA] text-sm">
-                  {statusCounts[status]}
-                </span>
-              </button>
-            ))}
-          </div>
-
-          {error && (
-            <div className="mb-4 p-4 bg-red-500 bg-opacity-10 text-red-400 rounded-lg">
-              {error}
-            </div>
-          )}
-
-          <div className="grid gap-6">
-            {filteredPlaces.map((place) => (
-              <div 
-                key={place.id}
-                className={`bg-[#112240] rounded-lg p-6 shadow-lg border-l-4 ${
-                  place.status === 'pending' ? 'border-yellow-500' :
-                  place.status === 'approved' ? 'border-green-500' :
-                  'border-red-500'
-                }`}
-              >
+        {/* Places Grid */}
+        <div className="space-y-4">
+          {filteredPlaces.map((place) => (
+            <div
+              key={place.id}
+              className="bg-[#112240] rounded-lg overflow-hidden border-l-4 border-[#64FFDA]"
+            >
+              <div className="p-6">
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <h2 className="text-xl text-[#CCD6F6] font-semibold mb-2">
-                      {place.name}
-                    </h2>
-                    <p className="text-[#8892B0] text-sm">
-                      {place.location}
-                    </p>
-                    <span className={`inline-block mt-2 px-3 py-1 rounded-full text-sm ${
-                      place.status === 'pending' ? 'bg-yellow-500/20 text-yellow-500' :
-                      place.status === 'approved' ? 'bg-green-500/20 text-green-500' :
-                      'bg-red-500/20 text-red-500'
-                    }`}>
-                      {place.status.charAt(0).toUpperCase() + place.status.slice(1)}
+                    <h3 className="text-xl font-semibold text-[#64FFDA] mb-2">{place.name}</h3>
+                    <p className="text-[#8892B0] mb-2">{place.location}</p>
+                    <span className="px-3 py-1 bg-[#1D2D50] text-[#F44336] rounded-full text-sm">
+                      {place.status || 'Unknown'}
                     </span>
                   </div>
                   <div className="flex space-x-2">
-                    <div className="flex space-x-2 mr-4">
-                      {place.status !== 'approved' && (
-                        <button
-                          onClick={() => handleStatusUpdate(place.id, 'approved')}
-                          className="px-3 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
-                        >
-                          Approve
-                        </button>
-                      )}
-                      {place.status !== 'rejected' && (
-                        <button
-                          onClick={() => handleStatusUpdate(place.id, 'rejected')}
-                          className="px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-                        >
-                          Reject
-                        </button>
-                      )}
-                      {place.status !== 'pending' && (
-                        <button
-                          onClick={() => handleStatusUpdate(place.id, 'pending')}
-                          className="px-3 py-1 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors"
-                        >
-                          Pending
-                        </button>
-                      )}
-                    </div>
+                    <button
+                      onClick={() => handleStatusUpdate(place.id, 'pending')}
+                      className={`px-4 py-2 bg-[#FFA500] text-white rounded-lg hover:bg-opacity-90 ${
+                        place.status === 'pending' ? 'bg-[#FFA500]' : 'bg-[#112240]'
+                      }`}
+                    >
+                      Pending
+                    </button>
+                    <button
+                      onClick={() => handleStatusUpdate(place.id, 'approved')}
+                      className={`px-4 py-2 bg-[#4CAF50] text-white rounded-lg hover:bg-opacity-90 ${
+                        place.status === 'approved' ? 'bg-[#4CAF50]' : 'bg-[#112240]'
+                      }`}
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => handleStatusUpdate(place.id, 'rejected')}
+                      className={`px-4 py-2 bg-[#F44336] text-white rounded-lg hover:bg-opacity-90 ${
+                        place.status === 'rejected' ? 'bg-[#F44336]' : 'bg-[#112240]'
+                      }`}
+                    >
+                      Reject
+                    </button>
                     <button
                       onClick={() => handleEditClick(place)}
-                      className="px-4 py-2 bg-[#64FFDA] text-[#0A192F] rounded-lg hover:bg-opacity-90 transition-colors"
+                      className="px-4 py-2 bg-[#64FFDA] text-[#0A192F] rounded-lg hover:bg-opacity-90"
                     >
                       Edit
                     </button>
                     <button
-                      onClick={() => handleDeleteClick(place.id)}
-                      className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                      onClick={() => {
+                        setPlaceToDelete(place.id);
+                        setShowDeleteModal(true);
+                      }}
+                      className="px-4 py-2 bg-[#F44336] text-white rounded-lg hover:bg-opacity-90"
                     >
                       Delete
                     </button>
                   </div>
                 </div>
-
+                <p className="text-[#CCD6F6]">{place.description}</p>
                 {place.image && (
                   <img
                     src={place.image}
                     alt={place.name}
-                    className="w-full h-48 object-cover rounded-lg mb-4"
+                    className="w-full h-64 object-cover rounded-lg mt-4"
                   />
                 )}
-
-                <p className="text-[#CCD6F6] mb-4">{place.description}</p>
-
-                <div className="flex flex-wrap gap-2">
-                  {place.categories.map((category, index) => (
-                    <span
-                      key={index}
-                      className="bg-[#1D2D50] text-[#64FFDA] px-2 py-1 rounded-full text-sm"
-                    >
-                      {category.name}
-                    </span>
-                  ))}
-                </div>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
       </div>
 

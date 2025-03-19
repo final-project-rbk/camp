@@ -18,7 +18,8 @@ import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { EXPO_PUBLIC_API_URL } from '../config';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../hooks/useAuth';
+import authService from '../services/auth.service';
 
 interface UserProfile {
   id: number;
@@ -80,6 +81,7 @@ const { width, height } = Dimensions.get('window');
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const { isAuthenticated, isLoading, user, checkAuth } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [editField, setEditField] = useState<string | null>(null);
@@ -88,47 +90,55 @@ export default function ProfileScreen() {
   const [hasExistingApplication, setHasExistingApplication] = useState(false);
 
   useEffect(() => {
-    checkAuthAndFetchProfile();
-  }, []);
-
-  const checkAuthAndFetchProfile = async () => {
-    try {
-      const userToken = await AsyncStorage.getItem('userToken');
-      const userData = await AsyncStorage.getItem('userData');
-
-      console.log('Checking stored data:', { userToken, userData }); // Debug log
-
-      if (!userToken || !userData) {
-        console.log('No auth data found, redirecting to auth'); // Debug log
+    const initializeProfile = async () => {
+      if (isLoading) return;
+      
+      if (!isAuthenticated) {
+        console.log('User not authenticated, redirecting to auth');
         router.replace('/auth');
         return;
       }
 
-      const user = JSON.parse(userData);
-      console.log('Found user data:', user); // Debug log
+      await checkAuthAndFetchProfile();
+    };
 
-      // Fetch the profile data
-      const response = await fetch(`${EXPO_PUBLIC_API_URL}users/${user.id}`, {
+    initializeProfile();
+  }, [isAuthenticated, isLoading]);
+
+  const checkAuthAndFetchProfile = async () => {
+    try {
+      const token = await authService.getToken();
+      const userData = await authService.getUser();
+
+      if (!token || !userData) {
+        console.log('No auth data found, redirecting to auth');
+        router.replace('/auth');
+        return;
+      }
+
+      console.log('Found user data:', userData);
+
+      const response = await fetch(`${EXPO_PUBLIC_API_URL}users/${userData.id}`, {
         headers: {
-          'Authorization': `Bearer ${userToken}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
 
+      if (response.status === 401) {
+        await checkAuth();
+        router.replace('/auth');
+        return;
+      }
+
       const data = await response.json();
-      console.log('Profile response:', data); // Debug log
+      console.log('Profile response:', data);
 
       if (data.success) {
         setProfile(data.data);
       } else {
-        console.log('Failed to fetch profile:', data); // Debug log
-        if (response.status === 401) {
-          // Token expired or invalid
-          await AsyncStorage.multiRemove(['userToken', 'userData']);
-          router.replace('/auth');
-        } else {
-          Alert.alert('Error', 'Failed to fetch profile');
-        }
+        console.log('Failed to fetch profile:', data);
+        Alert.alert('Error', 'Failed to fetch profile');
       }
     } catch (error) {
       console.error('Profile fetch error:', error);
@@ -140,29 +150,32 @@ export default function ProfileScreen() {
 
   const handleUpdate = async (field: string, value: string) => {
     try {
-      const userToken = await AsyncStorage.getItem('userToken');
-      const userData = await AsyncStorage.getItem('userData');
+      const token = await authService.getToken();
+      const userData = await authService.getUser();
       
-      if (!userData || !userToken) {
+      if (!token || !userData) {
         router.replace('/auth');
         return;
       }
 
-      const user = JSON.parse(userData);
-      const response = await fetch(`${EXPO_PUBLIC_API_URL}users/${user.id}`, {
+      const response = await fetch(`${EXPO_PUBLIC_API_URL}users/${userData.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${userToken}`,
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({ [field]: value }),
       });
+
+      if (response.status === 401) {
+        await checkAuth();
+        router.replace('/auth');
+        return;
+      }
       
       const data = await response.json();
       if (data.success) {
         setProfile(data.data);
-        // Update stored user data
-        await AsyncStorage.setItem('userData', JSON.stringify(data.data));
         Alert.alert('Success', 'Profile updated successfully');
       } else {
         Alert.alert('Error', 'Failed to update profile');
@@ -308,15 +321,20 @@ export default function ProfileScreen() {
 
   const checkExistingApplication = async (userId: number) => {
     try {
-      const userToken = await AsyncStorage.getItem('userToken');
+      const token = await authService.getToken();
       
-      // Updated endpoint URL to match backend
       const response = await fetch(`${EXPO_PUBLIC_API_URL}formularAdvisor/user/${userId}`, {
         headers: {
-          'Authorization': `Bearer ${userToken}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
+
+      if (response.status === 401) {
+        await checkAuth();
+        router.replace('/auth');
+        return null;
+      }
 
       if (!response.ok) {
         console.log('Response not OK:', response.status);
@@ -336,14 +354,13 @@ export default function ProfileScreen() {
 
   const handleCreateFormular = async () => {
     try {
-      const userData = await AsyncStorage.getItem('userData');
+      const userData = await authService.getUser();
       if (!userData) {
         router.replace('/auth');
         return;
       }
 
-      const user = JSON.parse(userData);
-      const existingApplication = await checkExistingApplication(user.id);
+      const existingApplication = await checkExistingApplication(userData.id);
       
       if (existingApplication) {
         router.push({
@@ -367,8 +384,7 @@ export default function ProfileScreen() {
 
   const handleLogout = async () => {
     try {
-      await AsyncStorage.removeItem('userToken');
-      await AsyncStorage.removeItem('userData');
+      await authService.logout();
       router.replace('/auth');
     } catch (error) {
       console.error('Logout error:', error);

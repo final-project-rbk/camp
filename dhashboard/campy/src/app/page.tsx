@@ -11,9 +11,11 @@ export default function AdminLogin() {
     password: '',
   });
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     setError('');
 
     try {
@@ -26,7 +28,6 @@ export default function AdminLogin() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
         },
         body: JSON.stringify({
           email: formData.email.toLowerCase().trim(),
@@ -37,15 +38,18 @@ export default function AdminLogin() {
       const data = await response.json();
 
       if (data.success) {
-        localStorage.setItem('userToken', data.data.token);
+        const token = data.data.token || data.data.accessToken;
+        localStorage.setItem('userToken', token);
         localStorage.setItem('userData', JSON.stringify(data.data.user));
         router.push('/dashboard');
       } else {
-        setError(data.error || 'Login failed');
+        setError(data.error || data.message || 'Login failed');
       }
     } catch (error) {
       console.error('Login error:', error);
       setError('Login failed. Please check your credentials.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -116,13 +120,14 @@ export default function AdminLogin() {
 
           <button
             type="submit"
+            disabled={loading}
             className="w-full rounded-md py-2 px-4 text-sm font-medium transition-colors hover:opacity-90"
             style={{
               backgroundColor: '#64FFDA',
               color: '#0A192F',
             }}
           >
-            Sign in to Dashboard
+            {loading ? 'Signing in...' : 'Sign in to Dashboard'}
           </button>
         </form>
 

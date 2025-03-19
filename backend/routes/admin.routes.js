@@ -1,9 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const adminController = require('../controlles/admin.controller');
-const { isAdmin } = require('../middleware/auth.middleware'); // You'll need to create this middleware
+const authMiddleware = require('../middleware/auth.middleware');
+const adminMiddleware = require('../middleware/admin.middleware');
 
-// User management routes
+// Apply both authentication and admin check middlewares
+router.use(authMiddleware);  // First check authentication
+router.use(adminMiddleware); // Then check admin role
+
+// Protected admin routes
 router.get('/users', adminController.getAllUsers);
 router.put('/users/:userId/ban', adminController.toggleUserBan);
 

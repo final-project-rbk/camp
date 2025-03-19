@@ -60,9 +60,15 @@ export default function BlogManagement() {
 
       if (!response.ok) throw new Error('Failed to fetch blogs');
       const data = await response.json();
-      setBlogs(data.data.sort((a: Blog, b: Blog) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      ));
+      
+      // Filter out blogs with invalid user data and sort them
+      const validBlogs = data.data
+        .filter((blog: Blog) => blog && blog.user)
+        .sort((a: Blog, b: Blog) => 
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+      
+      setBlogs(validBlogs);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching blogs:', error);
@@ -124,7 +130,14 @@ export default function BlogManagement() {
 
     try {
       const token = localStorage.getItem('userToken');
-      const response = await fetch(`${API_URL}blogs/comments/${commentToDelete}`, {
+      if (!token) {
+        router.push('/');
+        return;
+      }
+
+      console.log('Deleting comment:', commentToDelete);
+
+      const response = await fetch(`${API_URL}blogs/${selectedBlog.id}/comments/${commentToDelete}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -132,29 +145,63 @@ export default function BlogManagement() {
         },
       });
 
-      if (!response.ok) throw new Error('Failed to delete comment');
-      
-      // Refresh the blog details
+      if (!response.ok) {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to delete comment');
+        } else {
+          throw new Error(`Server error: ${response.status}`);
+        }
+      }
+
+      // Refresh the blog details after successful deletion
       const updatedBlogResponse = await fetch(`${API_URL}blogs/${selectedBlog.id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
+
+      if (!updatedBlogResponse.ok) {
+        throw new Error('Failed to refresh blog details');
+      }
+
       const updatedBlogData = await updatedBlogResponse.json();
       setSelectedBlog(updatedBlogData.data);
-      
       setShowDeleteCommentModal(false);
       setCommentToDelete(null);
+
     } catch (error) {
       console.error('Error deleting comment:', error);
       setError(error instanceof Error ? error.message : 'Failed to delete comment');
+      setShowDeleteCommentModal(false);
+      setCommentToDelete(null);
     }
+  };
+
+  const handleDeleteCommentClick = (commentId: number) => {
+    setCommentToDelete(commentId);
+    setShowDeleteCommentModal(true);
   };
 
   useEffect(() => {
     fetchBlogs();
   }, []);
+
+  // Add useEffect to handle body scroll
+  useEffect(() => {
+    if (showDetailModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    // Cleanup function
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showDetailModal]);
 
   if (loading) {
     return (
@@ -191,12 +238,12 @@ export default function BlogManagement() {
                       {blog.title}
                     </h2>
                     <p className="text-[#8892B0] text-sm">
-                      By {blog.user.first_name} {blog.user.last_name}
+                      By {blog.user?.first_name || 'Unknown'} {blog.user?.last_name || ''}
                     </p>
                   </div>
                   <button
                     onClick={(e) => {
-                      e.stopPropagation(); // Prevent triggering the card click
+                      e.stopPropagation();
                       handleDeleteClick(blog.id);
                     }}
                     className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
@@ -219,11 +266,11 @@ export default function BlogManagement() {
                   <div className="flex items-center space-x-4">
                     <div className="flex items-center space-x-2">
                       <span>❤️</span>
-                      <span>{blog.likes} likes</span>
+                      <span>{blog.likes || 0} likes</span>
                     </div>
                     <div className="flex items-center space-x-2">
                       <span>💬</span>
-                      <span>Comments</span>
+                      <span>{blog.comments?.length || 0} Comments</span>
                     </div>
                   </div>
                   <span>Created: {new Date(blog.createdAt).toLocaleDateString()}</span>
