@@ -143,20 +143,9 @@ module.exports = {
       await queryInterface.bulkInsert('categories', [
         { id: 1, name: 'Beaches', icon: '🏖️', createdAt: now, updatedAt: now },
         { id: 2, name: 'Mountains', icon: '⛰️', createdAt: now, updatedAt: now },
-        { id: 3, name: 'Tents', icon: '⛺', createdAt: now, updatedAt: now },
-        { id: 4, name: 'Cooking Gear', icon: '🍳', createdAt: now, updatedAt: now },
-        { id: 5, name: 'Sleeping Gear', icon: '🛌', createdAt: now, updatedAt: now },
-        // Additional location-based categories
-        { id: 6, name: 'Beaches & Coastal Areas', icon: '🌊', createdAt: now, updatedAt: now },
-        { id: 7, name: 'Mountain Trails', icon: '🏔️', createdAt: now, updatedAt: now },
-        { id: 8, name: 'Forests & National Parks', icon: '🌳', createdAt: now, updatedAt: now },
-        { id: 9, name: 'Deserts & Oases', icon: '🏜️', createdAt: now, updatedAt: now },
-        { id: 10, name: 'Lakes & Rivers', icon: '💦', createdAt: now, updatedAt: now },
-        { id: 11, name: 'Family Friendly', icon: '👨‍👩‍👧‍👦', createdAt: now, updatedAt: now },
-        { id: 12, name: 'Adventure Camping', icon: '🧗', createdAt: now, updatedAt: now },
-        { id: 13, name: 'Fishing Spots', icon: '🎣', createdAt: now, updatedAt: now },
-        { id: 14, name: 'Stargazing', icon: '✨', createdAt: now, updatedAt: now },
-        { id: 15, name: 'Beginner Friendly', icon: '🔰', createdAt: now, updatedAt: now }
+        { id: 3, name: 'Forests', icon: '🌳', createdAt: now, updatedAt: now },
+        { id: 4, name: 'Deserts', icon: '🏜️', createdAt: now, updatedAt: now },
+        { id: 5, name: 'Lakes', icon: '💦', createdAt: now, updatedAt: now }
       ]);
 
       // Places next
@@ -167,7 +156,7 @@ module.exports = {
           name: 'Camping Sidi El Barrak',
           description: 'Beautiful lakeside camping site surrounded by pine forests. Perfect for family camping with facilities for swimming, fishing, and hiking. Features clean amenities and designated BBQ areas.',
           location: 'Nefza, Béja Governorate',
-          images: JSON.stringify(['https://tse4.mm.bing.net/th?id=OIP.4NCKP0mz0yyWSV9A0YvQUgHaEn&pid=Api&P=0&h=180', 'https://tse4.mm.bing.net/th?id=OIP.D6sedfp1iELYgVbJjwp8BwHaEL&pid=Api&P=0&h=180', 'https://tse2.mm.bing.net/th?id=OIP.viaBXMo6i_IcSFZ1FH5y_wHaD4&pid=Api&P=0&h=180']),
+          images: JSON.stringify(['https://tse4.mm.bing.net/th?id=OIP.4NCKP0mz0yyWSV9A0YvQUgHaEn&pid=Api&P=0&h=180']),
           status: 'approved',
           createdAt: now,
           updatedAt: now
@@ -177,7 +166,7 @@ module.exports = {
           name: 'Ain Draham Forest Camp',
           description: 'Mountain camping in Tunisia\'s most beautiful cork oak forest. Experience cool mountain air and stunning views. Ideal for nature lovers and hikers.',
           location: 'Ain Draham, Jendouba',
-          images: JSON.stringify(['https://tse2.mm.bing.net/th?id=OIP.K2x67hQ69-pwC-YodDsU_AHaEK&pid=Api&P=0&h=180', 'https://tse4.mm.bing.net/th?id=OIP.QH1tMVKIwYPJG02bWuZAPAHaF8&pid=Api&P=0&h=180']),
+          images: JSON.stringify(['https://tse2.mm.bing.net/th?id=OIP.K2x67hQ69-pwC-YodDsU_AHaEK&pid=Api&P=0&h=180',]),
           status: 'approved',
           createdAt: now,
           updatedAt: now
@@ -1026,61 +1015,54 @@ module.exports = {
       // PlaceCategories
       console.log('Seeding placeCategories...');
       await queryInterface.bulkInsert('placeCategories', [
+        // Basic location categories
         { placeId: 1, categorieId: 1, createdAt: now, updatedAt: now }, // Sidi El Barrak - Beaches
+        { placeId: 1, categorieId: 5, createdAt: now, updatedAt: now }, // Sidi El Barrak - Lakes
+        
         { placeId: 2, categorieId: 2, createdAt: now, updatedAt: now }, // Ain Draham - Mountains
+        { placeId: 2, categorieId: 3, createdAt: now, updatedAt: now }, // Ain Draham - Forests
+        
         { placeId: 3, categorieId: 1, createdAt: now, updatedAt: now }, // Cap Serrat - Beaches
+        
         { placeId: 4, categorieId: 2, createdAt: now, updatedAt: now }, // Zaghouan - Mountains
+        
         { placeId: 5, categorieId: 1, createdAt: now, updatedAt: now }, // El Haouaria - Beaches
         
-        // New associations with the new categories
-        { placeId: 1, categorieId: 6, createdAt: now, updatedAt: now }, // Sidi El Barrak - Beaches & Coastal Areas
-        { placeId: 1, categorieId: 10, createdAt: now, updatedAt: now }, // Sidi El Barrak - Lakes & Rivers
-        { placeId: 1, categorieId: 11, createdAt: now, updatedAt: now }, // Sidi El Barrak - Family Friendly
+        { placeId: 6, categorieId: 3, createdAt: now, updatedAt: now }, // Ichkeul - Forests
+        { placeId: 6, categorieId: 5, createdAt: now, updatedAt: now }, // Ichkeul - Lakes
         
-        { placeId: 2, categorieId: 7, createdAt: now, updatedAt: now }, // Ain Draham - Mountain Trails
-        { placeId: 2, categorieId: 8, createdAt: now, updatedAt: now }, // Ain Draham - Forests & National Parks
-        { placeId: 2, categorieId: 12, createdAt: now, updatedAt: now }, // Ain Draham - Adventure Camping
+        { placeId: 7, categorieId: 3, createdAt: now, updatedAt: now }, // Tabarka - Forests
+        { placeId: 7, categorieId: 1, createdAt: now, updatedAt: now }, // Tabarka - Beaches
         
-        { placeId: 3, categorieId: 6, createdAt: now, updatedAt: now }, // Cap Serrat - Beaches & Coastal Areas
-        { placeId: 3, categorieId: 13, createdAt: now, updatedAt: now }, // Cap Serrat - Fishing Spots
+        { placeId: 8, categorieId: 5, createdAt: now, updatedAt: now }, // Beni Mtir - Lakes
         
-        { placeId: 4, categorieId: 7, createdAt: now, updatedAt: now }, // Zaghouan - Mountain Trails
-        { placeId: 4, categorieId: 14, createdAt: now, updatedAt: now }, // Zaghouan - Stargazing
+        { placeId: 9, categorieId: 2, createdAt: now, updatedAt: now }, // Djebel Ressas - Mountains
         
-        { placeId: 5, categorieId: 6, createdAt: now, updatedAt: now }, // El Haouaria - Beaches & Coastal Areas
-        { placeId: 5, categorieId: 15, createdAt: now, updatedAt: now }, // El Haouaria - Beginner Friendly
+        { placeId: 10, categorieId: 5, createdAt: now, updatedAt: now }, // Bizerte Lakes - Lakes
         
-        { placeId: 6, categorieId: 8, createdAt: now, updatedAt: now }, // Ichkeul - Forests & National Parks
-        { placeId: 6, categorieId: 13, createdAt: now, updatedAt: now }, // Ichkeul - Fishing Spots
+        // Desert place categories
+        { placeId: 11, categorieId: 4, createdAt: now, updatedAt: now }, // Douz Desert Camp - Deserts
         
-        { placeId: 7, categorieId: 8, createdAt: now, updatedAt: now }, // Tabarka - Forests & National Parks
-        { placeId: 7, categorieId: 6, createdAt: now, updatedAt: now }, // Tabarka - Beaches & Coastal Areas
+        { placeId: 12, categorieId: 4, createdAt: now, updatedAt: now }, // Tozeur Oasis Retreat - Deserts
         
-        { placeId: 8, categorieId: 10, createdAt: now, updatedAt: now }, // Beni Mtir - Lakes & Rivers
+        { placeId: 13, categorieId: 4, createdAt: now, updatedAt: now }, // Chott El Jerid Salt Lake Camp - Deserts
+        { placeId: 13, categorieId: 5, createdAt: now, updatedAt: now }, // Chott El Jerid Salt Lake Camp - Lakes
         
-        { placeId: 9, categorieId: 7, createdAt: now, updatedAt: now }, // Djebel Ressas - Mountain Trails
-        { placeId: 9, categorieId: 12, createdAt: now, updatedAt: now }, // Djebel Ressas - Adventure Camping
+        { placeId: 14, categorieId: 4, createdAt: now, updatedAt: now }, // Matmata Cave Camping - Deserts
         
-        { placeId: 10, categorieId: 10, createdAt: now, updatedAt: now }, // Bizerte Lakes - Lakes & Rivers
+        { placeId: 15, categorieId: 4, createdAt: now, updatedAt: now }, // Ksar Ghilane Oasis Camp - Deserts
         
-        // Desert and Oasis place categories
-        { placeId: 11, categorieId: 9, createdAt: now, updatedAt: now }, // Douz Desert Camp - Deserts & Oases
-        { placeId: 11, categorieId: 12, createdAt: now, updatedAt: now }, // Douz Desert Camp - Adventure Camping
-        { placeId: 11, categorieId: 14, createdAt: now, updatedAt: now }, // Douz Desert Camp - Stargazing
-        
-        { placeId: 12, categorieId: 9, createdAt: now, updatedAt: now }, // Tozeur Oasis Retreat - Deserts & Oases
-        { placeId: 12, categorieId: 11, createdAt: now, updatedAt: now }, // Tozeur Oasis Retreat - Family Friendly
-        
-        { placeId: 13, categorieId: 9, createdAt: now, updatedAt: now }, // Chott El Jerid Salt Lake Camp - Deserts & Oases
-        { placeId: 13, categorieId: 14, createdAt: now, updatedAt: now }, // Chott El Jerid Salt Lake Camp - Stargazing
-        { placeId: 13, categorieId: 12, createdAt: now, updatedAt: now }, // Chott El Jerid Salt Lake Camp - Adventure Camping
-        
-        { placeId: 14, categorieId: 9, createdAt: now, updatedAt: now }, // Matmata Cave Camping - Deserts & Oases
-        { placeId: 14, categorieId: 15, createdAt: now, updatedAt: now }, // Matmata Cave Camping - Beginner Friendly
-        
-        { placeId: 15, categorieId: 9, createdAt: now, updatedAt: now }, // Ksar Ghilane Oasis Camp - Deserts & Oases
-        { placeId: 15, categorieId: 11, createdAt: now, updatedAt: now }, // Ksar Ghilane Oasis Camp - Family Friendly
-        { placeId: 15, categorieId: 14, createdAt: now, updatedAt: now } // Ksar Ghilane Oasis Camp - Stargazing
+        // Additional places (Faker generated)
+        { placeId: 16, categorieId: 1, createdAt: now, updatedAt: now }, // Faker place - Beaches
+        { placeId: 17, categorieId: 2, createdAt: now, updatedAt: now }, // Faker place - Mountains
+        { placeId: 18, categorieId: 3, createdAt: now, updatedAt: now }, // Faker place - Forests
+        { placeId: 19, categorieId: 4, createdAt: now, updatedAt: now }, // Faker place - Deserts
+        { placeId: 20, categorieId: 5, createdAt: now, updatedAt: now }, // Faker place - Lakes
+        { placeId: 21, categorieId: 1, createdAt: now, updatedAt: now }, // Faker place - Beaches
+        { placeId: 22, categorieId: 2, createdAt: now, updatedAt: now }, // Faker place - Mountains
+        { placeId: 23, categorieId: 3, createdAt: now, updatedAt: now }, // Faker place - Forests
+        { placeId: 24, categorieId: 4, createdAt: now, updatedAt: now }, // Faker place - Deserts
+        { placeId: 25, categorieId: 5, createdAt: now, updatedAt: now }  // Faker place - Lakes
       ]);
 
       // PlaceUser Associations

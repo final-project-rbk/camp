@@ -8,12 +8,17 @@ import {
   TouchableOpacity, 
   Switch,
   Linking,
-  Image 
+  Image,
+  Pressable,
+  Platform,
+  StatusBar
 } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
 import { TAB_BAR_HEIGHT } from '../components/TabBar';
+import { useRouter } from 'expo-router';
 
 export default function Setting() {
+  const router = useRouter();
   // State for toggle settings
   const [toggleSettings, setToggleSettings] = useState({
     tripReminders: true,
@@ -52,6 +57,12 @@ export default function Setting() {
         contentContainerStyle={[styles.contentContainer, { paddingBottom: TAB_BAR_HEIGHT + 20 }]}
       >
         <View style={styles.header}>
+          <Pressable 
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <Ionicons name="arrow-back" size={24} color="#64FFDA" />
+          </Pressable>
           <Text style={styles.headerTitle}>Settings</Text>
         </View>
         
@@ -364,6 +375,7 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#0A192F',
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   container: {
     flex: 1,
@@ -373,13 +385,26 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   header: {
-    marginTop: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(100, 255, 218, 0.1)',
+    marginTop: 0,
     marginBottom: 20,
   },
+  backButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(100, 255, 218, 0.1)',
+  },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#CCD6F6',
+    marginLeft: 16,
+    flex: 1,
   },
   section: {
     marginBottom: 24,

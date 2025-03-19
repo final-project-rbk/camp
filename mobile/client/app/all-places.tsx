@@ -8,9 +8,12 @@ import {
   Pressable,
   ActivityIndicator,
   ScrollView,
-  Dimensions
+  Dimensions,
+  SafeAreaView,
+  Platform,
+  StatusBar
 } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { EXPO_PUBLIC_API_URL } from '../config';
@@ -28,7 +31,8 @@ interface Place {
   id: string;
   name: string;
   location: string;
-  image: string;
+  images: string[] | string; // Can be an array or JSON string
+  image?: string; // For backward compatibility
   rating: number;
   categories: Category[];
 }
@@ -39,17 +43,11 @@ const categoryIcons: {[key: string]: string} = {
   'Mountains': 'mountain-outline',
   'Forests': 'leaf-outline',
   'Lakes': 'water-outline',
-  'Caves': 'analytics-outline',
-  'Tents': 'home-outline',
-  'Cooking Gear': 'restaurant-outline',
-  'Sleeping Gear': 'bed-outline',
-  'Family Friendly': 'people-outline',
-  'Pet Friendly': 'paw-outline',
-  'Desert': 'sunny-outline',
-  'Historical': 'time-outline',
+  'Deserts': 'sunny-outline',
 };
 
 export default function AllPlacesScreen() {
+  const router = useRouter();
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -73,12 +71,23 @@ export default function AllPlacesScreen() {
       setLoading(true);
       setPlaces([]); // Clear places when starting new search
       const queryParams = category ? `?category=${category}` : '';
-      console.log('Fetching places with query:', queryParams);
       const response = await fetch(`${EXPO_PUBLIC_API_URL}places${queryParams}`);
       const data = await response.json();
-      console.log('Places data:', data);
       if (data.success) {
-        setPlaces(data.data);
+        // Process the places data to ensure images are properly parsed
+        const processedPlaces = data.data.map((place: any) => {
+          // If images is a string, try to parse it as JSON
+          if (typeof place.images === 'string') {
+            try {
+              place.images = JSON.parse(place.images);
+            } catch (e) {
+              console.error('Error parsing images JSON:', e);
+              place.images = [];
+            }
+          }
+          return place;
+        });
+        setPlaces(processedPlaces);
       }
     } catch (error) {
       console.error('Error fetching places:', error);
@@ -98,14 +107,20 @@ export default function AllPlacesScreen() {
   }, []);
 
   useEffect(() => {
-    console.log('Selected category changed:', selectedCategory);
     fetchPlaces(selectedCategory || undefined);
   }, [selectedCategory]);
 
   const renderPlace = ({ item }: { item: Place }) => (
     <Link href={`/place/${item.id}`} asChild>
       <Pressable style={styles.placeCard}>
-        <Image source={{ uri: item.image }} style={styles.placeImage} />
+        <Image 
+          source={{ 
+            uri: Array.isArray(item.images) && item.images.length > 0 
+              ? item.images[0] 
+              : (typeof item.images === 'string' ? item.images : 'https://via.placeholder.com/400') 
+          }} 
+          style={styles.placeImage} 
+        />
         <LinearGradient
           colors={['transparent', 'rgba(10, 25, 47, 0.8)', 'rgba(10, 25, 47, 0.95)']}
           style={styles.imageGradient}
@@ -114,7 +129,7 @@ export default function AllPlacesScreen() {
           <View style={styles.categoryTags}>
             {item.categories.slice(0, 2).map((cat, index) => (
               <View key={index} style={styles.categoryTag}>
-                <Text style={styles.categoryTagText}>{cat.name}</Text>
+                <Text style={styles.categoryTagText}>{cat.icon} {cat.name}</Text>
               </View>
             ))}
           </View>
@@ -154,11 +169,17 @@ export default function AllPlacesScreen() {
           end={{ x: 1, y: 1 }}
         >
           <View style={styles.categoryIconContainer}>
-            <Ionicons 
-              name={(categoryIcons[item.name] || "compass-outline") as keyof typeof Ionicons.glyphMap}
-              size={24} 
-              color={isSelected ? '#0A192F' : '#64FFDA'} 
-            />
+            {item.icon ? (
+              <Text style={{ fontSize: 24, color: isSelected ? '#0A192F' : '#64FFDA' }}>
+                {item.icon}
+              </Text>
+            ) : (
+              <Ionicons 
+                name={(categoryIcons[item.name] || "compass-outline") as keyof typeof Ionicons.glyphMap}
+                size={24} 
+                color={isSelected ? '#0A192F' : '#64FFDA'} 
+              />
+            )}
           </View>
           <Text style={[
             styles.categoryText,
@@ -191,18 +212,23 @@ export default function AllPlacesScreen() {
   );
 
   return (
-    <>
-      <Stack.Screen 
-        options={{
-          title: 'Discover Camping Spots',
-          headerStyle: { backgroundColor: '#0A192F' },
-          headerTintColor: '#64FFDA'
-        }} 
-      />
-      <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Pressable 
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Ionicons name="arrow-back" size={24} color="#64FFDA" />
+        </Pressable>
+        <Text style={styles.headerTitle}>Discover Places</Text>
+      </View>
+
+      <View style={styles.content}>
         <View style={styles.headerContainer}>
-          <Text style={styles.headerTitle}>Find Your Perfect Camping Spot in Tunisia</Text>
           <Text style={styles.headerSubtitle}>
+            Find Your Perfect Camping Spot in Tunisia
+          </Text>
+          <Text style={styles.headerDescription}>
             Explore the best camping destinations across Tunisia
           </Text>
         </View>
@@ -236,7 +262,7 @@ export default function AllPlacesScreen() {
           />
         )}
       </View>
-    </>
+    </SafeAreaView>
   );
 }
 
@@ -244,18 +270,41 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0A192F',
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
-  headerContainer: {
-    padding: 16,
-    paddingBottom: 8,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(100, 255, 218, 0.1)',
+  },
+  backButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(100, 255, 218, 0.1)',
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#CCD6F6',
-    marginBottom: 4,
+    marginLeft: 16,
+  },
+  content: {
+    flex: 1,
+  },
+  headerContainer: {
+    padding: 16,
+    paddingBottom: 8,
   },
   headerSubtitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#CCD6F6',
+    marginBottom: 4,
+  },
+  headerDescription: {
     fontSize: 14,
     color: '#8892B0',
   },

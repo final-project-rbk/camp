@@ -7,9 +7,12 @@ import {
   Image,
   ActivityIndicator,
   Dimensions,
-  Pressable
+  Pressable,
+  SafeAreaView,
+  Platform,
+  StatusBar
 } from 'react-native';
-import { useLocalSearchParams, Stack } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { EXPO_PUBLIC_API_URL } from '../../config';
 
@@ -26,6 +29,7 @@ interface Event {
 
 export default function EventDetailScreen() {
   const { id } = useLocalSearchParams();
+  const router = useRouter();
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -56,30 +60,55 @@ export default function EventDetailScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator color="#64FFDA" size="large" />
-      </View>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Pressable 
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <Ionicons name="arrow-back" size={24} color="#64FFDA" />
+          </Pressable>
+          <Text style={styles.headerTitle}>Loading...</Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator color="#64FFDA" size="large" />
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (!event) {
     return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Event not found</Text>
-      </View>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Pressable 
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <Ionicons name="arrow-back" size={24} color="#64FFDA" />
+          </Pressable>
+          <Text style={styles.headerTitle}>Error</Text>
+        </View>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Event not found</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <>
-      <Stack.Screen
-        options={{
-          title: event.title,
-          headerStyle: { backgroundColor: '#0A192F' },
-          headerTintColor: '#64FFDA'
-        }}
-      />
-      <ScrollView style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Pressable 
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Ionicons name="arrow-back" size={24} color="#64FFDA" />
+        </Pressable>
+        <Text style={styles.headerTitle} numberOfLines={1}>{event.title}</Text>
+      </View>
+
+      <ScrollView style={styles.scrollView}>
         <View style={styles.imageContainer}>
           <ScrollView
             horizontal
@@ -142,7 +171,7 @@ export default function EventDetailScreen() {
           )}
         </View>
       </ScrollView>
-    </>
+    </SafeAreaView>
   );
 }
 
@@ -150,6 +179,30 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0A192F',
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(100, 255, 218, 0.1)',
+  },
+  backButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(100, 255, 218, 0.1)',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#CCD6F6',
+    marginLeft: 16,
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
   },
   loadingContainer: {
     flex: 1,

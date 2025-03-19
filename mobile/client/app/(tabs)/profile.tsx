@@ -18,7 +18,9 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { EXPO_PUBLIC_API_URL } from '../../config';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../../context/AuthContext';
+import AuthService from '../../services/auth.service';
+import { TAB_BAR_HEIGHT } from '../../components/TabBar';
 
 interface UserProfile {
   id: number;
@@ -79,6 +81,7 @@ const { width, height } = Dimensions.get('window');
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const { user, accessToken } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [editField, setEditField] = useState<string | null>(null);
@@ -92,24 +95,20 @@ export default function ProfileScreen() {
 
   const checkAuthAndFetchProfile = async () => {
     try {
-      const userToken = await AsyncStorage.getItem('userToken');
-      const userData = await AsyncStorage.getItem('userData');
+      const token = await AuthService.getToken();
+      const userData = await AuthService.getUser();
 
-      console.log('Checking stored data:', { userToken, userData }); // Debug log
+      console.log('Checking stored data:', { token, userData }); // Debug log
 
-      if (!userToken || !userData) {
+      if (!token || !userData) {
         console.log('No auth data found, redirecting to auth'); // Debug log
         router.replace('/auth');
         return;
       }
 
-      const user = JSON.parse(userData);
-      console.log('Found user data:', user); // Debug log
-
-      // Fetch the profile data
-      const response = await fetch(`${EXPO_PUBLIC_API_URL}users/${user.id}`, {
+      const response = await fetch(`${EXPO_PUBLIC_API_URL}users/${userData.id}`, {
         headers: {
-          'Authorization': `Bearer ${userToken}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
@@ -122,8 +121,7 @@ export default function ProfileScreen() {
       } else {
         console.log('Failed to fetch profile:', data); // Debug log
         if (response.status === 401) {
-          // Token expired or invalid
-          await AsyncStorage.multiRemove(['userToken', 'userData']);
+          await AuthService.clearAuthData();
           router.replace('/auth');
         } else {
           Alert.alert('Error', 'Failed to fetch profile');
@@ -139,20 +137,19 @@ export default function ProfileScreen() {
 
   const handleUpdate = async (field: string, value: string) => {
     try {
-      const userToken = await AsyncStorage.getItem('userToken');
-      const userData = await AsyncStorage.getItem('userData');
+      const token = await AuthService.getToken();
+      const userData = await AuthService.getUser();
       
-      if (!userData || !userToken) {
+      if (!userData || !token) {
         router.replace('/auth');
         return;
       }
 
-      const user = JSON.parse(userData);
-      const response = await fetch(`${EXPO_PUBLIC_API_URL}users/${user.id}`, {
+      const response = await fetch(`${EXPO_PUBLIC_API_URL}users/${userData.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${userToken}`,
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({ [field]: value }),
       });
@@ -160,8 +157,8 @@ export default function ProfileScreen() {
       const data = await response.json();
       if (data.success) {
         setProfile(data.data);
-        // Update stored user data
-        await AsyncStorage.setItem('userData', JSON.stringify(data.data));
+        const updatedUser = { ...userData, [field]: value };
+        await AuthService.storeAuthData({ user: updatedUser, token });
         Alert.alert('Success', 'Profile updated successfully');
       } else {
         Alert.alert('Error', 'Failed to update profile');
@@ -174,7 +171,6 @@ export default function ProfileScreen() {
 
   const pickImage = async () => {
     try {
-      // Show action sheet for image source selection
       Alert.alert(
         "Select Image Source",
         "Choose where you want to take the image from",
@@ -234,17 +230,15 @@ export default function ProfileScreen() {
 
   const uploadImage = async (uri: string) => {
     try {
-      // Create form data
       const formData = new FormData();
       formData.append('file', {
         uri,
         type: 'image/jpeg',
         name: 'profile-image.jpg',
       } as any);
-      formData.append('upload_preset', 'Ghassen123'); // Your actual preset
-      formData.append('cloud_name', 'dqh6arave'); // Your actual cloud name
+      formData.append('upload_preset', 'Ghassen123');
+      formData.append('cloud_name', 'dqh6arave');
 
-      // Upload to Cloudinary
       const response = await fetch(
         'https://api.cloudinary.com/v1_1/dqh6arave/image/upload',
         {
@@ -258,17 +252,16 @@ export default function ProfileScreen() {
       );
 
       const data = await response.json();
-      console.log('Cloudinary response:', data); // For debugging
+      console.log('Cloudinary response:', data);
 
       if (data.secure_url) {
-        // Update profile with new image URL
         await handleUpdate('profile_image', data.secure_url);
       } else {
-        console.error('Upload error:', data); // For debugging
+        console.error('Upload error:', data);
         Alert.alert('Error', 'Failed to upload image');
       }
     } catch (error) {
-      console.error('Upload error:', error); // For debugging
+      console.error('Upload error:', error);
       Alert.alert('Error', 'Failed to upload image');
     }
   };
@@ -307,12 +300,11 @@ export default function ProfileScreen() {
 
   const checkExistingApplication = async (userId: number) => {
     try {
-      const userToken = await AsyncStorage.getItem('userToken');
+      const token = await AuthService.getToken();
       
-      // Updated endpoint URL to match backend
       const response = await fetch(`${EXPO_PUBLIC_API_URL}formularAdvisor/user/${userId}`, {
         headers: {
-          'Authorization': `Bearer ${userToken}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
@@ -335,14 +327,13 @@ export default function ProfileScreen() {
 
   const handleCreateFormular = async () => {
     try {
-      const userData = await AsyncStorage.getItem('userData');
+      const userData = await AuthService.getUser();
       if (!userData) {
         router.replace('/auth');
         return;
       }
 
-      const user = JSON.parse(userData);
-      const existingApplication = await checkExistingApplication(user.id);
+      const existingApplication = await checkExistingApplication(userData.id);
       
       if (existingApplication) {
         router.push({
@@ -366,8 +357,7 @@ export default function ProfileScreen() {
 
   const handleLogout = async () => {
     try {
-      await AsyncStorage.removeItem('userToken');
-      await AsyncStorage.removeItem('userData');
+      await AuthService.clearAuthData();
       router.replace('/auth');
     } catch (error) {
       console.error('Logout error:', error);
@@ -386,6 +376,7 @@ export default function ProfileScreen() {
   return (
     <ScrollView 
       style={styles.container}
+      contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT + 20 }}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, Pressable, ActivityIndicator } from 'react-native';
-import { Link } from 'expo-router';
+import { View, Text, StyleSheet, ScrollView, Image, Pressable, ActivityIndicator, SafeAreaView, Platform, StatusBar } from 'react-native';
+import { Link, useRouter } from 'expo-router';
 import { EXPO_PUBLIC_API_URL } from '../config';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -41,7 +41,11 @@ export default function Events() {
   }, []);
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Upcoming Events</Text>
+      </View>
+
       {loading ? (
         <ActivityIndicator color="#64FFDA" />
       ) : events.length === 0 ? (
@@ -83,13 +87,28 @@ export default function Events() {
           ))}
         </ScrollView>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 20,
+    flex: 1,
+    backgroundColor: '#0A192F',
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(100, 255, 218, 0.1)',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#CCD6F6',
   },
   loadingContainer: {
     height: 200,
