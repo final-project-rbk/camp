@@ -179,21 +179,48 @@ export default function Market() {
       Alert.alert('Error', 'Please login to chat with sellers');
       return;
     }
+
+    if (sellerId === user?.id) {
+      Alert.alert('Error', 'You cannot chat with yourself');
+      return;
+    }
+
     try {
-      // Create or get chat room first
-      const response = await axios.post(`${EXPO_PUBLIC_API_URL}chat/rooms/get-or-create`, { userId: sellerId }, {
-      
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
+      // Show loading indicator
+      setLoading(true);
+
+      // Create or get chat room
+      const response = await axios.post(
+        `${EXPO_PUBLIC_API_URL}chat/rooms/get-or-create`,
+        { userId: sellerId },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
       const roomId = response.data.id;
-      // Navigate to chat with the room ID
+      const isNewRoom = response.data.isNew;
+
+      // Navigate to chat room
       router.push({
         pathname: `/chat/${roomId}`,
-        params: { roomId }
+        params: {
+          roomId,
+          isNewRoom: isNewRoom ? '1' : '0'
+        }
       } as any);
+
     } catch (error) {
-      console.error('Error starting chat:', error);
-      Alert.alert('Error', 'Could not start chat. Please try again.');
+      console.error('Error handling chat:', error);
+      Alert.alert(
+        'Error',
+        'Could not start chat. Please try again later.'
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -203,6 +230,14 @@ export default function Market() {
       return;
     }
     router.push('/market/new' as any);
+  };
+
+  const handleMyChatsPress = () => {
+    if (!isAuthenticated) {
+      Alert.alert('Error', 'Please login to view your chats');
+      return;
+    }
+    router.push('/chat/room' as any);
   };
 
   if (loading) {
@@ -222,13 +257,22 @@ export default function Market() {
     >
       <View style={styles.header}>
         <Text style={styles.title}>Marketplace</Text>
-        <TouchableOpacity 
-          style={styles.addButton}
-          onPress={handleNewItemPress}
-        >
-          <Ionicons name="add-circle-outline" size={24} color="#64FFDA" />
-          <Text style={styles.addButtonText}>Sell Item</Text>
-        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity 
+            style={styles.headerButton}
+            onPress={handleMyChatsPress}
+          >
+            <Ionicons name="chatbubbles-outline" size={24} color="#64FFDA" />
+            <Text style={styles.headerButtonText}>My Chats</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.headerButton}
+            onPress={handleNewItemPress}
+          >
+            <Ionicons name="add-circle-outline" size={24} color="#64FFDA" />
+            <Text style={styles.headerButtonText}>Sell Item</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.searchContainer}>
@@ -391,6 +435,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  headerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerButtonText: {
+    marginLeft: 8,
+    color: '#64FFDA',
   },
   title: {
     fontSize: 24,

@@ -1,6 +1,7 @@
 const { Room, Message, RoomUser, User, Media } = require('../models');
 const {Sequelize}=require('sequelize');
 const media = require('../models/media');
+const sequelize = require('sequelize');
 
 const createRoom = async (req, res) => {
   try {
@@ -73,33 +74,82 @@ const getOrCreateRoom = async (req, res) => {
   try {
     const { userId } = req.body;
     const currentUserId = req.user.id;
-    console.log(userId,currentUserId,"hhhh");
-    
 
-    // Find a room that includes both users
-    const rooms = await Room.findAll({
-
-      include: [{
-        model: User,
-        where: { id: [currentUserId, userId] },
-        through: { attributes: [] }
-      }]
-    });
-console.log("rooms",rooms);
-
-    let room = rooms.find(r => r.users ?r.users.length===2:false) 
-    
-
-    // If no room exists, create a new one
-    if (!room) {
-      room = await Room.create({ name: `Room_${currentUserId}_${userId}` });
-      await RoomUser.bulkCreate([{ roomId: room.id, userId: currentUserId }, { roomId: room.id, userId }]);
+    // Don't allow chat with self
+    if (currentUserId === userId) {
+      return res.status(400).json({ message: "Cannot create chat with yourself" });
     }
 
-    res.status(200).json(room);
+    // Check if users exist
+    const [currentUser, otherUser] = await Promise.all([
+      User.findByPk(currentUserId),
+      User.findByPk(userId)
+    ]);
+
+    if (!otherUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Find existing room between these users
+    const existingRoom = await Room.findOne({
+      include: [{
+        model: User,
+        attributes: ['id', 'first_name', 'last_name', 'profile_image'],
+        where: {
+          id: [currentUserId, userId]
+        },
+        through: { attributes: [] }
+      }],
+      having: Sequelize.literal('COUNT(DISTINCT Users.id) = 2'),
+      group: ['Room.id']
+    });
+
+    if (existingRoom) {
+      // Return existing room with users
+      return res.json({
+        ...existingRoom.toJSON(),
+        isExisting: true
+      });
+    }
+
+    // Create new room if none exists
+    const newRoom = await sequelize.transaction(async (t) => {
+      const room = await Room.create({
+        name: `Chat between ${currentUser.first_name} and ${otherUser.first_name}`
+      }, { transaction: t });
+
+      // Add both users to the room
+      await Promise.all([
+        RoomUser.create({
+          userId: currentUserId,
+          roomId: room.id
+        }, { transaction: t }),
+        RoomUser.create({
+          userId: userId,
+          roomId: room.id
+        }, { transaction: t })
+      ]);
+
+      // Fetch the room with users
+      const roomWithUsers = await Room.findOne({
+        where: { id: room.id },
+        include: [{
+          model: User,
+          attributes: ['id', 'first_name', 'last_name', 'profile_image']
+        }],
+        transaction: t
+      });
+
+      return {
+        ...roomWithUsers.toJSON(),
+        isNew: true
+      };
+    });
+
+    res.status(201).json(newRoom);
   } catch (error) {
-    throw error
-    res.status(500).json({ error: error.message });
+    console.error('Error in getOrCreateRoom:', error);
+    res.status(500).json({ message: "Error creating chat room", error: error.message });
   }
 };
 

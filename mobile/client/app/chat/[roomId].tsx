@@ -18,7 +18,7 @@ const MessagesScreen = () => {
   const [typingUsers, setTypingUsers] = useState(new Set());
   const { accessToken, user } = useAuth();
   const { roomId } = useLocalSearchParams();
- 
+  const { searchParams } = useLocalSearchParams();
   
   const socketRef = useRef<Socket | null>(null);
   const flatListRef = useRef(null);
@@ -27,6 +27,8 @@ const MessagesScreen = () => {
   const CLOUDINARY_UPLOAD_PRESET = "Ghassen123";
 
   useEffect(() => {
+    if (!roomId) return;
+
     // Initialize socket connection with auth token and better configuration
     socketRef.current = io(EXPO_PUBLIC_API_URL.replace('/api', ''), {
       auth: { token: accessToken },
@@ -45,13 +47,22 @@ const MessagesScreen = () => {
       console.log('Socket connected');
       setError(null);
       
-      // Join room after successful connection
-      socketRef.current.emit('join_room', roomId);
+      // Join the room
+      socketRef.current?.emit('join_room', roomId);
     });
 
     socketRef.current.on('connect_error', (error) => {
       console.error('Socket connection error:', error.message);
       setError('Connection error: ' + error.message);
+    });
+
+    // Handle room join confirmation
+    socketRef.current.on('user_joined', (data) => {
+      console.log('User joined room:', data);
+      // If this is a new room, send a welcome message
+      if (searchParams.isNewRoom === '1') {
+        sendMessage('👋 Hi! I\'m interested in your item.');
+      }
     });
 
     socketRef.current.on('disconnect', (reason) => {
