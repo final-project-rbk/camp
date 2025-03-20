@@ -8,11 +8,13 @@ import {
   Pressable,
   ActivityIndicator,
   Dimensions,
-  FlatList
+  FlatList,
+  TouchableOpacity
 } from 'react-native';
 import { useLocalSearchParams, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { EXPO_PUBLIC_API_URL } from '../../config';
+import FavoriteButton from '../../components/FavoriteButton';
 
 interface Review {
   id: string;
@@ -23,6 +25,13 @@ interface Review {
     name: string;
     avatar: string;
   };
+}
+
+interface Criteria {
+  id: string;
+  name: string;
+  percentage: number;
+  value: number;
 }
 
 interface PlaceDetails {
@@ -37,6 +46,7 @@ interface PlaceDetails {
     name: string;
     icon: string;
   }[];
+  critiria: Criteria[];
 }
 
 export default function PlaceDetailsScreen() {
@@ -44,6 +54,7 @@ export default function PlaceDetailsScreen() {
   const [place, setPlace] = useState<PlaceDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [userVotes, setUserVotes] = useState<{[key: string]: number}>({});
 
   const fetchPlaceDetails = async () => {
     try {
@@ -115,6 +126,53 @@ export default function PlaceDetailsScreen() {
     </View>
   );
 
+  const handleVote = (criteriaId: string, value: number) => {
+    setUserVotes(prev => ({
+      ...prev,
+      [criteriaId]: value
+    }));
+    
+    // In a real app, you would send this vote to your backend
+    // Example: sendVote(criteriaId, value);
+  };
+
+  const renderBarometer = (criteria: Criteria) => {
+    const currentValue = userVotes[criteria.id] !== undefined ? 
+      userVotes[criteria.id] : criteria.value;
+    
+    return (
+      <View style={styles.barometerContainer} key={criteria.id}>
+        <Text style={styles.criteriaName}>{criteria.name}</Text>
+        <Text style={styles.criteriaPercentage}>{criteria.percentage}%</Text>
+        
+        <View style={styles.barometerTrack}>
+          <View 
+            style={[
+              styles.barometerFill, 
+              {width: `${currentValue}%`},
+              currentValue > 50 ? styles.barometerGood : styles.barometerBad
+            ]} 
+          />
+        </View>
+        
+        <View style={styles.votingButtons}>
+          {[0, 25, 50, 75, 100].map(value => (
+            <TouchableOpacity
+              key={value}
+              style={[
+                styles.voteButton,
+                currentValue === value && styles.selectedVoteButton
+              ]}
+              onPress={() => handleVote(criteria.id, value)}
+            >
+              <Text style={styles.voteButtonText}>{value}%</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    );
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -141,25 +199,28 @@ export default function PlaceDetailsScreen() {
         }}
       />
       <ScrollView style={styles.container}>
-        <ScrollView
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={(e) => {
-            const newIndex = Math.round(
-              e.nativeEvent.contentOffset.x / Dimensions.get('window').width
-            );
-            setActiveImageIndex(newIndex);
-          }}
-        >
-          {place.images.map((image, index) => (
-            <Image
-              key={index}
-              source={{ uri: image }}
-              style={styles.image}
-            />
-          ))}
-        </ScrollView>
+        <View style={styles.imageContainer}>
+          <FavoriteButton placeId={place.id} style={styles.favoriteButton} />
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={(e) => {
+              const newIndex = Math.round(
+                e.nativeEvent.contentOffset.x / Dimensions.get('window').width
+              );
+              setActiveImageIndex(newIndex);
+            }}
+          >
+            {place.images.map((image, index) => (
+              <Image
+                key={index}
+                source={{ uri: image }}
+                style={styles.image}
+              />
+            ))}
+          </ScrollView>
+        </View>
 
         <View style={styles.pagination}>
           {place.images.map((_, index) => (
@@ -196,16 +257,18 @@ export default function PlaceDetailsScreen() {
             ))}
           </View>
 
+          {place.critiria && place.critiria.length > 0 && (
+            <>
+              <Text style={styles.sectionTitle}>Criteria</Text>
+              <View style={styles.criteriaContainer}>
+                {place.critiria.map(criteria => renderBarometer(criteria))}
+              </View>
+            </>
+          )}
+
           <Text style={styles.sectionTitle}>About</Text>
           <Text style={styles.description}>{place.description}</Text>
-
-          <Text style={styles.sectionTitle}>Reviews</Text>
-          <FlatList
-            data={place.reviews}
-            renderItem={renderReview}
-            keyExtractor={(item) => item.id}
-            scrollEnabled={false}
-          />
+          
         </View>
       </ScrollView>
     </>
@@ -355,5 +418,71 @@ const styles = StyleSheet.create({
   reviewDate: {
     color: '#64FFDA',
     fontSize: 12,
+  },
+  criteriaContainer: {
+    marginBottom: 20,
+  },
+  barometerContainer: {
+    marginBottom: 15,
+  },
+  criteriaName: {
+    color: '#CCD6F6',
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 5,
+  },
+  criteriaPercentage: {
+    color: '#64FFDA',
+    fontSize: 14,
+    marginBottom: 5,
+  },
+  barometerTrack: {
+    height: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 10,
+  },
+  barometerFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  barometerGood: {
+    backgroundColor: '#64FFDA',
+  },
+  barometerBad: {
+    backgroundColor: '#FF6B6B',
+  },
+  votingButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  voteButton: {
+    padding: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    alignItems: 'center',
+    width: '18%',
+  },
+  selectedVoteButton: {
+    backgroundColor: 'rgba(100, 255, 218, 0.2)',
+    borderWidth: 1,
+    borderColor: '#64FFDA',
+  },
+  voteButtonText: {
+    color: '#CCD6F6',
+    fontSize: 12,
+  },
+  imageContainer: {
+    position: 'relative',
+  },
+  favoriteButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    zIndex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderRadius: 20,
+    padding: 8,
   },
 }); 

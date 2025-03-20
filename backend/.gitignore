@@ -9,7 +9,7 @@ node_modules
 !.yarn/releases
 !.yarn/versions
 .env
-.config/config.json
+config/config.js
 
 testing
 /coverage
@@ -43,3 +43,4 @@ typescript
 next-env.d.ts
 
 
+config.js

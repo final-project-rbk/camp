@@ -12,10 +12,10 @@ async function runSeeds() {
     // Then run the seeds
     await seeds.down(connection.getQueryInterface(), connection.Sequelize);
     console.log('✅ Old seeds removed successfully');
-    
+
     await seeds.up(connection.getQueryInterface(), connection.Sequelize);
     console.log('✅ New seeds added successfully');
-    
+
     process.exit(0);
   } catch (error) {
     console.error('❌ Seeding failed:', error);
@@ -23,4 +23,4 @@ async function runSeeds() {
   }
 }
 
-runSeeds(); 
+runSeeds();

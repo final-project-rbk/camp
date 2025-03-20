@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Pressable, Dimensions, Alert } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { EXPO_PUBLIC_API_URL } from '@/config';
-import { cloudinary, uploadImageToCloudinary } from '@/config/cloudinary';
+import { uploadImageToCloudinary } from '@/config/cloudinary';
+import AuthService from '@/services/auth.service';
 
 interface Review {
   id: string;
@@ -34,86 +35,126 @@ interface User {
 }
 
 interface AdvisorProfile {
-  advisorId: number;
-  user: User;
-  events: Event[];
+  id: number;
+  user: {
+    first_name: string;
+    last_name: string;
+    email: string;
+    profile_image: string;
+    bio: string;
+    experience: string;
+  };
+  bio: string;
+  experience: string;
   points: number;
-  rank: 'bronze' | 'silver' | 'gold' | 'platinum';
-  reviews: Review[];
+  rank: string;
+  places: Array<{
+    id: number;
+    name: string;
+    location: string;
+    image: string;
+    averageRating: number;
+    reviewCount: number;
+  }>;
 }
 
 export default function AdvisorProfileScreen() {
   const { id } = useLocalSearchParams();
-  const [advisor, setAdvisor] = useState<AdvisorProfile | null>(null);
+  const router = useRouter();
+  const [profile, setProfile] = useState<AdvisorProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
   const [showImageOptions, setShowImageOptions] = useState(false);
   const [showFullImage, setShowFullImage] = useState(false);
 
-  const fetchAdvisorProfile = async () => {
+  const fetchProfile = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${EXPO_PUBLIC_API_URL}advisor/${id}`);
-      const data = await response.json();
-      setAdvisor(data);
-    } catch (error) {
-      console.error('Error fetching advisor profile:', error);
+      console.log('Fetching advisor profile for ID:', id);
+      
+      const token = await AuthService.getToken();
+      if (!token) {
+        console.error('No authentication token found');
+        throw new Error('No authentication token found');
+      }
+      console.log('Auth token found');
+
+      // Fetch profile data
+      const profileUrl = `${EXPO_PUBLIC_API_URL}advisor/${id}`;
+      console.log('Making request to:', profileUrl);
+      
+      const profileResponse = await fetch(profileUrl, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log('Profile response status:', profileResponse.status);
+      
+      if (!profileResponse.ok) {
+        const errorData = await profileResponse.json().catch(() => null);
+        console.error('Error response data:', errorData);
+        throw new Error(errorData?.message || `HTTP error! status: ${profileResponse.status}`);
+      }
+      
+      const profileData = await profileResponse.json();
+      console.log('Profile data:', profileData);
+      
+      if (profileData.success) {
+        // Initialize profile data with empty places array
+        const profileWithPlaces = {
+          ...profileData.data,
+          places: []
+        };
+
+        // Fetch places data
+        const placesUrl = `${EXPO_PUBLIC_API_URL}advisor/${id}/places`;
+        console.log('Fetching places from:', placesUrl);
+        
+        const placesResponse = await fetch(placesUrl, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (placesResponse.ok) {
+          const placesData = await placesResponse.json();
+          if (placesData.success) {
+            profileWithPlaces.places = placesData.data;
+          }
+        }
+        
+        setProfile(profileWithPlaces);
+        console.log('Profile data set successfully');
+      } else {
+        console.error('Failed to fetch profile:', profileData.error);
+        throw new Error(profileData.error || 'Failed to fetch profile');
+      }
+    } catch (error: any) {
+      console.error('Error in fetchProfile:', error);
+      Alert.alert('Error', error.message || 'Failed to fetch profile');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchAdvisorProfile();
+    fetchProfile();
   }, [id]);
 
   const getRankColor = (rank: string) => {
-    switch (rank) {
-      case 'platinum': return '#E5E4E2';
-      case 'gold': return '#FFD700';
-      case 'silver': return '#C0C0C0';
-      default: return '#CD7F32'; // bronze
+    switch (rank.toLowerCase()) {
+      case 'admin': return '#E5E4E2'; // platinum color for admin
+      case 'advisor': return '#FFD700'; // gold color for advisor
+      default: return '#CD7F32'; // bronze color for regular users
     }
   };
 
-  const renderReview = ({ item }: { item: Review }) => (
-    <View style={styles.reviewCard}>
-      <View style={styles.reviewHeader}>
-        <Image 
-          source={{ uri: item.user.avatar }} 
-          style={styles.reviewerAvatar} 
-        />
-        <View>
-          <Text style={styles.reviewerName}>{item.user.name}</Text>
-          <View style={styles.ratingContainer}>
-            {[...Array(5)].map((_, index) => (
-              <Ionicons 
-                key={index}
-                name={index < item.rating ? "star" : "star-outline"}
-                size={16}
-                color="#64FFDA"
-              />
-            ))}
-          </View>
-        </View>
-      </View>
-      <Text style={styles.reviewComment}>{item.comment}</Text>
-    </View>
-  );
-
-  const renderEvent = ({ item }: { item: Event }) => (
-    <View style={styles.eventCard}>
-      <Text style={styles.eventTitle}>{item.title}</Text>
-      <Text style={styles.eventDate}>
-        {new Date(item.date).toLocaleDateString()}
-      </Text>
-      <Text style={[styles.eventStatus, { 
-        color: item.status === 'approved' ? '#64FFDA' : '#FFB347'
-      }]}>
-        {item.status.toUpperCase()}
-      </Text>
-    </View>
-  );
+  const handleAddPlace = () => {
+    router.push('/add-place');
+  };
 
   const handleImagePress = () => {
     setShowImageOptions(true);
@@ -154,11 +195,18 @@ export default function AdvisorProfileScreen() {
           // Upload to Cloudinary using our helper function
           const uploadResponse = await uploadImageToCloudinary(base64Data);
 
+          // Get the auth token
+          const token = await AuthService.getToken();
+          if (!token) {
+            throw new Error('No authentication token found');
+          }
+
           // Update advisor profile with Cloudinary URL
-          const response = await fetch(`${EXPO_PUBLIC_API_URL}advisor/${id}/profile-image`, {
-            method: 'POST',
+          const response = await fetch(`${EXPO_PUBLIC_API_URL}advisor/profile/${id}`, {
+            method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify({
               profile_image: uploadResponse.secure_url,
@@ -170,7 +218,7 @@ export default function AdvisorProfileScreen() {
           }
 
           // Refresh advisor data
-          await fetchAdvisorProfile();
+          await fetchProfile();
           Alert.alert('Success', 'Profile picture updated successfully');
         } catch (error) {
           console.error('Error in image upload:', error);
@@ -187,16 +235,16 @@ export default function AdvisorProfileScreen() {
 
   if (loading) {
     return (
-      <View style={styles.container}>
+      <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#64FFDA" />
       </View>
     );
   }
 
-  if (!advisor) {
+  if (!profile) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.errorText}>Advisor not found</Text>
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>Profile not found</Text>
       </View>
     );
   }
@@ -205,13 +253,20 @@ export default function AdvisorProfileScreen() {
     <>
       <ScrollView style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.profileImageContainer}
-            onPress={handleImagePress}
+          <Pressable 
+            style={styles.backButton}
+            onPress={() => router.back()}
           >
+            <Ionicons name="arrow-back" size={24} color="#64FFDA" />
+          </Pressable>
+          <Text style={styles.headerTitle}>Advisor Profile</Text>
+        </View>
+
+        <View style={styles.profileSection}>
+          <View style={styles.profileImageContainer}>
             <Image
               source={{ 
-                uri: !imageError ? (advisor?.user.profile_image || 'https://via.placeholder.com/150') 
+                uri: !imageError ? (profile.user.profile_image || 'https://via.placeholder.com/150') 
                                 : 'https://via.placeholder.com/150'
               }}
               style={styles.profileImage}
@@ -222,40 +277,88 @@ export default function AdvisorProfileScreen() {
                 <ActivityIndicator size="large" color="#64FFDA" />
               </View>
             )}
-          </TouchableOpacity>
-          <View style={styles.headerInfo}>
-            <Text style={styles.name}>{`${advisor.user.first_name} ${advisor.user.last_name}`}</Text>
-            <Text style={styles.bio}>{advisor.user.bio}</Text>
+            <View style={styles.badgeContainer}>
+              <Ionicons name="compass" size={24} color="#64FFDA" />
+              <Text style={styles.badgeText}>Travel Advisor</Text>
+            </View>
+          </View>
+
+          <View style={styles.profileInfo}>
+            <Text style={styles.name}>
+              {profile.user.first_name} {profile.user.last_name}
+            </Text>
+            <Text style={styles.email}>{profile.user.email}</Text>
+            
             <View style={styles.rankContainer}>
-              <Text style={[styles.rank, { color: getRankColor(advisor.rank) }]}>
-                {advisor.rank.toUpperCase()}
+              <Text style={[styles.rank, { color: getRankColor(profile.rank) }]}>
+                {profile.rank.toUpperCase()}
               </Text>
-              <Text style={styles.points}>{advisor.points} points</Text>
+              <Text style={styles.points}>{profile.points} points</Text>
             </View>
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Upcoming Events</Text>
-          {advisor.events.map((event, index) => (
-            <View key={index} style={styles.eventCard}>
-              <Text style={styles.eventTitle}>{event.title}</Text>
-              <Text style={styles.eventDate}>
-                {new Date(event.date).toLocaleDateString()}
-              </Text>
-              <Text style={[styles.eventStatus, { 
-                color: event.status === 'approved' ? '#64FFDA' : '#FFB347'
-              }]}>
-                {event.status.toUpperCase()}
-              </Text>
-            </View>
-          ))}
+          <Text style={styles.sectionTitle}>About</Text>
+          <Text style={styles.bio}>{profile.bio}</Text>
         </View>
 
-        {/* <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Reviews</Text>
-          {advisor.reviews.map(review => renderReview({ item: review }))}
-        </View> */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Experience</Text>
+          <Text style={styles.experience}>{profile.experience}</Text>
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>My Places</Text>
+            <TouchableOpacity 
+              style={styles.addButton}
+              onPress={handleAddPlace}
+            >
+              <Ionicons name="add-circle" size={24} color="#64FFDA" />
+              <Text style={styles.addButtonText}>Add Place</Text>
+            </TouchableOpacity>
+          </View>
+
+          {profile.places.length > 0 ? (
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              style={styles.placesScroll}
+            >
+              {profile.places.map((place) => (
+                <TouchableOpacity
+                  key={place.id}
+                  style={styles.placeCard}
+                  onPress={() => router.push(`/place/${place.id}`)}
+                >
+                  <Image
+                    source={{ uri: place.image }}
+                    style={styles.placeImage}
+                  />
+                  <View style={styles.placeInfo}>
+                    <Text style={styles.placeName}>{place.name}</Text>
+                    <View style={styles.placeDetails}>
+                      <View style={styles.locationContainer}>
+                        <Ionicons name="location" size={14} color="#8892B0" />
+                        <Text style={styles.placeLocation}>{place.location}</Text>
+                      </View>
+                      <View style={styles.ratingContainer}>
+                        <Ionicons name="star" size={14} color="#FFD700" />
+                        <Text style={styles.rating}>
+                          {place.averageRating ? place.averageRating.toFixed(1) : '0.0'} 
+                          <Text style={styles.reviewCount}> ({place.reviewCount})</Text>
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          ) : (
+            <Text style={styles.noPlacesText}>No places added yet</Text>
+          )}
+        </View>
       </ScrollView>
 
       {/* Image Options Modal */}
@@ -302,7 +405,7 @@ export default function AdvisorProfileScreen() {
         >
           <Image
             source={{ 
-              uri: !imageError ? (advisor?.user.profile_image || 'https://via.placeholder.com/150') 
+              uri: !imageError ? (profile?.user.profile_image || 'https://via.placeholder.com/150') 
                               : 'https://via.placeholder.com/150'
             }}
             style={styles.fullImage}
@@ -319,9 +422,41 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0A192F',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#0A192F',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#0A192F',
+  },
+  errorText: {
+    color: '#FF6B6B',
+    fontSize: 16,
+  },
   header: {
+    flexDirection: 'row',
     alignItems: 'center',
     padding: 20,
+    paddingTop: 60,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1D2D50',
+  },
+  backButton: {
+    marginRight: 15,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#CCD6F6',
+  },
+  profileSection: {
+    padding: 20,
+    alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: '#1D2D50',
   },
@@ -330,17 +465,9 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    marginBottom: 10,
+    marginBottom: 15,
     backgroundColor: '#1D2D50',
     overflow: 'hidden',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
   },
   profileImage: {
     width: '100%',
@@ -357,7 +484,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerInfo: {
+  badgeContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(10, 25, 47, 0.9)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 8,
+  },
+  badgeText: {
+    color: '#64FFDA',
+    marginLeft: 5,
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  profileInfo: {
     alignItems: 'center',
   },
   name: {
@@ -366,93 +510,121 @@ const styles = StyleSheet.create({
     color: '#CCD6F6',
     marginBottom: 5,
   },
-  bio: {
-    color: '#8892B0',
+  email: {
     fontSize: 16,
-    lineHeight: 24,
+    color: '#8892B0',
+    marginBottom: 10,
   },
   rankContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#1D2D50',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
   },
   rank: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
-    marginRight: 5,
+    marginRight: 10,
   },
   points: {
     color: '#64FFDA',
-    fontSize: 16,
+    fontSize: 14,
   },
   section: {
     padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#1D2D50',
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#64FFDA',
-    marginBottom: 10,
-  },
-  eventCard: {
-    flexDirection: 'row',
-    backgroundColor: '#1D2D50',
-    borderRadius: 8,
-    marginBottom: 10,
-    overflow: 'hidden',
-    padding: 10,
-  },
-  eventTitle: {
     color: '#CCD6F6',
+  },
+  bio: {
     fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 4,
+    color: '#8892B0',
+    lineHeight: 24,
   },
-  eventDate: {
-    color: '#64FFDA',
-    fontSize: 14,
-    marginBottom: 2,
+  experience: {
+    fontSize: 16,
+    color: '#8892B0',
+    lineHeight: 24,
   },
-  eventStatus: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    marginTop: 4,
-  },
-  reviewCard: {
-    backgroundColor: '#1D2D50',
-    borderRadius: 8,
-    padding: 15,
-    marginBottom: 10,
-  },
-  reviewHeader: {
+  addButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
-  },
-  reviewerAvatar: {
-    width: 40,
-    height: 40,
+    backgroundColor: '#1D2D50',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
     borderRadius: 20,
-    marginRight: 10,
   },
-  reviewerName: {
-    color: '#CCD6F6',
-    fontSize: 16,
+  addButtonText: {
+    color: '#64FFDA',
+    marginLeft: 5,
+    fontSize: 14,
+  },
+  placesScroll: {
+    marginHorizontal: -20,
+    paddingHorizontal: 20,
+  },
+  placeCard: {
+    width: 280,
+    marginRight: 16,
+    backgroundColor: '#1D2D50',
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  placeImage: {
+    width: '100%',
+    height: 180,
+  },
+  placeInfo: {
+    padding: 15,
+  },
+  placeName: {
+    fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 2,
+    color: '#CCD6F6',
+    marginBottom: 8,
+  },
+  placeDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  locationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  placeLocation: {
+    color: '#8892B0',
+    marginLeft: 4,
+    fontSize: 14,
   },
   ratingContainer: {
     flexDirection: 'row',
+    alignItems: 'center',
   },
-  reviewComment: {
-    color: '#8892B0',
+  rating: {
+    color: '#CCD6F6',
+    marginLeft: 4,
     fontSize: 14,
-    lineHeight: 20,
   },
-  errorText: {
-    color: '#FF6B6B',
-    fontSize: 18,
+  reviewCount: {
+    color: '#8892B0',
+    fontSize: 12,
+  },
+  noPlacesText: {
+    color: '#8892B0',
+    fontSize: 16,
     textAlign: 'center',
     marginTop: 20,
   },
@@ -490,4 +662,3 @@ const styles = StyleSheet.create({
     height: Dimensions.get('window').width,
   },
 }); 
-; 

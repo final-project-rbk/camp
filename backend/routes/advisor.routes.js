@@ -1,27 +1,23 @@
 const express = require('express');
 const router = express.Router();
 const advisorController = require('../controlles/advisor.controller');
+const authMiddleware = require('../middleware/auth.middleware');
 
-// Routes for places
-router.get('/places', advisorController.getAllPlaces);
-router.post('/place', advisorController.addPlace);
-router.put('/place/:id', advisorController.updatePlace);
-router.delete('/place/:id', advisorController.deletePlace);
+// Protected routes
+router.post('/migrate', authMiddleware, advisorController.migrateUserToAdvisor);
+router.get('/places', authMiddleware, advisorController.getAllPlaces);
+router.get('/events', authMiddleware, advisorController.getAllEvents);
+router.put('/profile/:id', authMiddleware, advisorController.updateAdvisorProfile);
+router.put('/place/:id', authMiddleware, advisorController.updatePlace);
+router.delete('/place/:id', authMiddleware, advisorController.deletePlace);
+router.put('/event/:id', authMiddleware, advisorController.updateEvent);
+router.delete('/event/:id', authMiddleware, advisorController.deleteEvent);
+router.post('/place', authMiddleware, advisorController.addPlace);
+router.post('/event', authMiddleware, advisorController.addEvent);
+router.post('/points', authMiddleware, advisorController.updatePoints);
+router.get('/:id', authMiddleware, advisorController.getAdvisorProfile);
 
-// Routes for events
-router.get('/events', advisorController.getAllEvents);
-router.get('/events/upcoming', advisorController.getUpcomingEvents);
-router.post('/event', advisorController.addEvent);
-router.put('/event/:id', advisorController.updateEvent);
-router.delete('/event/:id', advisorController.deleteEvent);
-
-// Routes for advisor
-router.post('/migrate', advisorController.migrateUserToAdvisor);
-router.get('/advisor/:id', advisorController.getAdvisorProfile);
-router.put('/advisor/:id', advisorController.updateAdvisorProfile);
-router.post('/advisor/:id/profile-image', advisorController.updateProfileImage);
-
-// Points route
-router.post('/points', advisorController.updatePoints);
+// Get places by creator ID
+router.get('/:id/places', authMiddleware, advisorController.getPlacesByCreator);
 
 module.exports = router;

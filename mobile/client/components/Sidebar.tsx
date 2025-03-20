@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import AuthService from '../services/auth.service';
 
 interface SidebarProps {
   isVisible: boolean;
@@ -29,11 +30,37 @@ export default function Sidebar({ isVisible, onClose }: SidebarProps) {
     }).start();
   }, [isVisible]);
 
+  const handleProfilePress = async () => {
+    try {
+      console.log('Profile button pressed');
+      const token = await AuthService.getToken();
+      const user = await AuthService.getUser();
+      console.log('Token:', token);
+      console.log('User:', user);
+      
+      if (user) {
+        if (user.role === 'advisor') {
+          console.log('Navigating to advisor profile with ID:', user.id);
+          router.push(`/advisor/${user.id}`);
+        } else {
+          console.log('Navigating to regular profile');
+          router.push('/profile');
+        }
+      } else {
+        console.log('No user data found');
+        router.push('/auth');
+      }
+      onClose();
+    } catch (error) {
+      console.error('Error in handleProfilePress:', error);
+      router.push('/auth');
+    }
+  };
+
   const menuItems = [
     { icon: 'home', label: 'Home', route: '/(tabs)/home' },
     { icon: 'compass', label: 'Explore', route: '/(tabs)/market' },
     { icon: 'heart', label: 'Favorites', route: '/(tabs)/favorites' },
-    { icon: 'person-circle', label: 'Advisor Profile', route: '/advisor/1' },
     { icon: 'help-circle', label: 'Help', route: '/(tabs)/hints' },
     { icon: 'settings', label: 'Settings', route: '/setting' },
   ];
@@ -74,6 +101,15 @@ export default function Sidebar({ isVisible, onClose }: SidebarProps) {
               <Text style={styles.menuItemText}>{item.label}</Text>
             </Pressable>
           ))}
+          
+          {/* Profile Menu Item */}
+          <Pressable
+            style={styles.menuItem}
+            onPress={handleProfilePress}
+          >
+            <Ionicons name="person" size={24} color="#64FFDA" />
+            <Text style={styles.menuItemText}>Profile</Text>
+          </Pressable>
         </View>
       </Animated.View>
     </>

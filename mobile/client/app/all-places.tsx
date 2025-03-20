@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import {  EXPO_PUBLIC_API_URL  } from '../config';
 import { Link } from 'expo-router';
+import FavoriteButton from '../components/FavoriteButton';
 
 interface Category {
   name: string;
@@ -53,14 +54,17 @@ export default function AllPlacesScreen() {
     try {
       setLoading(true);
       const queryParams = category ? `?category=${category}` : '';
+      console.log('Fetching places with query:', queryParams);
       const response = await fetch(`${EXPO_PUBLIC_API_URL}places${queryParams}`);
       const data = await response.json();
+      console.log('Places data:', data);
       if (data.success) {
         setPlaces(data.data);
         console.log("placesssssssssssssssssssss",data.data);
       }
     } catch (error) {
-    throw error
+      console.error('Error fetching places:', error);
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -71,12 +75,14 @@ export default function AllPlacesScreen() {
   }, []);
 
   useEffect(() => {
+    console.log('Selected category changed:', selectedCategory);
     fetchPlaces(selectedCategory || undefined);
   }, [selectedCategory]);
 
   const renderPlace = ({ item }: { item: Place }) => (
     <Link href={`/place/${item.id}`} asChild>
       <Pressable style={styles.placeCard}>
+        <FavoriteButton placeId={item.id} />
         <Image source={{ uri: item.image }} style={styles.placeImage} />
         <View style={styles.placeInfo}>
           <Text style={styles.placeName}>{item.name}</Text>

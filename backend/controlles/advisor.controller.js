@@ -1,5 +1,4 @@
-const { User, Advisor, Place, Event, Review, Media } = require('../models');
-const { sequelize } = require('../models');
+const { User, Advisor, Place, Event, Review, Media, Categorie, connection } = require('../models');
 
 // Create a controller object to hold all functions
 const advisorController = {
@@ -184,15 +183,59 @@ const advisorController = {
   },
 
   updatePlace: async (req, res) => {
+    let transaction;
     try {
-      const place = await Place.findByPk(req.params.id);
+      transaction = await connection.transaction();
+      
+      const place = await Place.findByPk(req.params.id, {
+        include: [
+          { model: Categorie, as: 'Categories' }
+        ]
+      });
+      
       if (!place) {
         return res.status(404).json({ error: "Place not found" });
       }
 
-      await place.update(req.body);
-      return res.status(200).json(place);
+      const { Categories, images, ...updateData } = req.body;
+
+      // Update basic place data including images
+      await place.update({
+        ...updateData,
+        images: images || [], // Ensure images is always an array
+      }, { transaction });
+
+      // Update categories if provided
+      if (Categories && Array.isArray(Categories)) {
+        // Remove all existing categories
+        await place.setCategories([], { transaction });
+
+        // Add new categories
+        const categoryPromises = Categories.map(async (cat) => {
+          const [category] = await Categorie.findOrCreate({
+            where: { name: cat.name },
+            defaults: { icon: cat.icon || '🏷️' },
+            transaction
+          });
+          return category;
+        });
+
+        const categories = await Promise.all(categoryPromises);
+        await place.addCategories(categories, { transaction });
+      }
+
+      // Commit the transaction
+      await transaction.commit();
+
+      // Fetch the updated place with categories
+      const updatedPlace = await Place.findByPk(place.id, {
+        include: [{ model: Categorie, as: 'Categories' }]
+      });
+
+      return res.status(200).json(updatedPlace);
     } catch (error) {
+      // Rollback the transaction on error
+      if (transaction) await transaction.rollback();
       console.error("Error updating place:", error);
       return res.status(500).json({ error: "Internal server error" });
     }
@@ -274,72 +317,49 @@ const advisorController = {
 
   getAdvisorProfile: async (req, res) => {
     try {
-      const { id } = req.params;
+      const userId = req.params.id;
+      console.log('Fetching user profile for ID:', userId);
 
-      const advisor = await Advisor.findOne({
-        where: { id },
-        include: [
-          {
-            model: User,
-            as: 'User',
-            required: true,
-            attributes: ["email", "first_name", "last_name", "bio", "experience", "profile_image"]
-          },
-          {
-            model: Event,
-            as: 'Events',
-            attributes: ["title", "date", "status"],
-            include: [{ model: Review, as: 'Reviews', attributes: ["rating", "comment", "created_at"] }]
-          },
-          {
-            model: Review,
-            as: 'Reviews',
-            attributes: ["rating", "comment", "created_at"],
-            include: [{ model: User, as: 'User', attributes: ["first_name", "last_name"] }]
-          }
-        ]
+      const user = await User.findByPk(userId, {
+        attributes: ['id', 'first_name', 'last_name', 'email', 'profile_image', 'bio', 'experience', 'role', 'points']
       });
 
-      if (!advisor) {
-        return res.status(404).json({ error: `Advisor with ID ${id} not found` });
+      if (!user) {
+        console.log('User not found');
+        return res.status(404).json({
+          success: false,
+          error: 'User not found'
+        });
       }
 
-      const profile = {
-        advisorId: advisor.id,
-        user: advisor.User
-          ? {
-              email: advisor.User.email,
-              first_name: advisor.User.first_name,
-              last_name: advisor.User.last_name,
-              bio: advisor.User.bio,
-              experience: advisor.User.experience || null,
-              profile_image: advisor.User.profile_image
-            }
-          : null,
-        events: advisor.Events?.map(event => ({
-          title: event.title,
-          date: event.date,
-          status: event.status,
-          reviews: event.Reviews?.map(review => ({
-            rating: review.rating,
-            comment: review.comment || "No comment provided",
-            created_at: review.created_at,
-          })) || [],
-        })) || [],
-        points: advisor.points,
-        rank: advisor.currentRank,
-        reviews: advisor.Reviews?.map(review => ({
-          rating: review.rating,
-          comment: review.comment || "No comment provided",
-          reviewer: review.User ? `${review.User.first_name} ${review.User.last_name}` : "Anonymous",
-          created_at: review.created_at,
-        })) || [],
+      const response = {
+        id: user.id,
+        user: {
+          first_name: user.first_name,
+          last_name: user.last_name,
+          email: user.email,
+          profile_image: user.profile_image,
+          bio: user.bio,
+          experience: user.experience
+        },
+        bio: user.bio,
+        experience: user.experience,
+        points: user.points || 0,
+        rank: user.role
       };
 
-      return res.status(200).json(profile);
+      console.log('Sending user profile:', response);
+      res.status(200).json({
+        success: true,
+        data: response
+      });
     } catch (error) {
-      console.error(`Error fetching advisor profile for ID ${req.params.id}:`, error);
-      return res.status(500).json({ error: "Internal server error" });
+      console.error('Error in getAdvisorProfile:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error fetching user profile',
+        details: error.message
+      });
     }
   },
 
@@ -405,6 +425,54 @@ const advisorController = {
     } catch (error) {
       console.error('Error updating profile image:', error);
       res.status(500).json({ success: false, message: 'Failed to update profile image' });
+    }
+  },
+
+  // Get places by creator ID
+  getPlacesByCreator: async (req, res) => {
+    try {
+      const creatorId = req.params.id;
+      console.log('Fetching places for creator ID:', creatorId);
+
+      const places = await Place.findAll({
+        where: { creatorId },
+        include: [
+          {
+            model: Review,
+            as: 'Reviews',
+            attributes: ['rating']
+          }
+        ]
+      });
+
+      // Calculate average rating and review count for each place
+      const formattedPlaces = places.map(place => {
+        const ratings = place.Reviews.map(review => review.rating);
+        const averageRating = ratings.length > 0 
+          ? ratings.reduce((a, b) => a + b, 0) / ratings.length 
+          : 0;
+
+        return {
+          id: place.id,
+          name: place.name,
+          location: place.location,
+          image: place.images && place.images.length > 0 ? place.images[0] : 'https://via.placeholder.com/400',
+          averageRating,
+          reviewCount: place.Reviews.length
+        };
+      });
+
+      res.status(200).json({
+        success: true,
+        data: formattedPlaces
+      });
+    } catch (error) {
+      console.error('Error in getPlacesByCreator:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error fetching places',
+        details: error.message
+      });
     }
   }
 };
