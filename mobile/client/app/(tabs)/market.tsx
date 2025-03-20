@@ -5,6 +5,7 @@ import axios from 'axios';
 import { useRouter } from 'expo-router';
 import { EXPO_PUBLIC_API_URL } from '../../config';
 import { useAuth } from '../../hooks/useAuth';
+import { TAB_BAR_HEIGHT } from '../../components/TabBar';
 
 interface Category {
   id: string;
@@ -197,6 +198,7 @@ export default function Market() {
   return (
     <ScrollView 
       style={styles.container}
+      contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT + 20 }}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }

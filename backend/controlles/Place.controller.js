@@ -119,47 +119,44 @@ const placeController = {
 
       const formattedPlaces = places.map(place => {
         let imageUrl = 'https://via.placeholder.com/400';
+        let images = [imageUrl]; // Default image
+        
+        // First try getting images from Media
         if (place.Media && place.Media.length > 0) {
-          imageUrl = place.Media[0].url;
-        } else if (place.images && Array.isArray(place.images) && place.images.length > 0) {
-          imageUrl = place.images[0];
-        } else if (place.images && typeof place.images === 'string') {
-          imageUrl = place.images;
+          images = place.Media.map(media => media.url);
+        } 
+        // Then try the images field
+        else if (place.images) {
+          try {
+            // If it's a JSON string, parse it
+            if (typeof place.images === 'string') {
+              const parsedImages = JSON.parse(place.images);
+              if (Array.isArray(parsedImages) && parsedImages.length > 0) {
+                images = parsedImages;
+              } else {
+                images = [place.images]; // Treat as single image
+              }
+            } 
+            // If it's already an array
+            else if (Array.isArray(place.images) && place.images.length > 0) {
+              images = place.images;
+            }
+          } catch (e) {
+            console.error('Error parsing images:', e);
+            images = [place.images]; // Fallback to treating as single image
+          }
         }
-
-        const rating = place.Reviews && place.Reviews.length > 0
-          ? Number((place.Reviews.reduce((acc, rev) => acc + (rev.rating || 0), 0) / place.Reviews.length).toFixed(1))
-          : 0;
 
         return {
           id: place.id,
           name: place.name,
           description: place.description,
           location: place.location,
-          image: imageUrl,
-          rating: rating,
-          status: place.status || 'pending',
-          creator: place.Creator ? {
-            id: place.Creator.id,
-            name: `${place.Creator.first_name} ${place.Creator.last_name}`,
-            email: place.Creator.email,
-            profile_image: place.Creator.profile_image
-          } : null,
-          created_at: place.created_at,
-          reviews: place.Reviews?.map(review => ({
-            id: review.id,
-            rating: review.rating,
-            comment: review.comment || '',
-            created_at: review.created_at,
-            user: review.User ? {
-              id: review.User.id,
-              name: `${review.User.first_name} ${review.User.last_name}`,
-              profile_image: review.User.profile_image || 'https://via.placeholder.com/40'
-            } : {
-              name: 'Anonymous',
-              profile_image: 'https://via.placeholder.com/40'
-            }
-          })) || [],
+          images: images, // Return array instead of single image
+          rating: Number(
+            (place.Reviews?.reduce((acc, rev) => acc + (rev.rating || 0), 0) / 
+             (place.Reviews?.length || 1)).toFixed(1)
+          ),
           categories: place.Categories?.map(cat => ({
             name: cat.name,
             icon: cat.icon
@@ -229,11 +226,37 @@ const placeController = {
       let images = ['https://via.placeholder.com/400'];
       if (place.Media && place.Media.length > 0) {
         images = place.Media.map(media => media.url);
+        console.log('Using media images:', images);
       } else if (place.images) {
-        if (Array.isArray(place.images)) {
-          images = place.images;
-        } else if (typeof place.images === 'string') {
-          images = [place.images];
+        console.log('PlaceById - Raw images data type:', typeof place.images);
+        console.log('PlaceById - Raw images data:', place.images);
+        
+        try {
+          if (Array.isArray(place.images)) {
+            images = place.images.length > 0 ? place.images : images;
+            console.log('PlaceById - Using array images:', images);
+          } else if (typeof place.images === 'string') {
+            // Try to parse if it looks like JSON
+            if (place.images.startsWith('[') && place.images.endsWith(']')) {
+              try {
+                const parsedImages = JSON.parse(place.images);
+                if (Array.isArray(parsedImages) && parsedImages.length > 0) {
+                  images = parsedImages;
+                  console.log('PlaceById - Successfully parsed JSON images array:', images);
+                }
+              } catch (parseError) {
+                console.error('PlaceById - Error parsing JSON images:', parseError);
+                // Fallback to treating as a single image URL
+                images = [place.images];
+              }
+            } else {
+              // Not JSON, treat as a single image URL
+              images = [place.images];
+            }
+          }
+        } catch (e) {
+          console.error('PlaceById - Error processing images:', e);
+          images = typeof place.images === 'string' ? [place.images] : images;
         }
       }
 
@@ -319,6 +342,98 @@ const placeController = {
       res.status(500).json({
         success: false,
         error: 'Internal server error',
+        details: error.message
+      });
+    }
+  },
+
+  // Rate a place (add a star rating)
+  ratePlace: async (req, res) => {
+    try {
+      const { userId, placeId, rating, comment } = req.body;
+      
+      if (!userId || !placeId || !rating || rating < 1 || rating > 5) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid request. Required fields: userId, placeId, rating (1-5)'
+        });
+      }
+      
+      // First check if user has already reviewed this place
+      const existingReview = await Review.findOne({
+        where: {
+          userId,
+          placeId
+        }
+      });
+      
+      let review;
+      
+      if (existingReview) {
+        // Update existing review
+        review = await existingReview.update({
+          rating,
+          comment: comment || existingReview.comment
+        });
+      } else {
+        // Create new review
+        review = await Review.create({
+          userId,
+          placeId,
+          rating,
+          comment: comment || ''
+        });
+      }
+      
+      // Update place's average rating
+      const reviews = await Review.findAll({
+        where: { placeId },
+        attributes: ['rating']
+      });
+      
+      if (reviews.length > 0) {
+        const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+        const averageRating = parseFloat((totalRating / reviews.length).toFixed(1));
+        
+        await Place.update({ rating: averageRating }, { where: { id: placeId } });
+      }
+      
+      res.status(200).json({
+        success: true,
+        data: review
+      });
+    } catch (error) {
+      console.error('Error in ratePlace:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error saving place rating',
+        details: error.message
+      });
+    }
+  },
+  
+  // Get a user's rating for a specific place
+  getUserPlaceRating: async (req, res) => {
+    try {
+      const { placeId, userId } = req.params;
+      
+      const review = await Review.findOne({
+        where: {
+          placeId,
+          userId
+        },
+        attributes: ['id', 'rating', 'comment', 'created_at']
+      });
+      
+      res.status(200).json({
+        success: true,
+        data: review || null
+      });
+    } catch (error) {
+      console.error('Error in getUserPlaceRating:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error fetching user rating',
         details: error.message
       });
     }
