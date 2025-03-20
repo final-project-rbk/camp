@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TextInput, Button, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Image } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
-import { Colors } from '../../constants/Colors';
+import { io,Socket } from 'socket.io-client';
 import { EXPO_PUBLIC_API_URL } from '../../config';
 import { useAuth } from '../../context/AuthContext';
 import { useLocalSearchParams } from 'expo-router';
@@ -13,42 +14,157 @@ const MessagesScreen = () => {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isTyping, setIsTyping] = useState(false);
+  const [typingUsers, setTypingUsers] = useState(new Set());
   const { accessToken, user } = useAuth();
   const { roomId } = useLocalSearchParams();
+ 
+  
+  const socketRef = useRef<Socket | null>(null);
+  const flatListRef = useRef(null);
 
   const CLOUDINARY_UPLOAD_URL = "https://api.cloudinary.com/v1_1/dqh6arave/upload";
-const CLOUDINARY_UPLOAD_PRESET = "Ghassen123";
+  const CLOUDINARY_UPLOAD_PRESET = "Ghassen123";
 
   useEffect(() => {
+    // Initialize socket connection with auth token and better configuration
+    socketRef.current = io(EXPO_PUBLIC_API_URL.replace('/api', ''), {
+      auth: { token: accessToken },
+      query: { token: accessToken },
+      transports: ['websocket', 'polling'],
+      timeout: 10000,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      forceNew: true
+    });
+
+    // Handle connection events
+    socketRef.current.on('connect', () => {
+      console.log('Socket connected');
+      setError(null);
+      
+      // Join room after successful connection
+      socketRef.current.emit('join_room', roomId);
+    });
+
+    socketRef.current.on('connect_error', (error) => {
+      console.error('Socket connection error:', error.message);
+      setError('Connection error: ' + error.message);
+    });
+
+    socketRef.current.on('disconnect', (reason) => {
+      console.log('Socket disconnected:', reason);
+      if (reason === 'io server disconnect') {
+        // Server disconnected, try to reconnect
+        socketRef.current?.connect();
+      }
+    });
+
+    socketRef.current.on('reconnect', (attemptNumber) => {
+      console.log('Socket reconnected after', attemptNumber, 'attempts');
+      setError(null);
+      
+      // Rejoin room after reconnection
+      socketRef.current?.emit('join_room', roomId);
+    });
+
+    socketRef.current.on('reconnect_error', (error) => {
+      console.error('Socket reconnection error:', error);
+      setError('Unable to reconnect to chat. Please check your connection.');
+    });
+
+    // Listen for new messages
+    socketRef.current.on('receive_message', (message) => {
+      setMessages(prev => [...prev, message]);
+      flatListRef.current?.scrollToEnd();
+      
+      // Mark message as read if it's not from current user
+      if (message.senderId !== user?.id) {
+        socketRef.current?.emit('message_read', {
+          messageId: message.id,
+          roomId
+        });
+      }
+    });
+
+    // Listen for typing status
+    socketRef.current.on('typing_status', ({ user: typingUser, isTyping }) => {
+      setTypingUsers(prev => {
+        const newSet = new Set(prev);
+        if (isTyping) {
+          newSet.add(typingUser.first_name);
+        } else {
+          newSet.delete(typingUser.first_name);
+        }
+        return newSet;
+      });
+    });
+
+    // Fetch initial messages
     fetchMessages();
-  }, [roomId]);
+
+    return () => {
+      if (socketRef.current?.connected) {
+        socketRef.current.disconnect();
+      }
+    };
+  }, [roomId, accessToken]);
 
   const fetchMessages = async () => {
     try {
-      const response = await axios.get(`${EXPO_PUBLIC_API_URL}chat/rooms/${roomId}/messages`, {
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
+      const response = await axios.get(
+        `${EXPO_PUBLIC_API_URL}chat/rooms/${roomId}/messages`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          timeout: 10000 // 10 second timeout
+        }
+      );
       setMessages(response.data);
+      setTimeout(() => flatListRef.current?.scrollToEnd(), 100);
     } catch (error) {
-      setError('Error fetching messages');
+      if (axios.isAxiosError(error)) {
+        if (error.code === 'ECONNABORTED') {
+          setError('Request timed out. Please check your connection.');
+        } else if (!error.response) {
+          setError('Network error. Please check your connection.');
+        } else {
+          setError('Error loading messages: ' + error.message);
+        }
+      } else {
+        setError('Error loading messages');
+      }
       console.error('Error fetching messages:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const sendMessage = async () => {
+  const sendMessage = async (mediaUrl = null) => {
+    if (!newMessage.trim() && !mediaUrl) return;
+    if (!socketRef.current?.connected) {
+      setError('Not connected to chat server. Please try again.');
+      return;
+    }
+
     try {
-      await axios.post(`${EXPO_PUBLIC_API_URL}chat/messages`, {
+      const messageData = {
         roomId,
-        content: newMessage
-      }, {
-        headers: { Authorization: `Bearer ${accessToken}` }
+        message: newMessage.trim(),
+        mediaUrls: mediaUrl ? [mediaUrl] : []
+      };
+
+      // Send message with acknowledgment
+      socketRef.current.emit('send_message', messageData, (response) => {
+        if (!response.success) {
+          setError('Failed to send message: ' + response.error);
+        }
       });
-      fetchMessages();
+      
       setNewMessage('');
     } catch (error) {
-      setError('Error sending message');
+      setError('Error sending message: ' + (error instanceof Error ? error.message : 'Unknown error'));
       console.error('Error sending message:', error);
     }
   };
@@ -66,7 +182,7 @@ const CLOUDINARY_UPLOAD_PRESET = "Ghassen123";
     }
   };
 
-  const uploadImage = async (uri: string) => {
+  const uploadImage = async (uri) => {
     try {
       const compressedImage = await ImageManipulator.manipulateAsync(
         uri,
@@ -96,7 +212,7 @@ const CLOUDINARY_UPLOAD_PRESET = "Ghassen123";
         throw new Error('Failed to upload image');
       }
 
-      await sendMessageWithMedia(data.secure_url);
+      await sendMessage(data.secure_url);
     } catch (error) {
       setError('Error uploading image');
       console.error('Error uploading image:', error);
@@ -104,54 +220,113 @@ const CLOUDINARY_UPLOAD_PRESET = "Ghassen123";
     }
   };
 
-  const sendMessageWithMedia = async (mediaUrl) => {
-    try {
-      await axios.post(`${EXPO_PUBLIC_API_URL}chat/messages`, {
-        roomId,
-        content: newMessage,
-        mediaUrls: [mediaUrl]
-      }, {
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
-      fetchMessages();
-      setNewMessage('');
-    } catch (error) {
-      setError('Error sending message with media');
-      console.error('Error sending message with media:', error);
+  const handleTyping = (text) => {
+    setNewMessage(text);
+    
+    if (!isTyping) {
+      setIsTyping(true);
+      socketRef.current.emit('typing', { roomId });
+      
+      // Stop typing indicator after 2 seconds of no input
+      setTimeout(() => {
+        setIsTyping(false);
+        socketRef.current.emit('stop_typing', { roomId });
+      }, 2000);
     }
   };
 
-  const renderItem = ({ item }) => (
-    <View style={styles.messageItem}>
-      <Text style={styles.messageContent}>{item.content}</Text>
-      <Text style={styles.messageAuthor}>{item.user.first_name} {item.user.last_name}</Text>
-    </View>
-  );
+  const renderMessage = ({ item }) => {
+    const isOwnMessage = item.senderId === user.id;
+
+    return (
+      <View style={[
+        styles.messageContainer,
+        isOwnMessage ? styles.ownMessageContainer : styles.otherMessageContainer
+      ]}>
+        {!isOwnMessage && (
+          <Image
+            source={{ uri: item.user?.profile_image || 'https://via.placeholder.com/30' }}
+            style={styles.avatar}
+          />
+        )}
+        <View style={[
+          styles.messageContent,
+          isOwnMessage ? styles.ownMessageContent : styles.otherMessageContent
+        ]}>
+          {item.mediaUrls?.map((url, index) => (
+            <Image
+              key={index}
+              source={{ uri: url }}
+              style={styles.messageImage}
+              resizeMode="cover"
+            />
+          ))}
+          {item.content && (
+            <Text style={[
+              styles.messageText,
+              isOwnMessage ? styles.ownMessageText : styles.otherMessageText
+            ]}>
+              {item.content}
+            </Text>
+          )}
+          <Text style={styles.timestamp}>
+            {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </Text>
+        </View>
+      </View>
+    );
+  };
 
   if (loading) {
-    return <ActivityIndicator size="large" color={Colors.primary} />;
-  }
-
-  if (error) {
-    return <Text style={styles.errorText}>{error}</Text>;
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#64FFDA" />
+      </View>
+    );
   }
 
   return (
     <View style={styles.container}>
       <FlatList
+        ref={flatListRef}
         data={messages}
         keyExtractor={(item) => item.id.toString()}
-        renderItem={renderItem}
+        renderItem={renderMessage}
+        onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
+        onLayout={() => flatListRef.current?.scrollToEnd()}
       />
+      
+      {typingUsers.size > 0 && (
+        <Text style={styles.typingIndicator}>
+          {Array.from(typingUsers).join(', ')} {typingUsers.size === 1 ? 'is' : 'are'} typing...
+        </Text>
+      )}
+
       <View style={styles.inputContainer}>
+        <TouchableOpacity onPress={pickImage} style={styles.attachButton}>
+          <Ionicons name="image-outline" size={24} color="#64FFDA" />
+        </TouchableOpacity>
+        
         <TextInput
           style={styles.input}
           value={newMessage}
-          onChangeText={setNewMessage}
-          placeholder="Type a message"
+          onChangeText={handleTyping}
+          placeholder="Type a message..."
+          placeholderTextColor="#8892B0"
+          multiline
         />
-        <Button title="Send" onPress={sendMessage} />
-        <Button title="Upload Image" onPress={pickImage} />
+        
+        <TouchableOpacity 
+          onPress={() => sendMessage()}
+          style={styles.sendButton}
+          disabled={!newMessage.trim()}
+        >
+          <Ionicons 
+            name="send" 
+            size={24} 
+            color={newMessage.trim() ? "#64FFDA" : "#8892B0"} 
+          />
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -160,45 +335,102 @@ const CLOUDINARY_UPLOAD_PRESET = "Ghassen123";
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.light.background,
-    padding: 10
+    backgroundColor: '#0A192F',
   },
-  messageItem: {
-    padding: 10,
-    backgroundColor: Colors.gray[100],
-    borderRadius: 10,
-    marginVertical: 5
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#0A192F',
+  },
+  messageContainer: {
+    flexDirection: 'row',
+    marginVertical: 4,
+    paddingHorizontal: 16,
+  },
+  ownMessageContainer: {
+    justifyContent: 'flex-end',
+  },
+  otherMessageContainer: {
+    justifyContent: 'flex-start',
+  },
+  avatar: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    marginRight: 8,
   },
   messageContent: {
-    color: Colors.black,
-    fontSize: 16
+    maxWidth: '70%',
+    borderRadius: 16,
+    padding: 12,
   },
-  messageAuthor: {
-    color: Colors.gray[500],
+  ownMessageContent: {
+    backgroundColor: '#64FFDA',
+    borderBottomRightRadius: 4,
+  },
+  otherMessageContent: {
+    backgroundColor: '#112240',
+    borderBottomLeftRadius: 4,
+  },
+  messageText: {
+    fontSize: 16,
+  },
+  ownMessageText: {
+    color: '#0A192F',
+  },
+  otherMessageText: {
+    color: '#CCD6F6',
+  },
+  messageImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  timestamp: {
     fontSize: 12,
-    marginTop: 5
+    color: '#8892B0',
+    marginTop: 4,
+    alignSelf: 'flex-end',
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 10,
-    backgroundColor: Colors.gray[100],
-    borderRadius: 10,
-    marginTop: 10
+    padding: 12,
+    backgroundColor: '#112240',
+    borderTopWidth: 1,
+    borderTopColor: '#1D2D50',
+  },
+  attachButton: {
+    padding: 8,
   },
   input: {
     flex: 1,
-    padding: 10,
-    backgroundColor: Colors.white,
-    borderRadius: 10,
-    marginRight: 10
+    marginHorizontal: 8,
+    padding: 8,
+    maxHeight: 100,
+    color: '#CCD6F6',
+    fontSize: 16,
+    backgroundColor: '#1D2D50',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+  },
+  sendButton: {
+    padding: 8,
+  },
+  typingIndicator: {
+    color: '#8892B0',
+    fontSize: 12,
+    padding: 8,
+    paddingLeft: 16,
   },
   errorText: {
-    color: 'red',
+    color: '#FF6B6B',
     fontSize: 16,
     textAlign: 'center',
-    marginTop: 20
-  }
+    margin: 20,
+  },
 });
 
 export default MessagesScreen;

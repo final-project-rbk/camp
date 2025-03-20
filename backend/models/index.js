@@ -181,7 +181,7 @@ connection
 
 // Sync the database
 // connection
-//   .sync({ force: true }) // Use alter: true to update tables without dropping them
+//   .sync({ alter: true }) // Use alter: true to update tables without dropping them
 //   .then(() => console.log("Tables are created or updated"))
 //   .catch((err) => {
 //     console.error("Error syncing tables:", err);
