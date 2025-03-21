@@ -22,7 +22,7 @@ import { Link, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Sidebar from '../../components/Sidebar';
+import Sidebar from '../components/Sidebar';
 import { EXPO_PUBLIC_API_URL } from '../../config';
 import FavoriteButton from '../../components/FavoriteButton';
 import Events from '../event';
@@ -32,7 +32,6 @@ import { TAB_BAR_HEIGHT } from '../../components/TabBar';
 // Define navigation type
 type RootStackParamList = {
   'all-places': undefined;
-  'event': { id: string };
   // Add other screen names here
 };
 
@@ -81,17 +80,16 @@ const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
 
 export default function DiscoverScreen() {
   const [places, setPlaces] = useState<Place[]>([]);
-  const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
   const [weatherData, setWeatherData] = useState<{ [key: string]: WeatherData }>({});
   const [loading, setLoading] = useState(true);
   const [placesLoading, setPlacesLoading] = useState(true);
-  const [eventsLoading, setEventsLoading] = useState(true);
   const [showAllPlaces, setShowAllPlaces] = useState(false);
-  const navigation = useNavigation<NavigationProp>();
+  const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredPlaces, setFilteredPlaces] = useState<Place[]>([]);
   const [isSidebarVisible, setSidebarVisible] = useState(false);
   const [events, setEvents] = useState<Event[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(true);
   const [allPlaces, setAllPlaces] = useState<Place[]>([]);
   const [popularPlaces, setPopularPlaces] = useState<Place[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -121,21 +119,6 @@ export default function DiscoverScreen() {
       console.error('Error fetching places:', error);
     } finally {
       setPlacesLoading(false);
-    }
-  };
-
-  const fetchUpcomingEvents = async () => {
-    try {
-      setEventsLoading(true);
-      const response = await fetch(`${EXPO_PUBLIC_API_URL}events/upcoming?limit=5`);
-      const data = await response.json();
-      if (data.success) {
-        setUpcomingEvents(data.data);
-      }
-    } catch (error) {
-      console.error('Error fetching upcoming events:', error);
-    } finally {
-      setEventsLoading(false);
     }
   };
 
@@ -192,7 +175,6 @@ export default function DiscoverScreen() {
 
   useEffect(() => {
     fetchPlaces();
-    fetchUpcomingEvents();
   }, [showAllPlaces]);
 
   const handleRefreshWeather = () => {
@@ -459,12 +441,9 @@ export default function DiscoverScreen() {
                             />
                             {place.categories && place.categories.length > 0 && (
                               <View style={styles.categoryTag}>
-                                <Ionicons 
-                                  name={place.categories[0].icon as any || "compass"} 
-                                  size={12} 
-                                  color="#0A192F" 
-                                />
-                                <Text style={styles.categoryText}>{place.categories[0].name}</Text>
+                                <Text style={styles.categoryText}>
+                                  {place.categories[0].icon} {place.categories[0].name}
+                                </Text>
                               </View>
                             )}
                           </View>
@@ -536,12 +515,9 @@ export default function DiscoverScreen() {
                               />
                               {place.categories && place.categories.length > 0 && (
                                 <View style={styles.categoryTag}>
-                                  <Ionicons 
-                                    name={place.categories[0].icon as any || "compass"} 
-                                    size={12} 
-                                    color="#0A192F" 
-                                  />
-                                  <Text style={styles.categoryText}>{place.categories[0].name}</Text>
+                                  <Text style={styles.categoryText}>
+                                    {place.categories[0].icon} {place.categories[0].name}
+                                  </Text>
                                 </View>
                               )}
                             </View>
@@ -609,12 +585,9 @@ export default function DiscoverScreen() {
                                 />
                                 {place.categories && place.categories.length > 0 && (
                                   <View style={styles.categoryTag}>
-                                    <Ionicons 
-                                      name={place.categories[0].icon as any || "compass"} 
-                                      size={12} 
-                                      color="#0A192F" 
-                                    />
-                                    <Text style={styles.categoryText}>{place.categories[0].name}</Text>
+                                    <Text style={styles.categoryText}>
+                                      {place.categories[0].icon} {place.categories[0].name}
+                                    </Text>
                                   </View>
                                 )}
                               </View>

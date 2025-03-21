@@ -7,18 +7,17 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
-  ActivityIndicator,
   Alert,
-  Pressable,
+  ActivityIndicator,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { EXPO_PUBLIC_API_URL } from '../config';
-import { uploadImageToCloudinary } from '../config/cloudinary';
+import { EXPO_PUBLIC_API_URL } from '@/config';
+import { uploadImageToCloudinary } from '@/config/cloudinary';
 import AuthService from '@/services/auth.service';
 import LocationPicker from '@/components/LocationPicker';
-import { LocationType, formatLocation } from '@/utils/tunisiaLocations';
+import { LocationType, parseLocation, formatLocation } from '@/utils/tunisiaLocations';
 
 interface Category {
   id: number;
@@ -26,50 +25,98 @@ interface Category {
   icon: string;
 }
 
-export default function AddPlaceScreen() {
-  const router = useRouter();
+export default function EditPlaceScreen() {
   const { id } = useLocalSearchParams();
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [place, setPlace] = useState<any>(null);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     name: '',
-    location: '',
     description: '',
     exclusive_details: '',
   });
   const [images, setImages] = useState<string[]>([]);
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<LocationType | null>(null);
 
   useEffect(() => {
+    fetchPlace();
     fetchCategories();
-  }, []);
+  }, [id]);
+
+  const fetchPlace = async () => {
+    try {
+      setLoading(true);
+      const token = await AuthService.getToken();
+      if (!token) throw new Error('No authentication token found');
+
+      console.log('Fetching place with ID:', id);
+      const response = await fetch(`${EXPO_PUBLIC_API_URL}places/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch place');
+
+      const data = await response.json();
+      console.log('Fetched place data:', JSON.stringify(data, null, 2));
+      
+      if (data.success) {
+        setPlace(data.data);
+        setFormData({
+          name: data.data.name,
+          description: data.data.description,
+          exclusive_details: data.data.exclusive_details || '',
+        });
+        setImages(data.data.images || []);
+        setUploadedImages(data.data.images || []);
+        
+        // Parse location
+        const parsedLocation = parseLocation(data.data.location);
+        setSelectedLocation(parsedLocation);
+        
+        // Set selected categories from the place's categories
+        if (data.data.categories && Array.isArray(data.data.categories)) {
+          const categoryNames = data.data.categories.map((cat: any) => cat.name);
+          console.log('Setting selected categories by name:', categoryNames);
+          setSelectedCategories(categoryNames);
+        } else {
+          console.log('No categories found for place');
+          setSelectedCategories([]);
+        }
+      }
+    } catch (error: any) {
+      console.error('Error fetching place:', error);
+      Alert.alert('Error', error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchCategories = async () => {
     try {
       const token = await AuthService.getToken();
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
+      if (!token) throw new Error('No authentication token found');
 
       const response = await fetch(`${EXPO_PUBLIC_API_URL}categories`, {
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+          'Content-Type': 'application/json'
+        }
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch categories');
-      }
+      if (!response.ok) throw new Error('Failed to fetch categories');
 
       const data = await response.json();
       if (data.success) {
         setCategories(data.data);
       }
     } catch (error: any) {
-      console.error('Error fetching categories:', error);
-      Alert.alert('Error', error.message || 'Failed to fetch categories');
+      Alert.alert('Error', error.message);
     }
   };
 
@@ -90,9 +137,7 @@ export default function AddPlaceScreen() {
       });
 
       if (!result.canceled && result.assets[0]) {
-        setLoading(true);
         const base64Data = result.assets[0].base64;
-
         if (!base64Data) {
           Alert.alert('Error', 'Failed to get image data');
           return;
@@ -100,29 +145,22 @@ export default function AddPlaceScreen() {
 
         try {
           const uploadResponse = await uploadImageToCloudinary(base64Data);
-          setImages([...images, uploadResponse.secure_url]);
-          Alert.alert('Success', 'Image uploaded successfully');
-        } catch (error: any) {
+          setImages(prev => [...prev, uploadResponse.secure_url]);
+          setUploadedImages(prev => [...prev, uploadResponse.secure_url]);
+        } catch (error) {
           console.error('Error uploading image:', error);
-          Alert.alert('Error', error.message || 'Failed to upload image');
+          Alert.alert('Error', 'Failed to upload image. Please try again.');
         }
       }
     } catch (error) {
       console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to pick image');
-    } finally {
-      setLoading(false);
+      Alert.alert('Error', 'Failed to pick image. Please try again.');
     }
   };
 
-  const handleCategoryToggle = (categoryId: number) => {
-    setSelectedCategories(prev => {
-      if (prev.includes(categoryId)) {
-        return prev.filter(id => id !== categoryId);
-      } else {
-        return [...prev, categoryId];
-      }
-    });
+  const handleRemoveImage = (index: number) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
+    setUploadedImages(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async () => {
@@ -156,14 +194,14 @@ export default function AddPlaceScreen() {
       const requestBody = {
         ...formData,
         location: formatLocation(selectedLocation),
-        images: images,
+        images: uploadedImages,
         Categories: formattedCategories
       };
 
-      console.log('Sending create request with body:', JSON.stringify(requestBody, null, 2));
+      console.log('Sending update request with body:', JSON.stringify(requestBody, null, 2));
 
-      const response = await fetch(`${EXPO_PUBLIC_API_URL}advisor/place`, {
-        method: 'POST',
+      const response = await fetch(`${EXPO_PUBLIC_API_URL}advisor/place/${id}`, {
+        method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -172,27 +210,42 @@ export default function AddPlaceScreen() {
       });
 
       console.log('Response status:', response.status);
-      const responseData = await response.json();
-      console.log('Response data:', responseData);
-
-      if (!response.ok) {
-        throw new Error(responseData?.message || 'Failed to create place');
+      
+      let data;
+      try {
+        const textResponse = await response.text();
+        console.log('Raw response:', textResponse);
+        data = JSON.parse(textResponse);
+        console.log('Parsed response data:', data);
+      } catch (parseError) {
+        console.error('Error parsing response:', parseError);
+        throw new Error('Server response was not in the expected format');
       }
 
-      Alert.alert('Success', 'Place created successfully');
-      router.back();
+      if (!response.ok) {
+        throw new Error(
+          data.error || data.message || 
+          `Failed to update place (Status: ${response.status})`
+        );
+      }
+
+      Alert.alert(
+        'Success',
+        'Place updated successfully',
+        [{ text: 'OK', onPress: () => router.back() }]
+      );
     } catch (error: any) {
-      console.error('Error creating place:', error);
+      console.error('Error updating place:', error);
       Alert.alert(
         'Error',
-        error.message || 'Failed to create place. Please try again.'
+        error.message || 'Failed to update place. Please try again.'
       );
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) {
+  if (loading && !place) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#64FFDA" />
@@ -203,22 +256,22 @@ export default function AddPlaceScreen() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Pressable 
+        <TouchableOpacity 
           style={styles.backButton}
           onPress={() => router.back()}
         >
           <Ionicons name="arrow-back" size={24} color="#64FFDA" />
-        </Pressable>
-        <Text style={styles.headerTitle}>Add New Place</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Edit Place</Text>
       </View>
 
       <View style={styles.form}>
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Name *</Text>
+          <Text style={styles.label}>Name</Text>
           <TextInput
             style={styles.input}
             value={formData.name}
-            onChangeText={(text) => setFormData({ ...formData, name: text })}
+            onChangeText={(text) => setFormData(prev => ({ ...prev, name: text }))}
             placeholder="Enter place name"
             placeholderTextColor="#8892B0"
           />
@@ -233,45 +286,12 @@ export default function AddPlaceScreen() {
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Categories *</Text>
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            style={styles.categoriesScroll}
-          >
-            {categories.map((category) => (
-              <TouchableOpacity
-                key={category.id}
-                style={[
-                  styles.categoryButton,
-                  selectedCategories.includes(category.id) && styles.selectedCategory
-                ]}
-                onPress={() => handleCategoryToggle(category.id)}
-              >
-                <Text style={[
-                  styles.categoryIcon,
-                  selectedCategories.includes(category.id) && styles.selectedCategoryIcon
-                ]}>
-                  {category.icon}
-                </Text>
-                <Text style={[
-                  styles.categoryText,
-                  selectedCategories.includes(category.id) && styles.selectedCategoryText
-                ]}>
-                  {category.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Description *</Text>
+          <Text style={styles.label}>Description</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
             value={formData.description}
-            onChangeText={(text) => setFormData({ ...formData, description: text })}
-            placeholder="Describe the place"
+            onChangeText={(text) => setFormData(prev => ({ ...prev, description: text }))}
+            placeholder="Enter description"
             placeholderTextColor="#8892B0"
             multiline
             numberOfLines={4}
@@ -283,8 +303,8 @@ export default function AddPlaceScreen() {
           <TextInput
             style={[styles.input, styles.textArea]}
             value={formData.exclusive_details}
-            onChangeText={(text) => setFormData({ ...formData, exclusive_details: text })}
-            placeholder="Add any exclusive details"
+            onChangeText={(text) => setFormData(prev => ({ ...prev, exclusive_details: text }))}
+            placeholder="Enter exclusive details"
             placeholderTextColor="#8892B0"
             multiline
             numberOfLines={4}
@@ -292,43 +312,73 @@ export default function AddPlaceScreen() {
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Images *</Text>
+          <Text style={styles.label}>Categories</Text>
           <ScrollView 
             horizontal 
             showsHorizontalScrollIndicator={false}
-            style={styles.imagesScroll}
+            style={styles.categoriesContainer}
+          >
+            {categories.map((category) => (
+              <TouchableOpacity
+                key={category.id}
+                style={[
+                  styles.categoryButton,
+                  selectedCategories.includes(category.name) && styles.selectedCategory
+                ]}
+                onPress={() => {
+                  setSelectedCategories(prev =>
+                    prev.includes(category.name)
+                      ? prev.filter(name => name !== category.name)
+                      : [...prev, category.name]
+                  );
+                }}
+              >
+                <Text style={styles.categoryIcon}>{category.icon}</Text>
+                <Text style={[
+                  styles.categoryText,
+                  selectedCategories.includes(category.name) && styles.selectedCategoryText
+                ]}>
+                  {category.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Images</Text>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            style={styles.imagesContainer}
           >
             {images.map((image, index) => (
-              <View key={index} style={styles.imageContainer}>
+              <View key={index} style={styles.imageWrapper}>
                 <Image source={{ uri: image }} style={styles.image} />
                 <TouchableOpacity
                   style={styles.removeImageButton}
-                  onPress={() => setImages(images.filter((_, i) => i !== index))}
+                  onPress={() => handleRemoveImage(index)}
                 >
                   <Ionicons name="close-circle" size={24} color="#FF6B6B" />
                 </TouchableOpacity>
               </View>
             ))}
-            <TouchableOpacity
-              style={styles.addImageButton}
-              onPress={handleImagePick}
-              disabled={loading}
-            >
-              <Ionicons name="add-circle" size={24} color="#64FFDA" />
+            <TouchableOpacity style={styles.addImageButton} onPress={handleImagePick}>
+              <Ionicons name="add-circle" size={40} color="#64FFDA" />
               <Text style={styles.addImageText}>Add Image</Text>
             </TouchableOpacity>
           </ScrollView>
         </View>
 
-        <TouchableOpacity
-          style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+        <TouchableOpacity 
+          style={styles.submitButton}
           onPress={handleSubmit}
           disabled={loading}
         >
           {loading ? (
             <ActivityIndicator color="#0A192F" />
           ) : (
-            <Text style={styles.submitButtonText}>Create Place</Text>
+            <Text style={styles.submitButtonText}>Update Place</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -385,44 +435,40 @@ const styles = StyleSheet.create({
     height: 100,
     textAlignVertical: 'top',
   },
-  categoriesScroll: {
-    marginHorizontal: -20,
-    paddingHorizontal: 20,
+  categoriesContainer: {
+    flexDirection: 'row',
+    marginTop: 8,
   },
   categoryButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#1D2D50',
-    paddingHorizontal: 15,
+    paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    marginRight: 10,
+    marginRight: 12,
   },
   selectedCategory: {
     backgroundColor: '#64FFDA',
   },
+  categoryIcon: {
+    fontSize: 20,
+    marginRight: 8,
+  },
   categoryText: {
-    color: '#64FFDA',
-    marginLeft: 5,
+    color: '#CCD6F6',
     fontSize: 14,
   },
   selectedCategoryText: {
     color: '#0A192F',
   },
-  categoryIcon: {
-    fontSize: 24,
-    marginRight: 5,
+  imagesContainer: {
+    flexDirection: 'row',
+    marginTop: 8,
   },
-  selectedCategoryIcon: {
-    color: '#0A192F',
-  },
-  imagesScroll: {
-    marginHorizontal: -20,
-    paddingHorizontal: 20,
-  },
-  imageContainer: {
+  imageWrapper: {
     position: 'relative',
-    marginRight: 10,
+    marginRight: 12,
   },
   image: {
     width: 120,
@@ -437,28 +483,25 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   addImageButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    width: 120,
+    height: 120,
     backgroundColor: '#1D2D50',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 10,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   addImageText: {
     color: '#64FFDA',
-    marginLeft: 5,
+    marginTop: 8,
     fontSize: 14,
   },
   submitButton: {
     backgroundColor: '#64FFDA',
-    padding: 15,
+    padding: 16,
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 20,
-  },
-  submitButtonDisabled: {
-    opacity: 0.7,
   },
   submitButtonText: {
     color: '#0A192F',

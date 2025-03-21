@@ -16,7 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Link } from 'expo-router';
+import AuthService from '../../services/auth.service';
 
 interface SidebarProps {
   isVisible: boolean;
@@ -64,7 +64,7 @@ export default function Sidebar({ isVisible, onClose }: SidebarProps) {
       if (user) {
         if (user.role === 'advisor') {
           console.log('Navigating to advisor profile with ID:', user.id);
-          router.push(`/advisor/${user.id}`);
+          router.push(`/advisor/${user.id}` as any);
         } else {
           console.log('Navigating to regular profile');
           router.push('/profile');
@@ -80,12 +80,6 @@ export default function Sidebar({ isVisible, onClose }: SidebarProps) {
     }
   };
 
-  // const menuItems = [
-  //   { icon: 'home', label: 'Home', route: '/(tabs)/home' },
-  //   { icon: 'compass', label: 'Explore', route: '/(tabs)/market' },
-  //   { icon: 'heart', label: 'Favorites', route: '/(tabs)/favorites' },
-  //   { icon: 'help-circle', label: 'Help', route: '/(tabs)/hints' },
-  //   { icon: 'settings', label: 'Settings', route: '/setting' },
   const menuItems: MenuItem[] = [
     { 
       icon: 'home-outline', 
@@ -180,7 +174,11 @@ export default function Sidebar({ isVisible, onClose }: SidebarProps) {
                   style={styles.menuItem}
                   onPress={() => {
                     onClose();
-                    router.push(item.route);
+                    if (item.label === 'Profile') {
+                      handleProfilePress();
+                    } else {
+                      router.push(item.route);
+                    }
                   }}
                 >
                   <View style={styles.menuItemIcon}>
@@ -289,7 +287,7 @@ const styles = StyleSheet.create({
   },
   menuItems: {
     paddingTop: 8,
-    paddingBottom: 100, // Add extra padding at the bottom to ensure the last items can be seen
+    paddingBottom: 100,
   },
   menuItem: {
     flexDirection: 'row',

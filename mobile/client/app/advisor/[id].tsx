@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Pressable, Dimensions, Alert } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { EXPO_PUBLIC_API_URL } from '@/config';
@@ -55,6 +55,7 @@ interface AdvisorProfile {
     image: string;
     averageRating: number;
     reviewCount: number;
+    status?: string;
   }>;
 }
 
@@ -143,6 +144,14 @@ export default function AdvisorProfileScreen() {
   useEffect(() => {
     fetchProfile();
   }, [id]);
+
+  // Use useFocusEffect to refresh data when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('Screen focused, refreshing profile data');
+      fetchProfile();
+    }, [id])
+  );
 
   const getRankColor = (rank: string) => {
     switch (rank.toLowerCase()) {
@@ -233,6 +242,96 @@ export default function AdvisorProfileScreen() {
     }
   };
 
+  const handleEditProfile = () => {
+    router.push(`/edit-profile?id=${id}`);
+  };
+
+  const getStatusBadgeStyle = (status: string) => {
+    switch (status) {
+      case 'approved':
+        return {
+          backgroundColor: '#86EFAC', // Pale green
+          paddingHorizontal: 12,
+          paddingVertical: 6,
+          borderRadius: 12,
+          shadowColor: '#86EFAC',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.2,
+          shadowRadius: 4,
+          elevation: 3,
+        };
+      case 'rejected':
+        return {
+          backgroundColor: '#FCA5A5', // Pale red
+          paddingHorizontal: 12,
+          paddingVertical: 6,
+          borderRadius: 12,
+          shadowColor: '#FCA5A5',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.2,
+          shadowRadius: 4,
+          elevation: 3,
+        };
+      case 'pending':
+      default:
+        return {
+          backgroundColor: '#FDE047', // Pale yellow
+          paddingHorizontal: 12,
+          paddingVertical: 6,
+          borderRadius: 12,
+          shadowColor: '#FDE047',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.2,
+          shadowRadius: 4,
+          elevation: 3,
+        };
+    }
+  };
+
+  const handleDeletePlace = async (placeId: number) => {
+    Alert.alert(
+      "Delete Place",
+      "Are you sure you want to delete this place? This action cannot be undone.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const token = await AuthService.getToken();
+              if (!token) {
+                throw new Error('No authentication token found');
+              }
+
+              const response = await fetch(`${EXPO_PUBLIC_API_URL}advisor/place/${placeId}`, {
+                method: 'DELETE',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                }
+              });
+
+              if (!response.ok) {
+                throw new Error('Failed to delete place');
+              }
+
+              // Refresh the profile data
+              await fetchProfile();
+              Alert.alert('Success', 'Place deleted successfully');
+            } catch (error) {
+              console.error('Error deleting place:', error);
+              Alert.alert('Error', 'Failed to delete place. Please try again.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -260,6 +359,12 @@ export default function AdvisorProfileScreen() {
             <Ionicons name="arrow-back" size={24} color="#64FFDA" />
           </Pressable>
           <Text style={styles.headerTitle}>Advisor Profile</Text>
+          <Pressable 
+            style={styles.editButton}
+            onPress={handleEditProfile}
+          >
+            <Ionicons name="pencil" size={24} color="#64FFDA" />
+          </Pressable>
         </View>
 
         <View style={styles.profileSection}>
@@ -332,10 +437,41 @@ export default function AdvisorProfileScreen() {
                   style={styles.placeCard}
                   onPress={() => router.push(`/place/${place.id}`)}
                 >
-                  <Image
-                    source={{ uri: place.image }}
-                    style={styles.placeImage}
-                  />
+                  <View style={styles.placeImageContainer}>
+                    <Image
+                      source={{ uri: place.image }}
+                      style={styles.placeImage}
+                    />
+                    <View style={styles.placeActions}>
+                      <TouchableOpacity 
+                        style={styles.actionButton}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          console.log('Edit button clicked for place:', place.id);
+                          router.push(`/edit-place?id=${place.id}`);
+                        }}
+                      >
+                        <Ionicons name="pencil" size={20} color="#64FFDA" />
+                      </TouchableOpacity>
+                      <TouchableOpacity 
+                        style={[styles.actionButton, styles.deleteButton]}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleDeletePlace(place.id);
+                        }}
+                      >
+                        <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
+                      </TouchableOpacity>
+                    </View>
+                    <View style={[
+                      styles.statusBadge,
+                      getStatusBadgeStyle(place.status || 'pending')
+                    ]}>
+                      <Text style={styles.statusText}>
+                        {(place.status || 'pending').charAt(0).toUpperCase() + (place.status || 'pending').slice(1)}
+                      </Text>
+                    </View>
+                  </View>
                   <View style={styles.placeInfo}>
                     <Text style={styles.placeName}>{place.name}</Text>
                     <View style={styles.placeDetails}>
@@ -582,9 +718,14 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
   },
-  placeImage: {
+  placeImageContainer: {
+    position: 'relative',
     width: '100%',
     height: 180,
+  },
+  placeImage: {
+    width: '100%',
+    height: '100%',
   },
   placeInfo: {
     padding: 15,
@@ -660,5 +801,35 @@ const styles = StyleSheet.create({
   fullImage: {
     width: Dimensions.get('window').width,
     height: Dimensions.get('window').width,
+  },
+  editButton: {
+    marginLeft: 'auto',
+  },
+  placeActions: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    flexDirection: 'row',
+    gap: 8,
+    zIndex: 1,
+  },
+  actionButton: {
+    backgroundColor: 'rgba(10, 25, 47, 0.8)',
+    padding: 8,
+    borderRadius: 20,
+  },
+  deleteButton: {
+    backgroundColor: 'rgba(255, 107, 107, 0.2)',
+  },
+  statusBadge: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    zIndex: 1,
+  },
+  statusText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 }); 

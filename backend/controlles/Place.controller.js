@@ -118,41 +118,15 @@ const placeController = {
       });
 
       const formattedPlaces = places.map(place => {
-        let imageUrl = 'https://via.placeholder.com/400';
-        let images = [imageUrl]; // Default image
+        // Simple image handling - just use the images array directly
+        const images = place.images || [];
         
-        // First try getting images from Media
-        if (place.Media && place.Media.length > 0) {
-          images = place.Media.map(media => media.url);
-        } 
-        // Then try the images field
-        else if (place.images) {
-          try {
-            // If it's a JSON string, parse it
-            if (typeof place.images === 'string') {
-              const parsedImages = JSON.parse(place.images);
-              if (Array.isArray(parsedImages) && parsedImages.length > 0) {
-                images = parsedImages;
-              } else {
-                images = [place.images]; // Treat as single image
-              }
-            } 
-            // If it's already an array
-            else if (Array.isArray(place.images) && place.images.length > 0) {
-              images = place.images;
-            }
-          } catch (e) {
-            console.error('Error parsing images:', e);
-            images = [place.images]; // Fallback to treating as single image
-          }
-        }
-
         return {
           id: place.id,
           name: place.name,
           description: place.description,
           location: place.location,
-          images: images, // Return array instead of single image
+          images: Array.isArray(images) ? images : [images].filter(Boolean),
           rating: Number(
             (place.Reviews?.reduce((acc, rev) => acc + (rev.rating || 0), 0) / 
              (place.Reviews?.length || 1)).toFixed(1)
@@ -160,7 +134,15 @@ const placeController = {
           categories: place.Categories?.map(cat => ({
             name: cat.name,
             icon: cat.icon
-          })) || []
+          })) || [],
+          status: place.status || 'pending',
+          creator: place.Creator ? {
+            id: place.Creator.id,
+            name: `${place.Creator.first_name} ${place.Creator.last_name}`,
+            email: place.Creator.email,
+            profile_image: place.Creator.profile_image
+          } : null,
+          created_at: place.createdAt
         };
       });
 
@@ -222,59 +204,15 @@ const placeController = {
         });
       }
 
-      // Handle images from both Media and images field
-      let images = ['https://via.placeholder.com/400'];
-      if (place.Media && place.Media.length > 0) {
-        images = place.Media.map(media => media.url);
-        console.log('Using media images:', images);
-      } else if (place.images) {
-        console.log('PlaceById - Raw images data type:', typeof place.images);
-        console.log('PlaceById - Raw images data:', place.images);
-        
-        try {
-          if (Array.isArray(place.images)) {
-            images = place.images.length > 0 ? place.images : images;
-            console.log('PlaceById - Using array images:', images);
-          } else if (typeof place.images === 'string') {
-            // Try to parse if it looks like JSON
-            if (place.images.startsWith('[') && place.images.endsWith(']')) {
-              try {
-                const parsedImages = JSON.parse(place.images);
-                if (Array.isArray(parsedImages) && parsedImages.length > 0) {
-                  images = parsedImages;
-                  console.log('PlaceById - Successfully parsed JSON images array:', images);
-                }
-              } catch (parseError) {
-                console.error('PlaceById - Error parsing JSON images:', parseError);
-                // Fallback to treating as a single image URL
-                images = [place.images];
-              }
-            } else {
-              // Not JSON, treat as a single image URL
-              images = [place.images];
-            }
-          }
-        } catch (e) {
-          console.error('PlaceById - Error processing images:', e);
-          images = typeof place.images === 'string' ? [place.images] : images;
-        }
-      }
-
-      // Add criteria data separately after fetching the place
-      const placeCriteria = await Citiria.findAll({
-        include: [{
-          model: PlaceUser,
-          where: { placeId: id },
-          required: false
-        }]
-      });
-
+      // Handle images simply
+      const images = place.images || [];
+      
       const formattedPlace = {
         id: place.id,
         name: place.name,
         description: place.description,
         location: place.location,
-        images: images,
+        images: Array.isArray(images) ? images : [images].filter(Boolean),
         rating: Number(
           (place.Reviews?.reduce((acc, rev) => acc + (rev.rating || 0), 0) / 
            (place.Reviews?.length || 1)).toFixed(1)
@@ -300,37 +238,8 @@ const placeController = {
         categories: place.Categories?.map(cat => ({
           name: cat.name,
           icon: cat.icon || '🏷️'
-        })) || [],
-        critiria: placeCriteria.map(crit => ({
-          id: crit.id,
-          name: crit.name,
-          percentage: crit.purcent,
-          value: crit.PlaceUsers && crit.PlaceUsers.length > 0 ? crit.PlaceUsers[0].value : 0
-        })) || [],
-        distance: 5.2,
-        amenities: ["water", "restrooms", "fire_pit", "picnic_table"],
-        terrain_type: "forest",
-        availability: "open",
-        site_type: "tent",
-        accessibility: "easy",
-        weather: {
-          current: {
-            temp: 22,
-            condition: "Sunny",
-            humidity: 40,
-          },
-          forecast: [
-            { day: "Mon", temp: 22, condition: "Sunny" },
-            { day: "Tue", temp: 20, condition: "Cloudy" },
-            { day: "Wed", temp: 18, condition: "Rain" },
-          ],
-        },
-        cost: 25,
-        user_rating: 4.2,
-        safety: ["Watch for wildlife", "Steep trails nearby"]
+        })) || []
       };
-
-      console.log('Sending place with images:', formattedPlace.images);
 
       res.status(200).json({
         success: true,
@@ -434,6 +343,88 @@ const placeController = {
       res.status(500).json({
         success: false,
         error: 'Error fetching user rating',
+        details: error.message
+      });
+    }
+  },
+
+  // Update place status (approve/reject)
+  updatePlaceStatus: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+
+      if (!['approved', 'rejected'].includes(status)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid status. Must be either "approved" or "rejected"'
+        });
+      }
+
+      const place = await Place.findByPk(id);
+      
+      if (!place) {
+        return res.status(404).json({
+          success: false,
+          error: 'Place not found'
+        });
+      }
+
+      await place.update({ status });
+
+      // Fetch the updated place with all its relations
+      const updatedPlace = await Place.findByPk(id, {
+        include: [
+          {
+            model: Media,
+            as: 'Media',
+            attributes: ['url', 'type'],
+            required: false
+          },
+          {
+            model: Categorie,
+            as: 'Categories',
+            through: { attributes: [] },
+            attributes: ['name', 'icon'],
+            required: false
+          },
+          {
+            model: User,
+            as: 'Creator',
+            attributes: ['id', 'first_name', 'last_name', 'email', 'profile_image'],
+            required: false
+          }
+        ]
+      });
+
+      res.status(200).json({
+        success: true,
+        data: {
+          id: updatedPlace.id,
+          name: updatedPlace.name,
+          description: updatedPlace.description,
+          location: updatedPlace.location,
+          status: updatedPlace.status,
+          images: updatedPlace.Media?.map(media => media.url) || [],
+          categories: updatedPlace.Categories?.map(cat => ({
+            name: cat.name,
+            icon: cat.icon
+          })) || [],
+          creator: updatedPlace.Creator ? {
+            id: updatedPlace.Creator.id,
+            name: `${updatedPlace.Creator.first_name} ${updatedPlace.Creator.last_name}`,
+            email: updatedPlace.Creator.email,
+            profile_image: updatedPlace.Creator.profile_image
+          } : null,
+          created_at: updatedPlace.createdAt,
+          updated_at: updatedPlace.updatedAt
+        }
+      });
+    } catch (error) {
+      console.error('Error in updatePlaceStatus:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error updating place status',
         details: error.message
       });
     }

@@ -5,6 +5,7 @@ import Svg, { Path } from 'react-native-svg';
 import { useRouter, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import StaticTabbar, { tabHeight as height } from './StaticTabbar';
+import AuthService from '../../services/auth.service';
 
 const { width } = Dimensions.get('window');
 
@@ -87,10 +88,39 @@ export default function Tabbar() {
     }
   }, [pathname]);
 
+  const handleProfilePress = async () => {
+    try {
+      console.log('Profile button pressed');
+      const token = await AuthService.getToken();
+      const user = await AuthService.getUser();
+      console.log('Token:', token);
+      console.log('User:', user);
+      
+      if (user) {
+        if (user.role === 'advisor') {
+          console.log('Navigating to advisor profile with ID:', user.id);
+          router.push(`/advisor/${user.id}` as any);
+        } else {
+          console.log('Navigating to regular profile');
+          router.push('/profile');
+        }
+      } else {
+        console.log('No user data found');
+        router.push('/auth');
+      }
+    } catch (error) {
+      console.error('Error in handleProfilePress:', error);
+      router.push('/auth');
+    }
+  };
+
   const handleTabPress = (index: number) => {
     setActiveIndex(index);
-    // Use type assertion to handle the router.push type error
-    router.push(tabs[index].route as any);
+    if (tabs[index].name === 'Profile') {
+      handleProfilePress();
+    } else {
+      router.push(tabs[index].route as any);
+    }
   };
 
   return (

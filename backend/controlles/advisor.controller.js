@@ -138,47 +138,151 @@ const advisorController = {
 
   updateAdvisorProfile: async (req, res) => {
     try {
-      const advisor = await Advisor.findByPk(req.params.id, { include: [User] });
-      if (!advisor) {
-        return res.status(404).json({ error: "Advisor not found" });
+      const userId = req.params.id;
+      console.log('Updating profile for user ID:', userId);
+      console.log('Update data:', req.body);
+
+      const user = await User.findByPk(userId);
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          error: 'User not found'
+        });
       }
 
-      await advisor.update(req.body.advisor || {});
-      await advisor.User.update(req.body.user || {});
+      // Update user information
+      const updateData = {
+        first_name: req.body.first_name,
+        last_name: req.body.last_name,
+        bio: req.body.bio,
+        experience: req.body.experience
+      };
 
-      return res.status(200).json({ advisor, user: advisor.User });
+      // If profile_image is provided, update it
+      if (req.body.profile_image) {
+        updateData.profile_image = req.body.profile_image;
+      }
+
+      // Remove undefined values
+      Object.keys(updateData).forEach(key => 
+        updateData[key] === undefined && delete updateData[key]
+      );
+
+      console.log('Updating user with data:', updateData);
+      await user.update(updateData);
+
+      // Get the advisor record if it exists
+      const advisor = await Advisor.findOne({ where: { userId: user.id } });
+      if (advisor) {
+        // Update advisor-specific fields if needed
+        await advisor.update({
+          bio: req.body.bio,
+          experience: req.body.experience
+        });
+      }
+
+      // Fetch the updated user data
+      const updatedUser = await User.findByPk(userId, {
+        attributes: ['id', 'first_name', 'last_name', 'email', 'profile_image', 'bio', 'experience', 'role', 'points']
+      });
+
+      const response = {
+        success: true,
+        data: {
+          id: updatedUser.id,
+          user: {
+            first_name: updatedUser.first_name,
+            last_name: updatedUser.last_name,
+            email: updatedUser.email,
+            profile_image: updatedUser.profile_image,
+            bio: updatedUser.bio,
+            experience: updatedUser.experience
+          },
+          bio: updatedUser.bio,
+          experience: updatedUser.experience,
+          points: updatedUser.points || 0,
+          rank: updatedUser.role
+        }
+      };
+
+      console.log('Profile updated successfully:', response);
+      return res.status(200).json(response);
     } catch (error) {
-      console.error("Error updating advisor profile:", error);
-      return res.status(500).json({ error: "Internal server error" });
+      console.error('Error updating advisor profile:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Internal server error',
+        details: error.message
+      });
     }
   },
 
   addPlace: async (req, res) => {
+    let transaction;
     try {
-      const { name, location, description, images, exclusive_details, eventId, advisorId } = req.body;
-      if (!advisorId) {
-        return res.status(400).json({ error: "Advisor ID is required" });
+      transaction = await connection.transaction();
+
+      const { name, location, description, images, exclusive_details, categoryIds } = req.body;
+      const userId = req.user.id; // Get the user ID from the auth middleware
+
+      // Get the user and verify they are an advisor
+      const user = await User.findByPk(userId);
+      if (!user || user.role !== 'advisor') {
+        await transaction.rollback();
+        return res.status(403).json({
+          success: false,
+          message: "Only advisors can create places"
+        });
       }
 
-      const advisor = await Advisor.findByPk(advisorId);
-      if (!advisor) {
-        return res.status(404).json({ error: "Advisor not found" });
-      }
-
+      // Create the place
       const place = await Place.create({
         name,
         location,
         description,
         images,
         exclusive_details,
-        eventId: eventId || null,
-        advisorId,
+        creatorId: userId, // Use the user ID directly as creator
+        status: 'pending' // Default status for new places
+      }, { transaction });
+
+      // Add categories if provided
+      if (categoryIds && Array.isArray(categoryIds) && categoryIds.length > 0) {
+        await place.setCategories(categoryIds, { transaction });
+      }
+
+      // Commit the transaction
+      await transaction.commit();
+
+      // Fetch the created place with categories and creator info
+      const createdPlace = await Place.findByPk(place.id, {
+        include: [
+          {
+            model: Categorie,
+            as: 'Categories',
+            through: { attributes: [] }
+          },
+          {
+            model: User,
+            as: 'Creator',
+            attributes: ['id', 'first_name', 'last_name', 'profile_image']
+          }
+        ]
       });
 
-      return res.status(201).json(place);
+      return res.status(201).json({
+        success: true,
+        message: "Place created successfully",
+        data: createdPlace
+      });
     } catch (error) {
+      if (transaction) await transaction.rollback();
       console.error("Error adding place:", error);
-      return res.status(500).json({ error: "Internal server error" });
+      return res.status(500).json({
+        success: false,
+        message: "Failed to create place",
+        error: error.message
+      });
     }
   },
 

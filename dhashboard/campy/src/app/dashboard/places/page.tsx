@@ -2,8 +2,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
-import { FiEdit2 } from 'react-icons/fi';
+import { FiEdit2, FiTrash2 } from 'react-icons/fi';
 import Image from 'next/image';
+import Swal from 'sweetalert2';
 
 interface User {
   id: number;
@@ -247,31 +248,35 @@ const EditModal = ({ place, isOpen, onClose, onSave }: EditModalProps) => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-[#CCD6F6] mb-2 font-medium">Current Images</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {existingImages.map((img, index) => (
-                      <div key={index} className="relative group">
-                        <div className="aspect-w-16 aspect-h-9 rounded-lg overflow-hidden">
-                          <img
-                            src={img}
-                            alt={`Current ${index + 1}`}
-                            className="w-full h-full object-cover"
-                          />
+                  <div className="relative">
+                    <div className="flex space-x-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-[#64FFDA] scrollbar-track-[#1D2D50] scrollbar-thumb-rounded-full scrollbar-track-rounded-full">
+                      {existingImages.map((img, index) => (
+                        <div key={index} className="relative group flex-none">
+                          <div className="w-80 h-48 rounded-lg overflow-hidden">
+                            <img
+                              src={img}
+                              alt={`Current ${index + 1}`}
+                              className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-110"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeExistingImage(index)}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity transform hover:scale-110"
+                          >
+                            ✕
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => removeExistingImage(index)}
-                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity transform hover:scale-110"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+                    <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-[#112240] to-transparent pointer-events-none" />
+                    <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#112240] to-transparent pointer-events-none" />
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-[#CCD6F6] mb-2 font-medium">Add New Images</label>
-                  <div className="p-3 rounded-lg bg-[#1D2D50] border border-[#64FFDA] border-dashed">
+                  <div className="p-4 rounded-lg bg-[#1D2D50] border border-[#64FFDA] border-dashed">
                     <input
                       type="file"
                       multiple
@@ -284,33 +289,37 @@ const EditModal = ({ place, isOpen, onClose, onSave }: EditModalProps) => {
                       htmlFor="image-upload"
                       className="flex flex-col items-center justify-center cursor-pointer py-4"
                     >
-                      <svg className="w-10 h-10 text-[#64FFDA] mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-12 h-12 text-[#64FFDA] mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                       </svg>
-                      <span className="text-[#CCD6F6]">Click to upload images</span>
+                      <span className="text-[#CCD6F6] text-lg">Click to upload images</span>
                       <span className="text-[#8892B0] text-sm mt-1">PNG, JPG, GIF up to 10MB</span>
                     </label>
                   </div>
                   {selectedImages.length > 0 && (
-                    <div className="mt-3 grid grid-cols-2 gap-3">
-                      {selectedImages.map((file, index) => (
-                        <div key={index} className="relative group">
-                          <div className="aspect-w-16 aspect-h-9 rounded-lg overflow-hidden">
-                            <img
-                              src={URL.createObjectURL(file)}
-                              alt={`Preview ${index}`}
-                              className="w-full h-full object-cover"
-                            />
+                    <div className="mt-4 relative">
+                      <div className="flex space-x-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-[#64FFDA] scrollbar-track-[#1D2D50] scrollbar-thumb-rounded-full scrollbar-track-rounded-full">
+                        {selectedImages.map((file, index) => (
+                          <div key={index} className="relative group flex-none">
+                            <div className="w-80 h-48 rounded-lg overflow-hidden">
+                              <img
+                                src={URL.createObjectURL(file)}
+                                alt={`Preview ${index}`}
+                                className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-110"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeSelectedImage(index)}
+                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity transform hover:scale-110"
+                            >
+                              ✕
+                            </button>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => removeSelectedImage(index)}
-                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity transform hover:scale-110"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
+                      <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-[#112240] to-transparent pointer-events-none" />
+                      <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#112240] to-transparent pointer-events-none" />
                     </div>
                   )}
                 </div>
@@ -390,6 +399,8 @@ export default function PlacesManagement() {
       if (statusFilter !== 'all') {
         url += `&status=${statusFilter}`;
       }
+      console.log('Fetching places from URL:', url); // Log the URL being called
+
       const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -399,45 +410,56 @@ export default function PlacesManagement() {
 
       if (!response.ok) throw new Error('Failed to fetch places');
       const data = await response.json();
-      console.log('API Response:', data); // Debug log
+      console.log('Raw API Response Data:', JSON.stringify(data, null, 2)); // More detailed logging
 
       if (!data.success || !Array.isArray(data.data)) {
         throw new Error('Invalid API response format');
       }
 
       // Validate and transform the data
-      const validatedPlaces = data.data.map((place: any) => ({
-        id: place.id || 0,
-        name: place.name || 'Unnamed Place',
-        description: place.description || 'No description available',
-        location: place.location || 'Location not specified',
-        created_at: place.created_at || new Date().toISOString(),
-        image: place.image || 'https://via.placeholder.com/300',
-        images: place.images || [],
-        rating: place.rating || 0,
-        categories: Array.isArray(place.categories) ? place.categories : [],
-        reviews: Array.isArray(place.reviews) ? place.reviews.map((review: {
-          id: number;
-          comment: string;
-          rating: number;
-          created_at: string | null;
-          user: {
-            id: number;
-            name: string;
-            profile_image: string;
-          };
-        }) => ({
-          id: review.id,
-          comment: review.comment,
-          rating: review.rating,
-          created_at: review.created_at,
-          user: review.user
-        })) : [],
-        status: place.status || 'pending',
-        creator: place.creator
-      }));
+      const formattedPlaces = data.data.map((place: any) => {
+        // Ensure images is always an array
+        const images = Array.isArray(place.images) ? place.images : 
+                      place.images ? [place.images] : 
+                      place.image ? [place.image] : 
+                      ['https://via.placeholder.com/400'];
 
-      setPlaces(validatedPlaces);
+        console.log('Place images:', images); // Debug log
+
+        return {
+          id: place.id || 0,
+          name: place.name || 'Unnamed Place',
+          description: place.description || 'No description available',
+          location: place.location || 'Location not specified',
+          created_at: place.created_at || new Date().toISOString(),
+          image: images[0], // Keep first image as main image
+          images: images, // Store all images
+          rating: place.rating || 0,
+          categories: Array.isArray(place.categories) ? place.categories : [],
+          reviews: Array.isArray(place.reviews) ? place.reviews.map((review: {
+            id: number;
+            comment: string;
+            rating: number;
+            created_at: string | null;
+            user: {
+              id: number;
+              name: string;
+              profile_image: string;
+            };
+          }) => ({
+            id: review.id,
+            comment: review.comment,
+            rating: review.rating,
+            created_at: review.created_at,
+            user: review.user
+          })) : [],
+          status: place.status || place.Status || 'pending',
+          creator: place.creator
+        };
+      });
+
+      console.log('Final Validated Places:', formattedPlaces.map(p => ({ id: p.id, status: p.status })));
+      setPlaces(formattedPlaces);
       setLoading(false);
       setError('');
     } catch (error) {
@@ -450,7 +472,7 @@ export default function PlacesManagement() {
   const handleStatusChange = async (placeId: number, newStatus: 'approved' | 'rejected') => {
     try {
       const token = localStorage.getItem('userToken');
-      const url = `${API_URL}advisor/place/${placeId}`;
+      const url = `${API_URL}places/${placeId}/status`;
       console.log('Updating place status:', { placeId, newStatus });
 
       const response = await fetch(url, {
@@ -459,7 +481,7 @@ export default function PlacesManagement() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status: newStatus })
       });
 
       if (!response.ok) {
@@ -468,24 +490,54 @@ export default function PlacesManagement() {
         throw new Error(errorData.error || `Failed to update place status: ${response.status}`);
       }
 
-      const data = await response.json().catch(() => null);
+      const data = await response.json();
       console.log('Status update response:', data);
 
-      // Even if we can't parse the response, if response.ok is true, we consider it a success
-      if (response.ok) {
-        // Update the place in the local state
+      if (data.success) {
+        // Update the place in the local state with the status from the response
         setPlaces(places.map(place => 
           place.id === placeId 
-            ? { ...place, status: newStatus }
+            ? { ...place, ...data.data }
             : place
         ));
-        setError(''); // Clear any existing error
+        setError('');
+
+        // Show success message
+        await Swal.fire({
+          title: 'Success!',
+          text: `Place has been ${newStatus}`,
+          icon: 'success',
+          background: '#112240',
+          color: '#CCD6F6',
+          confirmButtonColor: '#64FFDA',
+          customClass: {
+            popup: 'bg-[#112240] border border-[#1D2D50]',
+            title: 'text-[#CCD6F6]',
+            htmlContainer: 'text-[#8892B0]',
+            confirmButton: 'bg-[#64FFDA] text-[#112240] hover:bg-[#45E6C4]'
+          }
+        });
       } else {
-        throw new Error('Failed to update place status');
+        throw new Error(data.error || 'Failed to update place status');
       }
     } catch (error) {
       console.error('Error updating place status:', error);
       setError(error instanceof Error ? error.message : 'Failed to update place status');
+      
+      await Swal.fire({
+        title: 'Error!',
+        text: error instanceof Error ? error.message : 'Failed to update place status',
+        icon: 'error',
+        background: '#112240',
+        color: '#CCD6F6',
+        confirmButtonColor: '#64FFDA',
+        customClass: {
+          popup: 'bg-[#112240] border border-[#1D2D50]',
+          title: 'text-[#CCD6F6]',
+          htmlContainer: 'text-[#8892B0]',
+          confirmButton: 'bg-[#64FFDA] text-[#112240] hover:bg-[#45E6C4]'
+        }
+      });
     }
   };
 
@@ -631,6 +683,80 @@ export default function PlacesManagement() {
     }
   };
 
+  const handleDeletePlace = async (placeId: number) => {
+    try {
+      const result = await Swal.fire({
+        title: 'Are you sure?',
+        text: "You won't be able to revert this!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#64FFDA',
+        cancelButtonColor: '#8892B0',
+        confirmButtonText: 'Yes, delete it!',
+        cancelButtonText: 'Cancel',
+        background: '#112240',
+        color: '#CCD6F6',
+        customClass: {
+          popup: 'bg-[#112240] border border-[#1D2D50]',
+          title: 'text-[#CCD6F6]',
+          htmlContainer: 'text-[#8892B0]',
+          confirmButton: 'bg-[#64FFDA] text-[#112240] hover:bg-[#45E6C4]',
+          cancelButton: 'bg-[#1D2D50] text-[#CCD6F6] hover:bg-[#2A3E63]'
+        }
+      });
+
+      if (result.isConfirmed) {
+        const token = localStorage.getItem('userToken');
+        const response = await fetch(`${API_URL}advisor/place/${placeId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to delete place');
+        }
+
+        // Show success message
+        await Swal.fire({
+          title: 'Deleted!',
+          text: 'Place has been deleted.',
+          icon: 'success',
+          background: '#112240',
+          color: '#CCD6F6',
+          confirmButtonColor: '#64FFDA',
+          customClass: {
+            popup: 'bg-[#112240] border border-[#1D2D50]',
+            title: 'text-[#CCD6F6]',
+            htmlContainer: 'text-[#8892B0]',
+            confirmButton: 'bg-[#64FFDA] text-[#112240] hover:bg-[#45E6C4]'
+          }
+        });
+
+        // Refresh the places list
+        await fetchPlaces();
+      }
+    } catch (error) {
+      console.error('Error deleting place:', error);
+      Swal.fire({
+        title: 'Error!',
+        text: 'Failed to delete place.',
+        icon: 'error',
+        background: '#112240',
+        color: '#CCD6F6',
+        confirmButtonColor: '#64FFDA',
+        customClass: {
+          popup: 'bg-[#112240] border border-[#1D2D50]',
+          title: 'text-[#CCD6F6]',
+          htmlContainer: 'text-[#8892B0]',
+          confirmButton: 'bg-[#64FFDA] text-[#112240] hover:bg-[#45E6C4]'
+        }
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen bg-[#0A192F]">
@@ -687,14 +813,7 @@ export default function PlacesManagement() {
                 key={place.id} 
                 className="bg-[#112240] rounded-lg p-6 shadow-lg hover:bg-[#1D2D50] transition-colors relative"
               >
-                <button
-                  onClick={() => setEditingPlace(place)}
-                  className="absolute top-6 right-6 p-2 rounded-full hover:bg-[#1D2D50] text-[#64FFDA] transition-colors"
-                >
-                  <FiEdit2 size={18} />
-                </button>
-
-                <div className="flex justify-between items-start mb-4 pr-12">
+                <div className="flex justify-between items-center mb-4">
                   <div>
                     <h2 className="text-xl font-semibold text-[#CCD6F6]">{place.name}</h2>
                     {place.creator && (
@@ -708,7 +827,7 @@ export default function PlacesManagement() {
                       </div>
                     )}
                   </div>
-                  <div className="flex flex-col items-end space-y-2">
+                  <div className="flex items-center space-x-4">
                     <div className="flex items-center space-x-2">
                       <span className={`px-3 py-1 rounded-full text-sm ${
                         place.status === 'approved' 
@@ -717,7 +836,7 @@ export default function PlacesManagement() {
                           ? 'bg-red-500/20 text-red-400'
                           : 'bg-yellow-500/20 text-yellow-400'
                       }`}>
-                        {place.status.charAt(0).toUpperCase() + place.status.slice(1)}
+                        {place.status ? place.status.charAt(0).toUpperCase() + place.status.slice(1) : 'Pending'}
                       </span>
                       {place.status === 'pending' && (
                         <div className="flex space-x-2">
@@ -736,55 +855,54 @@ export default function PlacesManagement() {
                         </div>
                       )}
                     </div>
-                    {place.reviews.length > 0 && (
-                      <span className="text-yellow-400">⭐ {place.rating}</span>
-                    )}
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => handleDeletePlace(place.id)}
+                        className="p-2 rounded-full hover:bg-[#1D2D50] text-red-400 transition-colors"
+                      >
+                        <FiTrash2 size={18} />
+                      </button>
+                      <button
+                        onClick={() => setEditingPlace(place)}
+                        className="p-2 rounded-full hover:bg-[#1D2D50] text-[#64FFDA] transition-colors"
+                      >
+                        <FiEdit2 size={18} />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
                 <div className="mb-4">
                   {place.images && place.images.length > 0 ? (
-                    <div className="max-w-2xl mx-auto">
-                      <div className="grid grid-cols-3 gap-2 max-h-[160px] overflow-hidden">
-                        {place.images.slice(0, 5).map((img, index) => {
-                          const isFirst = index === 0;
-                          return (
-                            <div 
-                              key={index} 
-                              className={`relative rounded-lg overflow-hidden ${
-                                isFirst ? 'col-span-2 row-span-2' : ''
-                              }`}
-                            >
-                              <img
-                                src={img}
-                                alt={`${place.name} - ${index + 1}`}
-                                className="w-full h-full object-cover"
-                                style={{ height: isFirst ? '160px' : '78px' }}
-                              />
-                            </div>
-                          );
-                        })}
-                        {place.images.length > 5 && (
-                          <div className="relative rounded-lg overflow-hidden">
+                    <div className="relative">
+                      <div className="flex space-x-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-[#64FFDA] scrollbar-track-[#1D2D50] scrollbar-thumb-rounded-full scrollbar-track-rounded-full">
+                        {place.images.map((img, index) => (
+                          <div 
+                            key={index} 
+                            className="flex-none w-80 h-48 relative rounded-lg overflow-hidden group"
+                          >
                             <img
-                              src={place.images[5]}
-                              alt={`${place.name} - more`}
-                              className="w-full h-full object-cover brightness-50"
-                              style={{ height: '78px' }}
+                              src={img}
+                              alt={`${place.name} - ${index + 1}`}
+                              className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-110"
                             />
-                            <span className="absolute inset-0 flex items-center justify-center text-white text-sm font-semibold bg-black bg-opacity-40">
-                              +{place.images.length - 5} more
-                            </span>
+                            {index === 0 && place.images.length > 1 && (
+                              <div className="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded-full text-sm">
+                                {place.images.length} {place.images.length === 1 ? 'image' : 'images'}
+                              </div>
+                            )}
                           </div>
-                        )}
+                        ))}
                       </div>
+                      <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-[#112240] to-transparent pointer-events-none" />
+                      <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#112240] to-transparent pointer-events-none" />
                     </div>
                   ) : (
-                    <div className="max-w-2xl mx-auto rounded-lg overflow-hidden max-h-[160px]">
+                    <div className="w-full h-48 rounded-lg overflow-hidden">
                       <img
-                        src={place.image}
+                        src={place.image || 'https://via.placeholder.com/400'}
                         alt={place.name}
-                        className="w-full h-[160px] object-cover"
+                        className="w-full h-full object-cover"
                       />
                     </div>
                   )}
