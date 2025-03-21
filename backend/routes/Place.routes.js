@@ -9,12 +9,6 @@ router.get('/', placeController.getAllPlaces);
 // Get place by ID
 router.get('/:id', placeController.getPlaceById);
 
-// Create new place
-router.post('/', authMiddleware, placeController.createPlace);
-
-// Update place status (approve/reject)
-router.put('/:id/status', authMiddleware, placeController.updatePlaceStatus);
-
 // Rate a place (add star rating)
 router.post('/rate', placeController.ratePlace);
 

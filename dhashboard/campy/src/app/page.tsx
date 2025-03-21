@@ -4,45 +4,6 @@ import { useRouter } from "next/navigation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://192.168.1.15:3000/api/';
 
-interface FetchOptions extends RequestInit {
-  headers?: Record<string, string>;
-}
-
-// Utility function for authenticated API calls
-const authenticatedFetch = async (endpoint: string, options: FetchOptions = {}) => {
-  const token = localStorage.getItem('userToken');
-  console.log('Retrieved token:', token);
-  
-  if (!token) {
-    console.error('No token found in localStorage');
-    throw new Error('No authentication token found');
-  }
-
-  const headers = {
-    ...options.headers,
-    'Authorization': `Bearer ${token}`
-  };
-  console.log('Request headers:', headers);
-
-  try {
-    const response = await fetch(`${API_URL}${endpoint}`, {
-      ...options,
-      headers
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      console.error('API request failed:', error);
-      throw new Error(error.error || 'API request failed');
-    }
-
-    return response.json();
-  } catch (error) {
-    console.error('Fetch error:', error);
-    throw error;
-  }
-};
-
 export default function AdminLogin() {
   const router = useRouter();
   const [formData, setFormData] = useState({
@@ -50,9 +11,11 @@ export default function AdminLogin() {
     password: '',
   });
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     setError('');
 
     try {
@@ -65,7 +28,6 @@ export default function AdminLogin() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
         },
         body: JSON.stringify({
           email: formData.email.toLowerCase().trim(),
@@ -76,34 +38,23 @@ export default function AdminLogin() {
       const data = await response.json();
 
       if (data.success) {
-        console.log('Login response:', data);
-        const token = data.data.accessToken;
-        console.log('Token to be stored:', token);
-        
-        // Verify token is not undefined or null
-        if (!token) {
-          throw new Error('No token received from server');
+        if (data.data.user.role !== 'admin') {
+          setError('Access Denied: Only administrators can access this dashboard');
+          return;
         }
-        
-        // Store token
+
+        const token = data.data.token || data.data.accessToken;
         localStorage.setItem('userToken', token);
-        
-        // Verify token was stored correctly
-        const storedToken = localStorage.getItem('userToken');
-        console.log('Stored token:', storedToken);
-        
-        if (!storedToken) {
-          throw new Error('Failed to store token');
-        }
-        
         localStorage.setItem('userData', JSON.stringify(data.data.user));
         router.push('/dashboard');
       } else {
-        setError(data.error || 'Login failed');
+        setError(data.error || data.message || 'Login failed');
       }
     } catch (error) {
       console.error('Login error:', error);
       setError('Login failed. Please check your credentials.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -174,13 +125,14 @@ export default function AdminLogin() {
 
           <button
             type="submit"
+            disabled={loading}
             className="w-full rounded-md py-2 px-4 text-sm font-medium transition-colors hover:opacity-90"
             style={{
               backgroundColor: '#64FFDA',
               color: '#0A192F',
             }}
           >
-            Sign in to Dashboard
+            {loading ? 'Signing in...' : 'Sign in to Dashboard'}
           </button>
         </form>
 

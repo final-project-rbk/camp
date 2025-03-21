@@ -26,13 +26,11 @@ module.exports = (sequelize, DataTypes) => {
         key: 'id'
       }
     }
-  }, {
-    tableName: 'reviews'
   });
 
   Review.associate = function(models) {
-    Review.belongsTo(models.User, { foreignKey: 'userId', as: 'User' });
-    Review.belongsTo(models.Place, { foreignKey: 'placeId', as: 'Place' });
+    Review.belongsTo(models.User, { foreignKey: 'userId' });
+    Review.belongsTo(models.Place, { foreignKey: 'placeId' });
   };
 
   return Review;

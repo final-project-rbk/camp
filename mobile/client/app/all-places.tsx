@@ -56,10 +56,8 @@ export default function AllPlacesScreen() {
 
   const fetchCategories = async () => {
     try {
-      console.log("EXPO_PUBLIC_API_URL",EXPO_PUBLIC_API_URL);
-      const response = await fetch(`${EXPO_PUBLIC_API_URL}categories`);
+      const response = await fetch(`${ EXPO_PUBLIC_API_URL }categories`);
       const data = await response.json();
-      console.log("data in fetchCategories",data);
       if (data.success) {
         setCategories(data.data);
       }
@@ -69,7 +67,6 @@ export default function AllPlacesScreen() {
   };
 
   const fetchPlaces = async (category?: string) => {
-    console.log("category in fetchPlaces",category);
     try {
       setLoading(true);
       setPlaces([]); // Clear places when starting new search

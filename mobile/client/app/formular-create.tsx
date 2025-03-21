@@ -17,6 +17,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { EXPO_PUBLIC_API_URL } from '../config';
 import Checkbox from 'expo-checkbox';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../hooks/useAuth';
+import authService from '../services/auth.service';
 
 interface FormData {
   address: string;
@@ -35,66 +37,32 @@ interface FormData {
 }
 
 export default function FormularCreate() {
-  const { mode } = useLocalSearchParams();
   const router = useRouter();
+  const { isAuthenticated, isLoading, user, checkAuth } = useAuth();
+  const params = useLocalSearchParams();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
-  const [existingImages, setExistingImages] = useState({
-    cinFront: '',
-    cinBack: '',
-    certificate: '',
-    faceImage: ''
-  });
+  const isEdit = params.mode === 'edit';
   
-  // Add state for user data
-  const [userId, setUserId] = useState<number | null>(null);
-  
-  // Check authentication on component mount
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
-    try {
-      const userToken = await AsyncStorage.getItem('userToken');
-      const userData = await AsyncStorage.getItem('userData');
-
-      if (!userToken || !userData) {
-        router.replace('/auth');
-        return;
-      }
-
-      const user = JSON.parse(userData);
-      setUserId(user.id);
-
-      // If in edit mode, fetch existing data
-      if (mode === 'edit') {
-        fetchExistingData(user.id);
-      }
-    } catch (error) {
-      console.error('Auth check error:', error);
-      router.replace('/auth');
-    }
-  };
-
-  // Initialize form data with existing data if in edit mode
+  // Initialize formData with existing data if in edit mode
   const [formData, setFormData] = useState<FormData>(() => {
-    if (mode === 'edit') {
+    if (params.mode === 'edit' && params.existingData) {
+      const existingData = JSON.parse(params.existingData as string);
       return {
-        address: '',
-        phoneNumber: '',
-        cin: '',
-        motivation: '',
-        eventTypes: '',
-        experience: '',
-        socialMediaLinks: '',
-        termsAccepted: false,
-        genuineInfoAgreed: false,
-        cinFront: '',
-        cinBack: '',
-        certificate: '',
-        faceImage: '',
+        address: existingData.address || '',
+        phoneNumber: existingData.phoneNumber || '',
+        cin: existingData.cin || '',
+        motivation: existingData.motivation || '',
+        eventTypes: existingData.eventTypes || '',
+        experience: existingData.experience || '',
+        socialMediaLinks: existingData.socialMediaLinks || '',
+        termsAccepted: existingData.termsAccepted || false,
+        genuineInfoAgreed: existingData.genuineInfoAgreed || false,
+        cinFront: existingData.advisor_medium?.cinFront || '',
+        cinBack: existingData.advisor_medium?.cinBack || '',
+        certificate: existingData.advisor_medium?.certificate || '',
+        faceImage: existingData.advisor_medium?.faceImage || ''
       };
     }
     return {
@@ -110,9 +78,125 @@ export default function FormularCreate() {
       cinFront: '',
       cinBack: '',
       certificate: '',
-      faceImage: '',
+      faceImage: ''
     };
   });
+
+  const [existingImages, setExistingImages] = useState(() => {
+    if (params.mode === 'edit' && params.existingData) {
+      const existingData = JSON.parse(params.existingData as string);
+      return {
+        cinFront: existingData.advisor_medium?.cinFront || '',
+        cinBack: existingData.advisor_medium?.cinBack || '',
+        certificate: existingData.advisor_medium?.certificate || '',
+        faceImage: existingData.advisor_medium?.faceImage || ''
+      };
+    }
+    return {
+      cinFront: '',
+      cinBack: '',
+      certificate: '',
+      faceImage: ''
+    };
+  });
+
+  // Add state for user data
+  const [userId, setUserId] = useState<number | null>(null);
+  
+  useEffect(() => {
+    if (isLoading) return;
+    
+    if (!isAuthenticated) {
+      console.log('User not authenticated, redirecting to auth');
+      router.replace('/auth');
+    }
+  }, [isAuthenticated, isLoading]);
+
+  const handleSubmit = async () => {
+    try {
+        const token = await authService.getToken();
+        const userData = await authService.getUser();
+        
+        if (!token || !userData) {
+            router.replace('/auth');
+            return;
+        }
+
+        // Upload images if they've changed
+        const imageUrls = {
+            cinFront: formData.cinFront !== existingImages.cinFront ? 
+                await uploadToCloudinary(formData.cinFront) : formData.cinFront,
+            cinBack: formData.cinBack !== existingImages.cinBack ? 
+                await uploadToCloudinary(formData.cinBack) : formData.cinBack,
+            certificate: formData.certificate !== existingImages.certificate ? 
+                await uploadToCloudinary(formData.certificate) : formData.certificate,
+            faceImage: formData.faceImage !== existingImages.faceImage ? 
+                await uploadToCloudinary(formData.faceImage) : formData.faceImage,
+        };
+
+        const requestBody = {
+            ...formData,
+            ...imageUrls,
+            userId: userData.id,
+        };
+
+        const existingData = isEdit ? JSON.parse(params.existingData as string) : null;
+
+        // Use PUT for update, POST for create
+        const apiUrl = `${EXPO_PUBLIC_API_URL.replace(/\/+$/, '')}/formularAdvisor${isEdit ? `/${existingData.id}` : '/create'}`;
+        console.log('API URL:', apiUrl);
+        console.log('Sending request with body:', requestBody);
+
+        const response = await fetch(apiUrl, {
+            method: isEdit ? 'PUT' : 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(requestBody),
+        });
+
+        console.log('Response status:', response.status);
+        console.log('Response headers:', response.headers);
+
+        if (response.status === 401) {
+            await checkAuth();
+            router.replace('/auth');
+            return;
+        }
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Server error response:', errorText);
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        try {
+            const responseText = await response.text();
+            console.log('Raw response:', responseText);
+            
+            if (!responseText) {
+                throw new Error('Empty response from server');
+            }
+
+            const result = JSON.parse(responseText);
+            
+            if (result.success) {
+                Alert.alert('Success', `Application ${isEdit ? 'updated' : 'submitted'} successfully`, [
+                    { text: 'OK', onPress: () => router.back() }
+                ]);
+            } else {
+                throw new Error(result.message || `Failed to ${isEdit ? 'update' : 'submit'} application`);
+            }
+        } catch (parseError) {
+            console.error('Parse error:', parseError);
+            throw new Error('Failed to parse server response');
+        }
+    } catch (error) {
+        console.error('Submit error:', error);
+        Alert.alert('Error', error instanceof Error ? error.message : 'Failed to process application');
+    }
+};
 
   const handleImagePick = async (field: 'cinFront' | 'cinBack' | 'certificate' | 'faceImage') => {
     try {
@@ -223,157 +307,6 @@ export default function FormularCreate() {
 
   const showTerms = () => {
     setShowTermsModal(true);
-  };
-
-  const handleSubmit = async () => {
-    try {
-      const userToken = await AsyncStorage.getItem('userToken');
-      const userData = await AsyncStorage.getItem('userData');
-
-      if (!userToken || !userData) {
-        Alert.alert('Error', 'Authentication required');
-        router.replace('/auth');
-        return;
-      }
-
-      const user = JSON.parse(userData);
-      console.log('Submitting with user:', user);
-
-      setLoading(true);
-      
-      // First, get the formular ID if in edit mode
-      let formularId;
-      if (mode === 'edit') {
-        const response = await fetch(`${EXPO_PUBLIC_API_URL}formularAdvisor/user/${user.id}`, {
-          headers: {
-            'Authorization': `Bearer ${userToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        const data = await response.json();
-        if (data.success && data.data) {
-          formularId = data.data.id;
-        }
-      }
-      
-      const apiUrl = mode === 'edit' && formularId
-        ? `${EXPO_PUBLIC_API_URL}formularAdvisor/${formularId}`
-        : `${EXPO_PUBLIC_API_URL}formularAdvisor/create`;
-
-      console.log('Submitting to URL:', apiUrl);
-      
-      const requestBody = {
-        userId: Number(user.id),
-        address: formData.address || '',
-        phoneNumber: formData.phoneNumber || '',
-        cin: formData.cin || '',
-        motivation: formData.motivation || '',
-        eventTypes: formData.eventTypes || '',
-        experience: formData.experience || '',
-        socialMediaLinks: formData.socialMediaLinks || '',
-        termsAccepted: Boolean(formData.termsAccepted),
-        genuineInfoAgreed: Boolean(formData.genuineInfoAgreed),
-        cinFront: formData.cinFront || '',
-        cinBack: formData.cinBack || '',
-        certificate: formData.certificate || '',
-        faceImage: formData.faceImage || '',
-      };
-
-      console.log('Request body:', requestBody);
-
-      const response = await fetch(apiUrl, {
-        method: mode === 'edit' ? 'PUT' : 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${userToken}`,
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      const responseText = await response.text();
-      console.log('Raw response:', responseText);
-
-      try {
-        const data = JSON.parse(responseText);
-        if (data.success) {
-          Alert.alert(
-            'Success', 
-            `Application ${mode === 'edit' ? 'updated' : 'submitted'} successfully`,
-            [{ text: 'OK', onPress: () => router.back() }]
-          );
-        } else {
-          console.error('Server error details:', data);
-          Alert.alert('Error', data.message || 'Failed to submit application');
-        }
-      } catch (parseError) {
-        console.error('Parse error:', parseError);
-        console.error('Response was:', responseText);
-        Alert.alert('Error', 'Invalid response from server');
-      }
-    } catch (error) {
-      console.error('Submission error:', error);
-      Alert.alert(
-        'Error', 
-        'Failed to submit application. Please try again.'
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchExistingData = async (id: number) => {
-    try {
-      const userToken = await AsyncStorage.getItem('userToken');
-      const response = await fetch(`${EXPO_PUBLIC_API_URL}formularAdvisor/user/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${userToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Server error:', errorText);
-        return;
-      }
-      
-      const result = await response.json();
-      
-      if (result.success && result.data) {
-        setFormData(prev => ({
-          ...prev,
-          address: result.data.address || '',
-          phoneNumber: result.data.phoneNumber || '',
-          cin: result.data.cin || '',
-          motivation: result.data.motivation || '',
-          eventTypes: result.data.eventTypes || '',
-          experience: result.data.experience || '',
-          socialMediaLinks: result.data.socialMediaLinks || '',
-          termsAccepted: result.data.termsAccepted || false,
-          genuineInfoAgreed: result.data.genuineInfoAgreed || false,
-        }));
-
-        if (result.data.advisor_medium) {
-          setExistingImages({
-            cinFront: result.data.advisor_medium.cinFront || '',
-            cinBack: result.data.advisor_medium.cinBack || '',
-            certificate: result.data.advisor_medium.certificate || '',
-            faceImage: result.data.advisor_medium.faceImage || '',
-          });
-          
-          setFormData(prev => ({
-            ...prev,
-            cinFront: result.data.advisor_medium.cinFront || '',
-            cinBack: result.data.advisor_medium.cinBack || '',
-            certificate: result.data.advisor_medium.certificate || '',
-            faceImage: result.data.advisor_medium.faceImage || '',
-          }));
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching existing data:', error);
-      Alert.alert('Error', 'Failed to fetch existing data');
-    }
   };
 
   const checkExistingApplication = async () => {
@@ -720,7 +653,7 @@ export default function FormularCreate() {
     <>
       <Stack.Screen
         options={{
-          title: `${mode === 'edit' ? 'Update' : 'Create'} Advisor Application (Step ${currentStep}/4)`,
+          title: `${params.mode === 'edit' ? 'Update' : 'Create'} Advisor Application (Step ${currentStep}/4)`,
           headerStyle: { backgroundColor: '#0A192F' },
           headerTintColor: '#64FFDA',
         }}

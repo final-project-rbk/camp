@@ -22,12 +22,5 @@ module.exports = (sequelize, DataTypes) => {
       }
     });
   
-    User.associate = function(models) {
-      User.hasMany(models.Place, {
-        foreignKey: 'creatorId',
-        as: 'Places'
-      });
-    };
-  
     return User;
   };

@@ -7,6 +7,8 @@ import React, { memo } from "react";
 import { FlashList } from "@shopify/flash-list";
 import FastImage from 'react-native-fast-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../hooks/useAuth';
+import authService from '../services/auth.service';
 
 interface Comment {
     id: number;
@@ -89,34 +91,28 @@ export default function StoryDetail() {
     const [isDropdownVisible, setIsDropdownVisible] = useState(false);
     const [editCommentText, setEditCommentText] = useState('');
     const [refreshing, setRefreshing] = useState(false);
-    const [token, setToken] = useState<string | null>(null);
-    const [userId, setUserId] = useState<number | null>(null);
-
-    const getToken = async () => {
-        try {
-            const storedToken = await AsyncStorage.getItem('userToken');
-            if (storedToken) {
-                setToken(storedToken);
-                const decoded = decodeJWT(storedToken);
-                if (decoded && decoded.id) {
-                    setUserId(decoded.id);
-                    return true;
-                }
-            }
-            return false;
-        } catch (error) {
-            console.error('Error getting token:', error);
-            return false;
-        }
-    };
+    const { isAuthenticated, isLoading, user, checkAuth } = useAuth();
 
     const fetchBlogDetails = async () => {
         try {
+            const token = await authService.getToken();
+            if (!token) {
+                router.replace('/auth');
+                return;
+            }
+
             const response = await fetch(`${EXPO_PUBLIC_API_URL}blogs/${id}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
             });
+
+            if (response.status === 401) {
+                await checkAuth();
+                router.replace('/auth');
+                return;
+            }
+
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const result = await response.json();
             if (result.success) setBlog(result.data);
@@ -133,11 +129,18 @@ export default function StoryDetail() {
             Alert.alert('Error', 'Comment cannot be empty');
             return;
         }
-        if (!userId) {
+        if (!user?.id) {
             Alert.alert('Error', 'Please login to comment');
             return;
         }
+
         try {
+            const token = await authService.getToken();
+            if (!token) {
+                router.replace('/auth');
+                return;
+            }
+
             const response = await fetch(`${EXPO_PUBLIC_API_URL}blogs/comments/${id}`, {
                 method: 'POST',
                 headers: { 
@@ -146,9 +149,16 @@ export default function StoryDetail() {
                 },
                 body: JSON.stringify({ 
                     content: newComment, 
-                    userId: userId
+                    userId: user.id
                 }),
             });
+
+            if (response.status === 401) {
+                await checkAuth();
+                router.replace('/auth');
+                return;
+            }
+
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const result = await response.json();
             if (result.success) {
@@ -162,6 +172,12 @@ export default function StoryDetail() {
 
     const deleteComment = async (commentId: number) => {
         try {
+            const token = await authService.getToken();
+            if (!token) {
+                router.replace('/auth');
+                return;
+            }
+
             const response = await fetch(`${EXPO_PUBLIC_API_URL}blogs/comments/${commentId}`, {
                 method: 'DELETE',
                 headers: { 
@@ -169,10 +185,19 @@ export default function StoryDetail() {
                     'Authorization': `Bearer ${token}`
                 },
             });
+
+            if (response.status === 401) {
+                await checkAuth();
+                router.replace('/auth');
+                return;
+            }
+
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const result = await response.json();
-            if (result.success) fetchBlogDetails();
-            else throw new Error(result.message || 'Failed to delete comment');
+            if (result.success) {
+                fetchBlogDetails();
+                Alert.alert('Success', 'Comment deleted successfully');
+            } else throw new Error(result.message || 'Failed to delete comment');
         } catch (err: unknown) {
             Alert.alert('Error', err instanceof Error ? err.message : 'Failed to delete comment');
         }
@@ -183,7 +208,14 @@ export default function StoryDetail() {
             Alert.alert('Error', 'Comment cannot be empty');
             return;
         }
+
         try {
+            const token = await authService.getToken();
+            if (!token) {
+                router.replace('/auth');
+                return;
+            }
+
             const response = await fetch(`${EXPO_PUBLIC_API_URL}blogs/comments/${commentId}`, {
                 method: 'PUT',
                 headers: { 
@@ -192,12 +224,20 @@ export default function StoryDetail() {
                 },
                 body: JSON.stringify({ content: editCommentText }),
             });
+
+            if (response.status === 401) {
+                await checkAuth();
+                router.replace('/auth');
+                return;
+            }
+
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const result = await response.json();
             if (result.success) {
                 setIsDropdownVisible(false);
                 setEditCommentText('');
                 fetchBlogDetails();
+                Alert.alert('Success', 'Comment updated successfully');
             } else throw new Error(result.message || 'Failed to update comment');
         } catch (err: unknown) {
             Alert.alert('Error', err instanceof Error ? err.message : 'Failed to update comment');
@@ -205,11 +245,18 @@ export default function StoryDetail() {
     };
 
     const toggleLike = async () => {
-        if (!blog || !userId) {
+        if (!blog || !user?.id) {
             Alert.alert('Error', 'Please login to like blogs');
             return;
         }
+
         try {
+            const token = await authService.getToken();
+            if (!token) {
+                router.replace('/auth');
+                return;
+            }
+
             const response = await fetch(`${EXPO_PUBLIC_API_URL}blogs/${id}/like`, {
                 method: 'POST',
                 headers: { 
@@ -217,10 +264,17 @@ export default function StoryDetail() {
                     'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({ 
-                    userId: userId, 
+                    userId: user.id, 
                     liked: !blog.liked 
                 }),
             });
+
+            if (response.status === 401) {
+                await checkAuth();
+                router.replace('/auth');
+                return;
+            }
+
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const result = await response.json();
             if (result.success) {
@@ -245,17 +299,19 @@ export default function StoryDetail() {
 
     useEffect(() => {
         const initializeData = async () => {
-            const isAuthenticated = await getToken();
+            if (isLoading) return;
+            
             if (!isAuthenticated) {
-                Alert.alert('Authentication Error', 'Please log in to continue');
+                console.log('User not authenticated, redirecting to auth');
                 router.replace('/auth');
                 return;
             }
+
             fetchBlogDetails();
         };
 
         initializeData();
-    }, [id]);
+    }, [isAuthenticated, isLoading, id]);
 
     if (loading) {
         return <View style={styles.container}><Text style={styles.loadingText}>Loading...</Text></View>;

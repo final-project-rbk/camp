@@ -16,7 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import AuthService from '../../services/auth.service';
+import { Link } from 'expo-router';
 
 interface SidebarProps {
   isVisible: boolean;
@@ -52,33 +52,6 @@ export default function Sidebar({ isVisible, onClose }: SidebarProps) {
       useNativeDriver: true,
     }).start();
   }, [isVisible]);
-
-  const handleProfilePress = async () => {
-    try {
-      console.log('Profile button pressed');
-      const token = await AuthService.getToken();
-      const user = await AuthService.getUser();
-      console.log('Token:', token);
-      console.log('User:', user);
-      
-      if (user) {
-        if (user.role === 'advisor') {
-          console.log('Navigating to advisor profile with ID:', user.id);
-          router.push(`/advisor/${user.id}` as any);
-        } else {
-          console.log('Navigating to regular profile');
-          router.push('/profile');
-        }
-      } else {
-        console.log('No user data found');
-        router.push('/auth');
-      }
-      onClose();
-    } catch (error) {
-      console.error('Error in handleProfilePress:', error);
-      router.push('/auth');
-    }
-  };
 
   const menuItems: MenuItem[] = [
     { 
@@ -174,11 +147,7 @@ export default function Sidebar({ isVisible, onClose }: SidebarProps) {
                   style={styles.menuItem}
                   onPress={() => {
                     onClose();
-                    if (item.label === 'Profile') {
-                      handleProfilePress();
-                    } else {
-                      router.push(item.route);
-                    }
+                    router.push(item.route);
                   }}
                 >
                   <View style={styles.menuItemIcon}>
@@ -287,7 +256,7 @@ const styles = StyleSheet.create({
   },
   menuItems: {
     paddingTop: 8,
-    paddingBottom: 100,
+    paddingBottom: 100, // Add extra padding at the bottom to ensure the last items can be seen
   },
   menuItem: {
     flexDirection: 'row',

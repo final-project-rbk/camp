@@ -113,8 +113,14 @@ export default function ProfileScreen() {
         },
       });
 
+      if (response.status === 401) {
+        await checkAuth();
+        router.replace('/auth');
+        return;
+      }
+
       const data = await response.json();
-      console.log('Profile response:', data); // Debug log
+      console.log('Profile response:', data);
 
       if (data.success) {
         setProfile(data.data);
@@ -153,6 +159,12 @@ export default function ProfileScreen() {
         },
         body: JSON.stringify({ [field]: value }),
       });
+
+      if (response.status === 401) {
+        await checkAuth();
+        router.replace('/auth');
+        return;
+      }
       
       const data = await response.json();
       if (data.success) {
@@ -308,6 +320,12 @@ export default function ProfileScreen() {
           'Content-Type': 'application/json',
         },
       });
+
+      if (response.status === 401) {
+        await checkAuth();
+        router.replace('/auth');
+        return null;
+      }
 
       if (!response.ok) {
         console.log('Response not OK:', response.status);

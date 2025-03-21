@@ -16,10 +16,14 @@ const authRoutes = require('./routes/auth.routes');
 // const advisorMediaRoutes = require('./routes/advisorMedia.routes');
 const adminRoutes = require('./routes/admin.routes');
 const eventRoutes = require('./routes/event.routes');
+const adminPlaceRoutes = require('./routes/admin.place.routes');
 const app = express();
 
 // Configure CORS
-app.use(cors());
+app.use(cors({
+  origin: '*',  // Be careful with this in production
+  credentials: true
+}));
 
 app.use(express.static(__dirname + '/../client/dist'));
 app.use(express.json())
@@ -56,6 +60,9 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/marketplace', marcketPlaceRoutes);
 
 app.use('/api/events', eventRoutes);
+
+// Add the admin place routes
+app.use('/api/admin', adminPlaceRoutes);
 
 const port = process.env.PORT || 3000;
 

@@ -4,6 +4,6 @@ module.exports = (sequelize, DataTypes) => {
      targetPoints: { type: DataTypes.INTEGER, allowNull: false },
      totalPoints: { type: DataTypes.INTEGER, allowNull: false },
     });
-
+  
     return EventRating;
   };
