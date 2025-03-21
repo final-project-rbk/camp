@@ -22,7 +22,7 @@ import { Link, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Sidebar from '../../components/Sidebar';
+import Sidebar from '../components/Sidebar';
 import { EXPO_PUBLIC_API_URL } from '../../config';
 import FavoriteButton from '../../components/FavoriteButton';
 import Events from '../event';
@@ -441,12 +441,9 @@ export default function DiscoverScreen() {
                             />
                             {place.categories && place.categories.length > 0 && (
                               <View style={styles.categoryTag}>
-                                <Ionicons 
-                                  name={place.categories[0].icon as any || "compass"} 
-                                  size={12} 
-                                  color="#0A192F" 
-                                />
-                                <Text style={styles.categoryText}>{place.categories[0].name}</Text>
+                                <Text style={styles.categoryText}>
+                                  {place.categories[0].icon} {place.categories[0].name}
+                                </Text>
                               </View>
                             )}
                           </View>
@@ -518,12 +515,9 @@ export default function DiscoverScreen() {
                               />
                               {place.categories && place.categories.length > 0 && (
                                 <View style={styles.categoryTag}>
-                                  <Ionicons 
-                                    name={place.categories[0].icon as any || "compass"} 
-                                    size={12} 
-                                    color="#0A192F" 
-                                  />
-                                  <Text style={styles.categoryText}>{place.categories[0].name}</Text>
+                                  <Text style={styles.categoryText}>
+                                    {place.categories[0].icon} {place.categories[0].name}
+                                  </Text>
                                 </View>
                               )}
                             </View>
@@ -591,12 +585,9 @@ export default function DiscoverScreen() {
                                 />
                                 {place.categories && place.categories.length > 0 && (
                                   <View style={styles.categoryTag}>
-                                    <Ionicons 
-                                      name={place.categories[0].icon as any || "compass"} 
-                                      size={12} 
-                                      color="#0A192F" 
-                                    />
-                                    <Text style={styles.categoryText}>{place.categories[0].name}</Text>
+                                    <Text style={styles.categoryText}>
+                                      {place.categories[0].icon} {place.categories[0].name}
+                                    </Text>
                                   </View>
                                 )}
                               </View>

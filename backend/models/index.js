@@ -1,4 +1,5 @@
-const { Sequelize, DataTypes,Transaction } = require("sequelize");
+const { Sequelize, DataTypes } = require("sequelize");
+require('dotenv').config();
 
 // Initialize Sequelize connection
 const connection = new Sequelize(process.env.Database, process.env.User, process.env.Password, {
@@ -31,38 +32,48 @@ const MarketplaceItemCategorie = require("./marcketPlaceItemCategorie")(connecti
 const FormularAdvisor = require("./FormularAdvisor")(connection, DataTypes);
 const AdvisorMedia = require("./AdvisorMedia")(connection, DataTypes);
 
-// Define relationships
+// Define relationships with aliases
 const defineAssociations = () => {
   // User relationships
-  User.hasMany(Media, { foreignKey: "userId" });
-  Media.belongsTo(User, { foreignKey: "userId" });
+  User.hasMany(Media, { foreignKey: "userId", as: "Media" });
+  Media.belongsTo(User, { foreignKey: "userId", as: "User" });
 
-  User.hasMany(Review, { foreignKey: "userId" });
-  Review.belongsTo(User, { foreignKey: "userId" });
+  User.hasMany(Review, { foreignKey: "userId", as: "Reviews" });
+  Review.belongsTo(User, { foreignKey: "userId", as: "User" });
 
-  User.hasOne(Advisor, { foreignKey: "userId" });
-  Advisor.belongsTo(User, { foreignKey: "userId" });
+  // Add Place-Review association
+  Place.hasMany(Review, { foreignKey: "placeId", as: "Reviews" });
+  Review.belongsTo(Place, { foreignKey: "placeId", as: "Place" });
 
-  Advisor.hasMany(Event, { foreignKey: "advisorId" });
-  Event.belongsTo(Advisor, { foreignKey: "advisorId" });
+  User.hasOne(Advisor, { foreignKey: "userId", as: "Advisor" });
+  Advisor.belongsTo(User, { foreignKey: "userId", as: "User" });
 
-  Event.hasMany(Place, { foreignKey: "eventId" });
-  Place.belongsTo(Event, { foreignKey: "eventId" });
+  // Advisor relationships
+  Advisor.hasMany(Event, { foreignKey: "advisorId", as: "Events" });
+  Event.belongsTo(Advisor, { foreignKey: "advisorId", as: "Advisor" });
 
-  Advisor.hasMany(Rank, { foreignKey: "advisorId" });
-  Rank.belongsTo(Advisor, { foreignKey: "advisorId" });
+  Advisor.hasMany(Rank, { foreignKey: "advisorId", as: "Ranks" });
+  Rank.belongsTo(Advisor, { foreignKey: "advisorId", as: "Advisor" });
 
-  Advisor.hasMany(Review, { foreignKey: "advisorId" });
-  Review.belongsTo(Advisor, { foreignKey: "advisorId" });
+  Advisor.hasMany(Review, { foreignKey: "advisorId", as: "Reviews" });
+  Review.belongsTo(Advisor, { foreignKey: "advisorId", as: "Advisor" });
 
-  Event.hasMany(Review, { foreignKey: "eventId" });
-  Review.belongsTo(Event, { foreignKey: "eventId" });
+  // Event relationships
+  Event.hasMany(Place, { foreignKey: "eventId", as: "Places" });
+  Place.belongsTo(Event, { foreignKey: "eventId", as: "Event" });
 
-  Place.hasMany(Review, { foreignKey: "placeId" });
-  Review.belongsTo(Place, { foreignKey: "placeId" });
+  Event.hasMany(Review, { foreignKey: "eventId", as: "Reviews" });
+  Review.belongsTo(Event, { foreignKey: "eventId", as: "Event" });
+
+  Event.hasMany(Media, { foreignKey: "eventId", as: "Media" });
+  Media.belongsTo(Event, { foreignKey: "eventId", as: "Event" });
 
   User.belongsToMany(Place, { through: PlaceUser, foreignKey: "userId" });
   Place.belongsToMany(User, { through: PlaceUser, foreignKey: "placeId" });
+
+  // Add Creator association
+  Place.belongsTo(User, { foreignKey: "creatorId", as: "Creator" });
+  User.hasMany(Place, { foreignKey: "creatorId", as: "CreatedPlaces" });
 
   Citiria.hasMany(PlaceUser, { foreignKey: "critiriaId" });
   PlaceUser.belongsTo(Citiria, { foreignKey: "critiriaId" });
@@ -73,8 +84,8 @@ const defineAssociations = () => {
   Place.hasMany(Media, { foreignKey: "placeId" });
   Media.belongsTo(Place, { foreignKey: "placeId" });
 
-  Categorie.belongsToMany(Place, { through: PlaceCategorie, foreignKey: "categorieId" });
-  Place.belongsToMany(Categorie, { through: PlaceCategorie, foreignKey: "placeId" });
+  Categorie.belongsToMany(Place, { through: PlaceCategorie, foreignKey: "categorieId", as: "Places" });
+  Place.belongsToMany(Categorie, { through: PlaceCategorie, foreignKey: "placeId", as: "Categories" });
 
   User.hasMany(Favorite, { foreignKey: "userId" });
   Favorite.belongsTo(User, { foreignKey: "userId" });

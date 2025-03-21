@@ -4,8 +4,8 @@ const { User } = require('../models');
 const authMiddleware = async (req, res, next) => {
   try {
     // Get token from header or query params (for socket.io)
-    const token = req.header('Authorization')?.replace('Bearer ', '') || 
-                 req.query.token;
+    const authHeader = req.header('Authorization');
+    const token = authHeader?.replace('Bearer ', '') || req.query.token;
     
     if (!token) {
       return res.status(401).json({
@@ -15,7 +15,15 @@ const authMiddleware = async (req, res, next) => {
     }
 
     // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (jwtError) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid token'
+      });
+    }
     
     // Find user and exclude sensitive data
     const user = await User.findByPk(decoded.id, {
@@ -44,7 +52,6 @@ const authMiddleware = async (req, res, next) => {
     req.token = token;
     next();
   } catch (error) {
-    console.error('Auth middleware error:', error);
     res.status(401).json({
       success: false,
       error: 'Please authenticate'

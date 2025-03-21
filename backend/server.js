@@ -19,10 +19,7 @@ const eventRoutes = require('./routes/event.routes');
 const app = express();
 
 // Configure CORS
-app.use(cors({
-  origin: '*',  // Be careful with this in production
-  credentials: true
-}));
+app.use(cors());
 
 app.use(express.static(__dirname + '/../client/dist'));
 app.use(express.json())

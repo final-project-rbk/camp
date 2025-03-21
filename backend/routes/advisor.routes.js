@@ -1,20 +1,23 @@
 const express = require('express');
 const router = express.Router();
-const { migrateUserToAdvisor, getAllPlaces, getAllEvents,updateAdvisorProfile,updatePlace,deletePlace,updateEvent,deleteEvent,addPlace,addEvent,getAdvisorProfile,updatePoints } = require('../controlles/advisor.controller');
+const advisorController = require('../controlles/advisor.controller');
 const authMiddleware = require('../middleware/auth.middleware');
 
 // Protected routes
-router.post('/migrate', authMiddleware, migrateUserToAdvisor);
-router.get('/places', authMiddleware, getAllPlaces);
-router.get('/events', authMiddleware, getAllEvents);
-router.put('/profile/:id', authMiddleware, updateAdvisorProfile);
-router.put('/place/:id', authMiddleware, updatePlace);
-router.delete('/place/:id', authMiddleware, deletePlace);
-router.put('/event/:id', authMiddleware, updateEvent);
-router.delete('/event/:id', authMiddleware, deleteEvent);
-router.post('/place', authMiddleware, addPlace);
-router.post('/event', authMiddleware, addEvent);
-router.post('/points', authMiddleware, updatePoints);
-router.get('/advisor/:id', authMiddleware, getAdvisorProfile);
+router.post('/migrate', authMiddleware, advisorController.migrateUserToAdvisor);
+router.get('/places', authMiddleware, advisorController.getAllPlaces);
+router.get('/events', authMiddleware, advisorController.getAllEvents);
+router.put('/profile/:id', authMiddleware, advisorController.updateAdvisorProfile);
+router.put('/place/:id', authMiddleware, advisorController.updatePlace);
+router.delete('/place/:id', authMiddleware, advisorController.deletePlace);
+router.put('/event/:id', authMiddleware, advisorController.updateEvent);
+router.delete('/event/:id', authMiddleware, advisorController.deleteEvent);
+router.post('/place', authMiddleware, advisorController.addPlace);
+router.post('/event', authMiddleware, advisorController.addEvent);
+router.post('/points', authMiddleware, advisorController.updatePoints);
+router.get('/:id', authMiddleware, advisorController.getAdvisorProfile);
+
+// Get places by creator ID
+router.get('/:id/places', authMiddleware, advisorController.getPlacesByCreator);
 
 module.exports = router;

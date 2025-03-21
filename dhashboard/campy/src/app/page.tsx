@@ -4,6 +4,45 @@ import { useRouter } from "next/navigation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://192.168.1.15:3000/api/';
 
+interface FetchOptions extends RequestInit {
+  headers?: Record<string, string>;
+}
+
+// Utility function for authenticated API calls
+const authenticatedFetch = async (endpoint: string, options: FetchOptions = {}) => {
+  const token = localStorage.getItem('userToken');
+  console.log('Retrieved token:', token);
+  
+  if (!token) {
+    console.error('No token found in localStorage');
+    throw new Error('No authentication token found');
+  }
+
+  const headers = {
+    ...options.headers,
+    'Authorization': `Bearer ${token}`
+  };
+  console.log('Request headers:', headers);
+
+  try {
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      ...options,
+      headers
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('API request failed:', error);
+      throw new Error(error.error || 'API request failed');
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error('Fetch error:', error);
+    throw error;
+  }
+};
+
 export default function AdminLogin() {
   const router = useRouter();
   const [formData, setFormData] = useState({
@@ -37,7 +76,26 @@ export default function AdminLogin() {
       const data = await response.json();
 
       if (data.success) {
-        localStorage.setItem('userToken', data.data.token);
+        console.log('Login response:', data);
+        const token = data.data.accessToken;
+        console.log('Token to be stored:', token);
+        
+        // Verify token is not undefined or null
+        if (!token) {
+          throw new Error('No token received from server');
+        }
+        
+        // Store token
+        localStorage.setItem('userToken', token);
+        
+        // Verify token was stored correctly
+        const storedToken = localStorage.getItem('userToken');
+        console.log('Stored token:', storedToken);
+        
+        if (!storedToken) {
+          throw new Error('Failed to store token');
+        }
+        
         localStorage.setItem('userData', JSON.stringify(data.data.user));
         router.push('/dashboard');
       } else {

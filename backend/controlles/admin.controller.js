@@ -1,5 +1,4 @@
-const { User, FormularAdvisor, AdvisorMedia, Advisor } = require('../models');
-const db = require('../models');
+const { User, FormularAdvisor, AdvisorMedia, Advisor, Place, Categorie, connection } = require('../models');
 
 const adminController = {
     // Get all users with their status
@@ -146,7 +145,7 @@ const adminController = {
             }
 
             // Start a transaction
-            const t = await db.sequelize.transaction();
+            const t = await connection.transaction();
 
             try {
                 await formular.update({ status }, { transaction: t });
@@ -185,6 +184,62 @@ const adminController = {
                 success: false,
                 message: 'Error updating application',
                 error: error.message
+            });
+        }
+    },
+
+    createPlace: async (req, res) => {
+        let transaction;
+        try {
+            transaction = await connection.transaction();
+            
+            const { name, location, description, images, Categories } = req.body;
+            const creatorId = req.user.id;
+
+            // Create the place
+            const place = await Place.create({
+                name,
+                location,
+                description,
+                images: images || [],
+                creatorId,
+                status: 'approved' // Places created by admin are automatically approved
+            }, { transaction });
+
+            // Add categories if provided
+            if (Categories && Array.isArray(Categories)) {
+                const categoryPromises = Categories.map(async (cat) => {
+                    const [category] = await Categorie.findOrCreate({
+                        where: { name: cat.name },
+                        defaults: { icon: cat.icon || '🏷️' },
+                        transaction
+                    });
+                    return category;
+                });
+
+                const categories = await Promise.all(categoryPromises);
+                await place.setCategories(categories, { transaction });
+            }
+
+            // Commit the transaction
+            await transaction.commit();
+
+            // Fetch the created place with categories
+            const createdPlace = await Place.findByPk(place.id, {
+                include: [{ model: Categorie, as: 'Categories' }]
+            });
+
+            return res.status(201).json({
+                success: true,
+                data: createdPlace
+            });
+        } catch (error) {
+            // Rollback the transaction on error
+            if (transaction) await transaction.rollback();
+            console.error("Error creating place:", error);
+            return res.status(500).json({ 
+                success: false,
+                error: "Internal server error" 
             });
         }
     }

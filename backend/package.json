@@ -16,23 +16,23 @@
   "dependencies": {
     "@faker-js/faker": "^9.6.0",
     "bcrypt": "^5.1.1",
-    "bcryptjs": "^3.0.2",
-    "body-parser": "^1.20.3",
-    "cloudinary": "^2.6.0",
+    "bcryptjs": "^2.4.3",
+    "body-parser": "^1.20.2",
+    "cloudinary": "^1.41.3",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.7",
-    "expo-image-picker": "^16.0.6",
-    "express": "^4.21.2",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
     "jsonwebtoken": "^9.0.2",
-    "mysql2": "^3.12.0",
-    "sequelize": "^6.37.5"
+    "mysql2": "^3.6.5",
+    "sequelize": "^6.35.2",
+    "sweetalert2": "^11.17.2"
   },
   "devDependencies": {
-    "nodemon": "^2.0.22",
-    "sequelize-cli": "^6.6.2"
+    "nodemon": "^3.0.2",
+    "sequelize-cli": "^6.6.1"
   },
   "engines": {
-    "node": ">=22.0.0",
-    "npm": ">=10.0.0"
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
   }
 }

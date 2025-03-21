@@ -71,7 +71,36 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
             {isOpen && <span className="text-[#8892B0]">Users Dashboard</span>}
           </div>
 
-          {/* Add Blog Management Link */}
+          {/* Places Management Link */}
+          <div
+            onClick={() => router.push('/dashboard/places')}
+            className={`flex items-center space-x-4 text-gray-300 hover:bg-white/10 rounded-lg p-3 cursor-pointer transition-colors mt-2 ${
+              isOpen ? 'justify-start' : 'justify-center'
+            }`}
+          >
+            <svg 
+              className="w-6 h-6 text-[#64FFDA]" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={2} 
+                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+              />
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={2} 
+                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" 
+              />
+            </svg>
+            {isOpen && <span className="text-[#8892B0]">Places Management</span>}
+          </div>
+
+          {/* Blog Management Link */}
           <div
             onClick={() => router.push('/dashboard/blogs')}
             className={`flex items-center space-x-4 text-gray-300 hover:bg-white/10 rounded-lg p-3 cursor-pointer transition-colors mt-2 ${
