@@ -56,7 +56,6 @@ const   adminController = {
             }
 
             const { userId } = req.params;
-            const { isBanned } = req.body;
 
             const user = await User.findByPk(userId);
             if (!user) {
@@ -74,11 +73,13 @@ const   adminController = {
                 });
             }
 
-            await user.update({ isBanned });
+            // Toggle the ban status
+            const newBanStatus = !user.isBanned;
+            await user.update({ isBanned: newBanStatus });
 
             res.status(200).json({
                 success: true,
-                message: isBanned ? 'User banned successfully' : 'User unbanned successfully'
+                message: newBanStatus ? 'User banned successfully' : 'User unbanned successfully'
             });
         } catch (error) {
             console.error('Error toggling user ban:', error);

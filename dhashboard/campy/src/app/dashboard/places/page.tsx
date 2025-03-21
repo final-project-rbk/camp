@@ -78,12 +78,15 @@ export default function PlaceManagement() {
     rejected: 0
   });
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
   useEffect(() => {
     fetchPlaces();
+    fetchCategories();
   }, []);
 
   useEffect(() => {
@@ -113,31 +116,37 @@ export default function PlaceManagement() {
   const fetchCategories = async () => {
     try {
       const token = localStorage.getItem('userToken');
-      const response = await fetch(`${API_URL}categories`, {
+      const { data } = await proxyFetch('categories', {
+        method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
-      const data = await response.json();
+
       if (data.success) {
         setCategories(data.data);
       }
     } catch (error) {
       console.error('Error fetching categories:', error);
+      setError('Failed to load categories');
     }
   };
 
   // Proxy function to handle API calls
   const proxyFetch = async (endpoint: string, options: RequestInit) => {
     try {
-      const response = await fetch(`http://192.168.1.15:3000/api${endpoint}`, {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, ''); // Remove trailing slash if present
+      const response = await fetch(`${API_URL}/${endpoint}`, {  // Add slash between API_URL and endpoint
         ...options,
         headers: {
           ...options.headers,
-          'Origin': 'http://192.168.1.15:3000',
           'Content-Type': 'application/json',
         },
       });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       
       const data = await response.json();
       return { response, data };
@@ -168,16 +177,12 @@ export default function PlaceManagement() {
         return;
       }
 
-      const { response, data } = await proxyFetch('/places/admin/places', {
+      const { data } = await proxyFetch('admin/places', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch places');
-      }
 
       if (data.success && Array.isArray(data.data)) {
         setPlaces(data.data);
@@ -207,7 +212,7 @@ export default function PlaceManagement() {
   const handleStatusUpdate = async (placeId: string, newStatus: 'pending' | 'approved' | 'rejected') => {
     try {
       const token = localStorage.getItem('userToken');
-      const { response } = await proxyFetch(`/places/${placeId}/status`, {
+      const { response } = await proxyFetch(`admin/places/${placeId}/status`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -244,41 +249,23 @@ export default function PlaceManagement() {
   const handleAddPlace = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      setIsSubmitting(true);
       const token = localStorage.getItem('userToken');
-      if (!token) {
-        router.push('/');
-        return;
-      }
 
-      // Debug log
-      console.log('Sending data:', {
-        name: formData.name,
-        description: formData.description,
-        location: formData.location,
-        images: formData.image,
-        categories: formData.categoryIds
-      });
-
-      const { response, data } = await proxyFetch('/places', {
+      const { response, data } = await proxyFetch('admin/places/create', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          name: formData.name,
-          description: formData.description,
-          location: formData.location,
-          images: formData.image,
-          categories: formData.categoryIds
+          ...formData,
+          status: 'approved' // Ensure status is set to approved
         }),
       });
 
-      // Debug log
-      console.log('Response status:', response.status);
-      console.log('Response data:', data);
-
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to add place');
+        throw new Error(data.error || 'Failed to create place');
       }
 
       if (data.success) {
@@ -292,12 +279,12 @@ export default function PlaceManagement() {
           categoryIds: [],
         });
         setError(null);
-      } else {
-        throw new Error(data.error || 'Failed to add place');
       }
     } catch (error) {
-      console.error('Detailed error:', error);
-      setError(error instanceof Error ? error.message : 'Failed to add place');
+      console.error('Error creating place:', error);
+      setError(error instanceof Error ? error.message : 'Failed to create place');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -306,34 +293,109 @@ export default function PlaceManagement() {
     if (!selectedPlace) return;
 
     try {
+      setIsSubmitting(true);
       const token = localStorage.getItem('userToken');
-      const response = await fetch(`${API_URL}places/${selectedPlace.id}`, {
+      
+      // Log the current state and what we're trying to update
+      console.log('Current place data:', selectedPlace);
+      console.log('Update data being sent:', {
+        name: formData.name,
+        description: formData.description,
+        location: formData.location,
+        image: formData.image,
+        categoryIds: formData.categoryIds
+      });
+
+      const baseUrl = 'http://192.168.1.15:3000';
+      const url = `${baseUrl}/api/admin/places/${selectedPlace.id}`.replace(/\/+/g, '/').replace('http:/', 'http://');
+      
+      console.log('Making PUT request to:', url);
+
+      const requestBody = {
+        name: formData.name,
+        description: formData.description,
+        location: formData.location,
+        image: formData.image,
+        categoryIds: formData.categoryIds
+      };
+
+      console.log('Request body:', JSON.stringify(requestBody, null, 2));
+
+      const response = await fetch(url, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(requestBody),
       });
 
-      if (!response.ok) throw new Error('Failed to update place');
-      await fetchPlaces();
-      setShowEditModal(false);
+      console.log('Response status:', response.status);
+      const responseText = await response.text();
+      console.log('Raw response:', responseText);
+
+      let data;
+      try {
+        data = JSON.parse(responseText);
+        console.log('Parsed response data:', data);
+      } catch (e) {
+        console.error('Failed to parse response as JSON:', e);
+        throw new Error('Invalid response from server');
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update place');
+      }
+
+      if (data.success) {
+        console.log('Update successful, refreshing places...');
+        await fetchPlaces(); // Refresh the places list
+        
+        // Force a re-render of the specific place
+        const updatedPlace = await fetch(`${baseUrl}/api/admin/places/${selectedPlace.id}`).then(res => res.json());
+        console.log('Fetched updated place:', updatedPlace);
+
+        setShowEditModal(false);
+        setFormData({
+          name: '',
+          description: '',
+          location: '',
+          image: '',
+          categoryIds: [],
+        });
+        setSelectedPlace(null);
+        setError(null);
+
+        // Force refresh of the places list
+        window.location.reload();
+      }
     } catch (error) {
       console.error('Error updating place:', error);
       setError(error instanceof Error ? error.message : 'Failed to update place');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleEditClick = (place: Place) => {
+    console.log('Editing place - full data:', place);
+    
+    // Ensure we have the correct data structure
+    const categoryIds = place.categories?.map(cat => cat.id) || [];
+    const imageUrl = place.image || (Array.isArray(place.images) ? place.images[0] : '') || '';
+    
+    const formDataToSet = {
+      name: place.name || '',
+      description: place.description || '',
+      location: place.location || '',
+      image: imageUrl,
+      categoryIds: categoryIds,
+    };
+
+    console.log('Setting form data:', formDataToSet);
+
     setSelectedPlace(place);
-    setFormData({
-      name: place.name,
-      description: place.description,
-      location: place.location,
-      image: place.image,
-      categoryIds: place.categories.map(cat => cat.id),
-    });
+    setFormData(formDataToSet);
     setShowEditModal(true);
   };
 
@@ -347,11 +409,10 @@ export default function PlaceManagement() {
 
     try {
       const token = localStorage.getItem('userToken');
-      const response = await fetch(`${API_URL}places/${placeToDelete}`, {
+      const { response } = await proxyFetch(`admin/places/${placeToDelete}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
         },
       });
 
@@ -407,6 +468,7 @@ export default function PlaceManagement() {
       const data = await response.json();
       
       if (data.secure_url) {
+        console.log('Image uploaded successfully:', data.secure_url);
         setFormData(prev => ({ ...prev, image: data.secure_url }));
       }
     } catch (error) {
@@ -437,6 +499,12 @@ export default function PlaceManagement() {
     console.log('Final counts:', counts); // Debug log for final counts
     setStatusCounts(counts);
   };
+
+  // Add this sorting function before rendering
+  const sortedPlaces = filteredPlaces.sort((a, b) => {
+    // Sort by ID in descending order (newest first)
+    return b.id - a.id;
+  });
 
   if (loading) {
     return (
@@ -491,7 +559,7 @@ export default function PlaceManagement() {
 
         {/* Places Grid */}
         <div className="space-y-4">
-          {filteredPlaces.map((place) => (
+          {sortedPlaces.map((place) => (
             <div
               key={place.id}
               className="bg-[#112240] rounded-lg overflow-hidden border-l-4 border-[#64FFDA]"
@@ -613,13 +681,20 @@ export default function PlaceManagement() {
                       />
                     </div>
                   )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                    id="place-image-upload"
+                  />
                   <label 
-                    htmlFor="place-image-upload" 
+                    htmlFor="place-image-upload"
                     className="px-4 py-2 bg-[#1D2D50] text-[#CCD6F6] rounded-lg cursor-pointer hover:bg-opacity-80 transition-all duration-200 inline-flex items-center"
                   >
                     <svg 
                       xmlns="http://www.w3.org/2000/svg" 
-                      className="h-5 w-5 mr-2 text-[#64FFDA]" 
+                      className="h-5 w-5 mr-2" 
                       fill="none" 
                       viewBox="0 0 24 24" 
                       stroke="currentColor"
@@ -631,21 +706,8 @@ export default function PlaceManagement() {
                         d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" 
                       />
                     </svg>
-                    Upload Image
+                    {uploading ? 'Uploading...' : 'Upload Image'}
                   </label>
-                  <input
-                    id="place-image-upload"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                  />
-                  {uploading && (
-                    <div className="mt-2 text-[#64FFDA] text-sm flex items-center">
-                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#64FFDA] mr-2"></div>
-                      Uploading...
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -684,6 +746,7 @@ export default function PlaceManagement() {
                       image: '',
                       categoryIds: [],
                     });
+                    setSelectedPlace(null);
                   }}
                   className="px-4 py-2 bg-[#1D2D50] text-[#CCD6F6] rounded-lg hover:bg-opacity-80 transition-colors"
                 >
@@ -691,9 +754,14 @@ export default function PlaceManagement() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-[#64FFDA] text-[#0A192F] rounded-lg hover:bg-opacity-90 transition-colors"
+                  disabled={isSubmitting}
+                  className={`px-4 py-2 bg-[#64FFDA] text-[#0A192F] rounded-lg transition-colors ${
+                    isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover:bg-opacity-90'
+                  }`}
                 >
-                  {showAddModal ? 'Add Place' : 'Update Place'}
+                  {isSubmitting 
+                    ? 'Saving...' 
+                    : (showAddModal ? 'Add place' : 'Update Place')}
                 </button>
               </div>
             </form>

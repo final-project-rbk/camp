@@ -44,12 +44,32 @@ const placeController = {
       const formattedPlaces = places.map(place => {
         // Get image from Media or fallback to images field
         let imageUrl = 'https://via.placeholder.com/400';
+        let images = [imageUrl]; // Default image
+        
+        // First try getting images from Media
         if (place.Media && place.Media.length > 0) {
-          imageUrl = place.Media[0].url;
-        } else if (place.images && Array.isArray(place.images) && place.images.length > 0) {
-          imageUrl = place.images[0];
-        } else if (place.images && typeof place.images === 'string') {
-          imageUrl = place.images;
+          images = place.Media.map(media => media.url);
+        } 
+        // Then try the images field
+        else if (place.images) {
+          try {
+            // If it's a JSON string, parse it
+            if (typeof place.images === 'string') {
+              const parsedImages = JSON.parse(place.images);
+              if (Array.isArray(parsedImages) && parsedImages.length > 0) {
+                images = parsedImages;
+              } else {
+                images = [place.images]; // Treat as single image
+              }
+            } 
+            // If it's already an array
+            else if (Array.isArray(place.images) && place.images.length > 0) {
+              images = place.images;
+            }
+          } catch (e) {
+            console.error('Error parsing images:', e);
+            images = [place.images]; // Fallback to treating as single image
+          }
         }
 
         return {
@@ -57,7 +77,7 @@ const placeController = {
           name: place.name,
           description: place.description,
           location: place.location,
-          image: imageUrl,
+          images: images, // Return array instead of single image
           rating: Number(
             (place.Reviews?.reduce((acc, rev) => acc + (rev.rating || 0), 0) / 
              (place.Reviews?.length || 1)).toFixed(1)
@@ -122,11 +142,37 @@ const placeController = {
       let images = ['https://via.placeholder.com/400'];
       if (place.Media && place.Media.length > 0) {
         images = place.Media.map(media => media.url);
+        console.log('Using media images:', images);
       } else if (place.images) {
-        if (Array.isArray(place.images)) {
-          images = place.images;
-        } else if (typeof place.images === 'string') {
-          images = [place.images];
+        console.log('PlaceById - Raw images data type:', typeof place.images);
+        console.log('PlaceById - Raw images data:', place.images);
+        
+        try {
+          if (Array.isArray(place.images)) {
+            images = place.images.length > 0 ? place.images : images;
+            console.log('PlaceById - Using array images:', images);
+          } else if (typeof place.images === 'string') {
+            // Try to parse if it looks like JSON
+            if (place.images.startsWith('[') && place.images.endsWith(']')) {
+              try {
+                const parsedImages = JSON.parse(place.images);
+                if (Array.isArray(parsedImages) && parsedImages.length > 0) {
+                  images = parsedImages;
+                  console.log('PlaceById - Successfully parsed JSON images array:', images);
+                }
+              } catch (parseError) {
+                console.error('PlaceById - Error parsing JSON images:', parseError);
+                // Fallback to treating as a single image URL
+                images = [place.images];
+              }
+            } else {
+              // Not JSON, treat as a single image URL
+              images = [place.images];
+            }
+          }
+        } catch (e) {
+          console.error('PlaceById - Error processing images:', e);
+          images = typeof place.images === 'string' ? [place.images] : images;
         }
       }
 
@@ -209,355 +255,97 @@ const placeController = {
     }
   },
 
-  // Create new place
-  createPlace: async (req, res) => {
+  // Rate a place (add a star rating)
+  ratePlace: async (req, res) => {
     try {
-      const { name, description, location, images, categories } = req.body;
-      console.log('Received data:', { name, description, location, images, categories });
-
-      // Create the place without explicitly setting timestamps
-      const placeData = {
-        name,
-        description,
-        location,
-        images: images ? [images] : [],
-        status: 'pending'
-      };
-
-      // Remove timestamp fields from the create operation
-      const place = await Place.create(placeData, {
-        fields: ['name', 'description', 'location', 'images', 'status']
-      });
-
-      // Handle categories if they exist
-      if (categories && Array.isArray(categories) && categories.length > 0) {
-        try {
-          await place.addCategories(categories);
-        } catch (categoryError) {
-          console.error('Error adding categories:', categoryError);
-        }
-      }
-
-      // Fetch the created place with its categories
-      const createdPlace = await Place.findByPk(place.id, {
-        include: [{
-          model: Categorie,
-          through: { attributes: [] },
-          attributes: ['id', 'name', 'icon']
-        }]
-      });
-
-      res.status(201).json({
-        success: true,
-        data: {
-          id: createdPlace.id,
-          name: createdPlace.name,
-          description: createdPlace.description,
-          location: createdPlace.location,
-          image: createdPlace.images?.[0] || null,
-          status: createdPlace.status,
-          categories: createdPlace.Categories?.map(cat => ({
-            id: cat.id,
-            name: cat.name,
-            icon: cat.icon
-          })) || []
-        }
-      });
-    } catch (error) {
-      console.error('Detailed create place error:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Error creating place',
-        details: error.message
-      });
-    }
-  },
-
-  // Update place
-  updatePlace: async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { name, description, location, image, categoryIds } = req.body;
-
-      const place = await Place.findByPk(id);
-      if (!place) {
-        return res.status(404).json({
-          success: false,
-          error: 'Place not found'
-        });
-      }
-
-      await place.update({
-        name,
-        description,
-        location,
-        images: image // Store single image in images array
-      });
-
-      if (categoryIds && Array.isArray(categoryIds)) {
-        await place.setCategories(categoryIds);
-      }
-
-      res.status(200).json({
-        success: true,
-        data: place
-      });
-    } catch (error) {
-      console.error('Error in updatePlace:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Error updating place',
-        details: error.message
-      });
-    }
-  },
-
-  // Delete place
-  deletePlace: async (req, res) => {
-    try {
-      const { id } = req.params;
+      const { userId, placeId, rating, comment } = req.body;
       
-      const place = await Place.findByPk(id);
-      if (!place) {
-        return res.status(404).json({
-          success: false,
-          error: 'Place not found'
-        });
-      }
-
-      await place.destroy();
-
-      res.status(200).json({
-        success: true,
-        message: 'Place deleted successfully'
-      });
-    } catch (error) {
-      console.error('Error in deletePlace:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Error deleting place',
-        details: error.message
-      });
-    }
-  },
-
-  // Update place status
-  updatePlaceStatus: async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { status } = req.body;
-
-      if (!['pending', 'approved', 'rejected'].includes(status)) {
+      if (!userId || !placeId || !rating || rating < 1 || rating > 5) {
         return res.status(400).json({
           success: false,
-          error: 'Invalid status value'
+          error: 'Invalid request. Required fields: userId, placeId, rating (1-5)'
         });
       }
-
-      const place = await Place.findByPk(id);
-      if (!place) {
-        return res.status(404).json({
-          success: false,
-          error: 'Place not found'
-        });
-      }
-
-      await place.update({ status });
-
-      res.status(200).json({
-        success: true,
-        data: place
-      });
-    } catch (error) {
-      console.error('Error in updatePlaceStatus:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Error updating place status',
-        details: error.message
-      });
-    }
-  },
-
-  // Get places by status
-  getAllPlacesAdmin: async (req, res) => {
-    try {
-      const places = await Place.findAll({
-        include: [
-          {
-            model: Media,
-            attributes: ['url', 'type'],
-            required: false
-          },
-          {
-            model: Review,
-            attributes: ['id', 'rating', 'comment', 'createdAt'],
-            include: [
-              {
-                model: User,
-                attributes: ['first_name', 'last_name']
-              }
-            ],
-            required: false
-          },
-          {
-            model: Categorie,
-            through: { attributes: [] },
-            attributes: ['id', 'name', 'icon'],
-            required: false
-          }
-        ],
-        order: [['createdAt', 'DESC']]
-      });
-
-      const formattedPlaces = places.map(place => {
-        // Get image from Media or fallback to images field
-        let imageUrl = 'https://via.placeholder.com/400';
-        if (place.Media && place.Media.length > 0) {
-          imageUrl = place.Media[0].url;
-        } else if (place.images && Array.isArray(place.images) && place.images.length > 0) {
-          imageUrl = place.images[0];
-        } else if (place.images && typeof place.images === 'string') {
-          imageUrl = place.images;
-        }
-
-        return {
-          id: place.id,
-          name: place.name,
-          description: place.description,
-          location: place.location,
-          image: imageUrl,
-          status: place.status || 'pending',
-          rating: Number(
-            (place.Reviews?.reduce((acc, rev) => acc + (rev.rating || 0), 0) / 
-             (place.Reviews?.length || 1)).toFixed(1)
-          ),
-          categories: place.Categories?.map(cat => ({
-            id: cat.id,
-            name: cat.name,
-            icon: cat.icon || '🏷️'
-          })) || [],
-          reviews: place.Reviews?.map(review => ({
-            id: review.id,
-            rating: review.rating,
-            comment: review.comment || '',
-            user: {
-              first_name: review.User?.first_name || 'Anonymous',
-              last_name: review.User?.last_name || 'User'
-            },
-            createdAt: review.createdAt
-          })) || [],
-          created_at: place.createdAt,
-          updated_at: place.updatedAt
-        };
-      });
-
-      res.status(200).json({
-        success: true,
-        data: formattedPlaces
-      });
-    } catch (error) {
-      console.error('Error in getAllPlacesAdmin:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Error fetching places for admin',
-        details: error.message
-      });
-    }
-  },
-
-  // Add this function to get places by status for admin
-  getPlacesByStatusAdmin: async (req, res) => {
-    try {
-      const { status } = req.query;
       
-      const whereClause = {};
-      if (status && status !== 'all') {
-        whereClause.status = status;
-      }
-
-      const places = await Place.findAll({
-        where: whereClause,
-        include: [
-          {
-            model: Media,
-            attributes: ['url', 'type'],
-            required: false
-          },
-          {
-            model: Review,
-            attributes: ['id', 'rating', 'comment', 'createdAt'],
-            include: [
-              {
-                model: User,
-                attributes: ['first_name', 'last_name']
-              }
-            ],
-            required: false
-          },
-          {
-            model: Categorie,
-            through: { attributes: [] },
-            attributes: ['id', 'name', 'icon'],
-            required: false
-          }
-        ],
-        order: [['createdAt', 'DESC']]
-      });
-
-      const formattedPlaces = places.map(place => {
-        let imageUrl = 'https://via.placeholder.com/400';
-        if (place.Media && place.Media.length > 0) {
-          imageUrl = place.Media[0].url;
-        } else if (place.images && Array.isArray(place.images) && place.images.length > 0) {
-          imageUrl = place.images[0];
-        } else if (place.images && typeof place.images === 'string') {
-          imageUrl = place.images;
+      // First check if user has already reviewed this place
+      const existingReview = await Review.findOne({
+        where: {
+          userId,
+          placeId
         }
-
-        return {
-          id: place.id,
-          name: place.name,
-          description: place.description,
-          location: place.location,
-          image: imageUrl,
-          status: place.status || 'pending',
-          rating: Number(
-            (place.Reviews?.reduce((acc, rev) => acc + (rev.rating || 0), 0) / 
-             (place.Reviews?.length || 1)).toFixed(1)
-          ),
-          categories: place.Categories?.map(cat => ({
-            id: cat.id,
-            name: cat.name,
-            icon: cat.icon || '🏷️'
-          })) || [],
-          reviews: place.Reviews?.map(review => ({
-            id: review.id,
-            rating: review.rating,
-            comment: review.comment || '',
-            user: {
-              first_name: review.User?.first_name || 'Anonymous',
-              last_name: review.User?.last_name || 'User'
-            },
-            createdAt: review.createdAt
-          })) || [],
-          created_at: place.createdAt,
-          updated_at: place.updatedAt
-        };
       });
-
+      
+      let review;
+      
+      if (existingReview) {
+        // Update existing review
+        review = await existingReview.update({
+          rating,
+          comment: comment || existingReview.comment
+        });
+      } else {
+        // Create new review
+        review = await Review.create({
+          userId,
+          placeId,
+          rating,
+          comment: comment || ''
+        });
+      }
+      
+      // Update place's average rating
+      const reviews = await Review.findAll({
+        where: { placeId },
+        attributes: ['rating']
+      });
+      
+      if (reviews.length > 0) {
+        const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+        const averageRating = parseFloat((totalRating / reviews.length).toFixed(1));
+        
+        await Place.update({ rating: averageRating }, { where: { id: placeId } });
+      }
+      
       res.status(200).json({
         success: true,
-        data: formattedPlaces
+        data: review
       });
     } catch (error) {
-      console.error('Error in getPlacesByStatusAdmin:', error);
+      console.error('Error in ratePlace:', error);
       res.status(500).json({
         success: false,
-        error: 'Error fetching filtered places for admin',
+        error: 'Error saving place rating',
         details: error.message
       });
     }
   },
+  
+  // Get a user's rating for a specific place
+  getUserPlaceRating: async (req, res) => {
+    try {
+      const { placeId, userId } = req.params;
+      
+      const review = await Review.findOne({
+        where: {
+          placeId,
+          userId
+        },
+        attributes: ['id', 'rating', 'comment', 'created_at']
+      });
+      
+      res.status(200).json({
+        success: true,
+        data: review || null
+      });
+    } catch (error) {
+      console.error('Error in getUserPlaceRating:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error fetching user rating',
+        details: error.message
+      });
+    }
+  }
 };
 
 module.exports = placeController;

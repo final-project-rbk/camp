@@ -14,12 +14,13 @@ import {
   Dimensions,
   StatusBar
 } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { EXPO_PUBLIC_API_URL } from '../config';
-import { useAuth } from '../hooks/useAuth';
-import authService from '../services/auth.service';
+import { EXPO_PUBLIC_API_URL } from '../../config';
+import { useAuth } from '../../context/AuthContext';
+import AuthService from '../../services/auth.service';
+import { TAB_BAR_HEIGHT } from '../../components/TabBar';
 
 interface UserProfile {
   id: number;
@@ -43,7 +44,6 @@ interface EditModalProps {
 
 const EditModal = ({ visible, onClose, onSave, value, field }: EditModalProps) => {
   const [newValue, setNewValue] = useState(value);
-  const id = 3;
 
   return (
     <Modal visible={visible} transparent animationType="slide">
@@ -81,7 +81,7 @@ const { width, height } = Dimensions.get('window');
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { isAuthenticated, isLoading, user, checkAuth } = useAuth();
+  const { user, accessToken } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [editField, setEditField] = useState<string | null>(null);
@@ -90,33 +90,21 @@ export default function ProfileScreen() {
   const [hasExistingApplication, setHasExistingApplication] = useState(false);
 
   useEffect(() => {
-    const initializeProfile = async () => {
-      if (isLoading) return;
-      
-      if (!isAuthenticated) {
-        console.log('User not authenticated, redirecting to auth');
-        router.replace('/auth');
-        return;
-      }
-
-      await checkAuthAndFetchProfile();
-    };
-
-    initializeProfile();
-  }, [isAuthenticated, isLoading]);
+    checkAuthAndFetchProfile();
+  }, []);
 
   const checkAuthAndFetchProfile = async () => {
     try {
-      const token = await authService.getToken();
-      const userData = await authService.getUser();
+      const token = await AuthService.getToken();
+      const userData = await AuthService.getUser();
+
+      console.log('Checking stored data:', { token, userData }); // Debug log
 
       if (!token || !userData) {
-        console.log('No auth data found, redirecting to auth');
+        console.log('No auth data found, redirecting to auth'); // Debug log
         router.replace('/auth');
         return;
       }
-
-      console.log('Found user data:', userData);
 
       const response = await fetch(`${EXPO_PUBLIC_API_URL}users/${userData.id}`, {
         headers: {
@@ -137,8 +125,13 @@ export default function ProfileScreen() {
       if (data.success) {
         setProfile(data.data);
       } else {
-        console.log('Failed to fetch profile:', data);
-        Alert.alert('Error', 'Failed to fetch profile');
+        console.log('Failed to fetch profile:', data); // Debug log
+        if (response.status === 401) {
+          await AuthService.clearAuthData();
+          router.replace('/auth');
+        } else {
+          Alert.alert('Error', 'Failed to fetch profile');
+        }
       }
     } catch (error) {
       console.error('Profile fetch error:', error);
@@ -150,10 +143,10 @@ export default function ProfileScreen() {
 
   const handleUpdate = async (field: string, value: string) => {
     try {
-      const token = await authService.getToken();
-      const userData = await authService.getUser();
+      const token = await AuthService.getToken();
+      const userData = await AuthService.getUser();
       
-      if (!token || !userData) {
+      if (!userData || !token) {
         router.replace('/auth');
         return;
       }
@@ -176,6 +169,8 @@ export default function ProfileScreen() {
       const data = await response.json();
       if (data.success) {
         setProfile(data.data);
+        const updatedUser = { ...userData, [field]: value };
+        await AuthService.storeAuthData({ user: updatedUser, token });
         Alert.alert('Success', 'Profile updated successfully');
       } else {
         Alert.alert('Error', 'Failed to update profile');
@@ -188,7 +183,6 @@ export default function ProfileScreen() {
 
   const pickImage = async () => {
     try {
-      // Show action sheet for image source selection
       Alert.alert(
         "Select Image Source",
         "Choose where you want to take the image from",
@@ -248,17 +242,15 @@ export default function ProfileScreen() {
 
   const uploadImage = async (uri: string) => {
     try {
-      // Create form data
       const formData = new FormData();
       formData.append('file', {
         uri,
         type: 'image/jpeg',
         name: 'profile-image.jpg',
       } as any);
-      formData.append('upload_preset', 'Ghassen123'); // Your actual preset
-      formData.append('cloud_name', 'dqh6arave'); // Your actual cloud name
+      formData.append('upload_preset', 'Ghassen123');
+      formData.append('cloud_name', 'dqh6arave');
 
-      // Upload to Cloudinary
       const response = await fetch(
         'https://api.cloudinary.com/v1_1/dqh6arave/image/upload',
         {
@@ -272,17 +264,16 @@ export default function ProfileScreen() {
       );
 
       const data = await response.json();
-      console.log('Cloudinary response:', data); // For debugging
+      console.log('Cloudinary response:', data);
 
       if (data.secure_url) {
-        // Update profile with new image URL
         await handleUpdate('profile_image', data.secure_url);
       } else {
-        console.error('Upload error:', data); // For debugging
+        console.error('Upload error:', data);
         Alert.alert('Error', 'Failed to upload image');
       }
     } catch (error) {
-      console.error('Upload error:', error); // For debugging
+      console.error('Upload error:', error);
       Alert.alert('Error', 'Failed to upload image');
     }
   };
@@ -321,7 +312,7 @@ export default function ProfileScreen() {
 
   const checkExistingApplication = async (userId: number) => {
     try {
-      const token = await authService.getToken();
+      const token = await AuthService.getToken();
       
       const response = await fetch(`${EXPO_PUBLIC_API_URL}formularAdvisor/user/${userId}`, {
         headers: {
@@ -354,7 +345,7 @@ export default function ProfileScreen() {
 
   const handleCreateFormular = async () => {
     try {
-      const userData = await authService.getUser();
+      const userData = await AuthService.getUser();
       if (!userData) {
         router.replace('/auth');
         return;
@@ -384,7 +375,7 @@ export default function ProfileScreen() {
 
   const handleLogout = async () => {
     try {
-      await authService.logout();
+      await AuthService.clearAuthData();
       router.replace('/auth');
     } catch (error) {
       console.error('Logout error:', error);
@@ -401,104 +392,98 @@ export default function ProfileScreen() {
   }
 
   return (
-    <>
-      <Stack.Screen
-        options={{
-          title: 'Profile',
-          headerStyle: { backgroundColor: '#0A192F' },
-          headerTintColor: '#64FFDA',
-          headerRight: () => (
-            <TouchableOpacity onPress={handleLogout} style={{ marginRight: 15 }}>
-              <Ionicons name="log-out-outline" size={24} color="#64FFDA" />
-            </TouchableOpacity>
-          ),
-        }}
-      />
-      <ScrollView 
-        style={styles.container}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#64FFDA"
-            colors={['#64FFDA']}
-            progressBackgroundColor="#112240"
-          />
-        }
-      >
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => setImageModalVisible(true)}>
-            <Image
-              source={{ 
-                uri: profile?.profile_image || 'https://via.placeholder.com/150'
-              }}
-              style={styles.profileImage}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.editImageButton}
-            onPress={pickImage}
-          >
-            <Ionicons name="camera" size={24} color="#64FFDA" />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.infoSection}>
-          {[
-            { label: 'First Name', value: profile?.first_name, field: 'first_name' },
-            { label: 'Last Name', value: profile?.last_name, field: 'last_name' },
-            { label: 'Email', value: profile?.email, field: 'email' },
-            { label: 'Phone', value: profile?.phone_number, field: 'phone_number' },
-            { label: 'Bio', value: profile?.bio, field: 'bio' },
-          ].map((item) => (
-            <View key={item.field} style={styles.infoRow}>
-              <View style={styles.infoContent}>
-                <Text style={styles.label}>{item.label}</Text>
-                <Text style={styles.value}>{item.value || 'Not set'}</Text>
-              </View>
-              <TouchableOpacity onPress={() => setEditField(item.field)}>
-                <Ionicons name="create-outline" size={24} color="#64FFDA" />
-              </TouchableOpacity>
-            </View>
-          ))}
-        </View>
-
-        <View style={styles.statsSection}>
-          <Text style={styles.statsTitle}>Stats</Text>
-          <View style={styles.statsRow}>
-            <Text style={styles.statsLabel}>Points</Text>
-            <Text style={styles.statsValue}>{profile?.points || 0}</Text>
-          </View>
-          <View style={styles.statsRow}>
-            <Text style={styles.statsLabel}>Member since</Text>
-            <Text style={styles.statsValue}>
-              {new Date(profile?.created_at || '').toLocaleDateString()}
-            </Text>
-          </View>
-        </View>
-
-        <TouchableOpacity 
-          style={styles.createFormularButton}
-          onPress={handleCreateFormular}
-        >
-          <Text style={styles.createFormularButtonText}>
-            {hasExistingApplication ? 'Update Advisor Application' : 'Create Advisor Application'}
-          </Text>
-        </TouchableOpacity>
-
-        <EditModal
-          visible={!!editField}
-          onClose={() => setEditField(null)}
-          onSave={(value) => {
-            if (editField) handleUpdate(editField, value);
-          }}
-          value={profile?.[editField as keyof UserProfile]?.toString() || ''}
-          field={editField || ''}
+    <ScrollView 
+      style={styles.container}
+      contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT + 20 }}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor="#64FFDA"
+          colors={['#64FFDA']}
+          progressBackgroundColor="#112240"
         />
-        
-        <ImageViewModal />
-      </ScrollView>
-    </>
+      }
+    >
+      <View style={styles.pageHeader}>
+        <Text style={styles.pageTitle}>Profile</Text>
+        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+          <Ionicons name="log-out-outline" size={24} color="#64FFDA" />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => setImageModalVisible(true)}>
+          <Image
+            source={{ 
+              uri: profile?.profile_image || 'https://via.placeholder.com/150'
+            }}
+            style={styles.profileImage}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.editImageButton}
+          onPress={pickImage}
+        >
+          <Ionicons name="camera" size={24} color="#64FFDA" />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.infoSection}>
+        {[
+          { label: 'First Name', value: profile?.first_name, field: 'first_name' },
+          { label: 'Last Name', value: profile?.last_name, field: 'last_name' },
+          { label: 'Email', value: profile?.email, field: 'email' },
+          { label: 'Phone', value: profile?.phone_number, field: 'phone_number' },
+          { label: 'Bio', value: profile?.bio, field: 'bio' },
+        ].map((item) => (
+          <View key={item.field} style={styles.infoRow}>
+            <View style={styles.infoContent}>
+              <Text style={styles.label}>{item.label}</Text>
+              <Text style={styles.value}>{item.value || 'Not set'}</Text>
+            </View>
+            <TouchableOpacity onPress={() => setEditField(item.field)}>
+              <Ionicons name="create-outline" size={24} color="#64FFDA" />
+            </TouchableOpacity>
+          </View>
+        ))}
+      </View>
+
+      <View style={styles.statsSection}>
+        <Text style={styles.statsTitle}>Stats</Text>
+        <View style={styles.statsRow}>
+          <Text style={styles.statsLabel}>Points</Text>
+          <Text style={styles.statsValue}>{profile?.points || 0}</Text>
+        </View>
+        <View style={styles.statsRow}>
+          <Text style={styles.statsLabel}>Member since</Text>
+          <Text style={styles.statsValue}>
+            {new Date(profile?.created_at || '').toLocaleDateString()}
+          </Text>
+        </View>
+      </View>
+
+      <TouchableOpacity 
+        style={styles.createFormularButton}
+        onPress={handleCreateFormular}
+      >
+        <Text style={styles.createFormularButtonText}>
+          {hasExistingApplication ? 'Update Advisor Application' : 'Create Advisor Application'}
+        </Text>
+      </TouchableOpacity>
+
+      <EditModal
+        visible={!!editField}
+        onClose={() => setEditField(null)}
+        onSave={(value) => {
+          if (editField) handleUpdate(editField, value);
+        }}
+        value={profile?.[editField as keyof UserProfile]?.toString() || ''}
+        field={editField || ''}
+      />
+      
+      <ImageViewModal />
+    </ScrollView>
   );
 }
 
@@ -506,6 +491,22 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0A192F',
+  },
+  pageHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 20,
+  },
+  pageTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#CCD6F6',
+  },
+  logoutButton: {
+    padding: 8,
   },
   loadingContainer: {
     flex: 1,

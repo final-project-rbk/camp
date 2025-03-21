@@ -7,6 +7,7 @@ const db = require("./models/index");
 const blogRoutes = require('./routes/blogs.routes');
 const marcketPlaceRoutes = require('./routes/marchetPlace.routes');
 const placeRoutes = require('./routes/Place.routes');
+const critiriaRoutes = require('./routes/critiria.routes');
 
 const userRoutes = require('./routes/user.routes');
 const formularAdvisorRoutes = require('./routes/formularAdvisor.routes');
@@ -15,6 +16,7 @@ const authRoutes = require('./routes/auth.routes');
 // const advisorMediaRoutes = require('./routes/advisorMedia.routes');
 const adminRoutes = require('./routes/admin.routes');
 const eventRoutes = require('./routes/event.routes');
+const adminPlaceRoutes = require('./routes/admin.place.routes');
 const app = express();
 
 // Configure CORS
@@ -50,12 +52,17 @@ app.use('/api/places', placeRoutes);
 app.use('/api/categories', require('./routes/categorie.routes')); 
 app.use('/api/favorites', require('./routes/Favorite.routes'));
 app.use('/api/users', userRoutes);
+app.use('/api/criteria', critiriaRoutes);
+app.use('/api/reviews', require('./routes/review.routes'));
 app.use('/api/formularAdvisor', formularAdvisorRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/marketplace', marcketPlaceRoutes);
 
 app.use('/api/events', eventRoutes);
+
+// Add the admin place routes
+app.use('/api/admin', adminPlaceRoutes);
 
 const port = process.env.PORT || 3000;
 

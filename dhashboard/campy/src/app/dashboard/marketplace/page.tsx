@@ -114,9 +114,9 @@ export default function MarketplaceManagement() {
         return;
       }
 
-      console.log('Deleting item:', `${API_URL}marcketPlace/items/${itemToDelete}`);
+      console.log('Deleting item:', `${API_URL}marketplace/items/${itemToDelete}`);
 
-      const response = await fetch(`${API_URL}marcketPlace/items/${itemToDelete}`, {
+      const response = await fetch(`${API_URL}marketplace/items/${itemToDelete}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -304,29 +304,6 @@ export default function MarketplaceManagement() {
     }
     
     return null;
-  };
-
-  const handleStatusUpdate = async (itemId: number, newStatus: 'available' | 'sold' | 'pending') => {
-    try {
-      const token = localStorage.getItem('userToken');
-      const response = await fetch(`${API_URL}marketplace/items/${itemId}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ status: newStatus })
-      });
-
-      if (!response.ok) throw new Error('Failed to update status');
-
-      setItems(items.map(item => 
-        item.id === itemId ? { ...item, status: newStatus } : item
-      ));
-    } catch (error) {
-      console.error('Error updating status:', error);
-      setError(error instanceof Error ? error.message : 'Failed to update status');
-    }
   };
 
   useEffect(() => {
@@ -555,39 +532,7 @@ export default function MarketplaceManagement() {
                       className="w-full h-48 object-cover rounded mb-4"
                     />
                   )}
-                  <div className="flex justify-between items-center">
-                    <div className="space-x-2">
-                      <button
-                        onClick={() => handleStatusUpdate(item.id, 'available')}
-                        className={`px-3 py-1 rounded ${
-                          item.status === 'available' 
-                            ? 'bg-green-500 text-white' 
-                            : 'bg-[#1D2D50] text-[#CCD6F6]'
-                        }`}
-                      >
-                        Available
-                      </button>
-                      <button
-                        onClick={() => handleStatusUpdate(item.id, 'pending')}
-                        className={`px-3 py-1 rounded ${
-                          item.status === 'pending' 
-                            ? 'bg-yellow-500 text-white' 
-                            : 'bg-[#1D2D50] text-[#CCD6F6]'
-                        }`}
-                      >
-                        Pending
-                      </button>
-                      <button
-                        onClick={() => handleStatusUpdate(item.id, 'sold')}
-                        className={`px-3 py-1 rounded ${
-                          item.status === 'sold' 
-                            ? 'bg-red-500 text-white' 
-                            : 'bg-[#1D2D50] text-[#CCD6F6]'
-                        }`}
-                      >
-                        Sold
-                      </button>
-                    </div>
+                  <div className="flex justify-end items-center">
                     <button
                       onClick={() => handleDeleteClick(item.id)}
                       className="text-red-500 hover:text-red-600"

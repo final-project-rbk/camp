@@ -3,15 +3,16 @@ const router = express.Router();
 const placeController = require('../controlles/Place.controller');
 const authMiddleware = require('../middleware/auth.middleware');
 
+// Get all places
 router.get('/', placeController.getAllPlaces);
+
+// Get place by ID
 router.get('/:id', placeController.getPlaceById);
 
-// New routes
-router.post('/', authMiddleware, placeController.createPlace);
-router.put('/:id', authMiddleware, placeController.updatePlace);
-router.delete('/:id', authMiddleware, placeController.deletePlace);
-router.put('/:id/status', authMiddleware, placeController.updatePlaceStatus);
-// router.get('/filter/status', authMiddleware, placeController.getPlacesByStatus);
-router.get('/admin/places', placeController.getAllPlacesAdmin);
-router.get('/admin/places/filter', placeController.getPlacesByStatusAdmin);
+// Rate a place (add star rating)
+router.post('/rate', placeController.ratePlace);
+
+// Get a user's rating for a place
+router.get('/:id/user-rating/:userId', placeController.getUserPlaceRating);
+
 module.exports = router;

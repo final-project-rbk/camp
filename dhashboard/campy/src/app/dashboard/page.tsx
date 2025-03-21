@@ -52,6 +52,7 @@ export default function Dashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [modalPage, setModalPage] = useState(1);
   const [token, setToken] = useState('');
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -126,10 +127,18 @@ export default function Dashboard() {
     loadDashboardData();
   }, []);
 
+  useEffect(() => {
+    const userDataString = localStorage.getItem('userData');
+    if (userDataString) {
+      const userData = JSON.parse(userDataString);
+      setCurrentUser(userData);
+    }
+  }, []);
+
   const handleBanUser = async (userId: number) => {
     try {
       const token = localStorage.getItem('userToken');
-      const response = await fetch(`http://192.168.1.15:3000/api/admin/users/${userId}/ban`, {
+      const response = await fetch(`${API_URL}admin/users/${userId}/ban`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -137,11 +146,17 @@ export default function Dashboard() {
         }
       });
 
-      if (!response.ok) throw new Error('Failed to update user status');
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to update user status');
+      }
+
+      // Reload the dashboard data to show updated status
       await loadDashboardData();
     } catch (error) {
       console.error('Error:', error);
-      setError('Failed to update user status');
+      setError(error instanceof Error ? error.message : 'Failed to update user status');
     }
   };
 
@@ -232,6 +247,43 @@ export default function Dashboard() {
               <h1 className="text-xl font-bold" style={{ color: '#64FFDA' }}>
                 Users Dashboard
               </h1>
+            </div>
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => router.push('/dashboard/adminprofile')}
+                className="p-1 rounded-full hover:bg-[#112240] transition-colors duration-200 overflow-hidden"
+              >
+                {currentUser?.profile_image ? (
+                  <img
+                    src={currentUser.profile_image}
+                    alt="Profile"
+                    className="h-8 w-8 rounded-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
+                    }}
+                  />
+                ) : (
+                  <div className="h-8 w-8 rounded-full bg-[#112240] flex items-center justify-center text-[#64FFDA]">
+                    {currentUser?.first_name?.[0]?.toUpperCase() || (
+                      <svg 
+                        xmlns="http://www.w3.org/2000/svg" 
+                        className="h-5 w-5" 
+                        fill="none" 
+                        viewBox="0 0 24 24" 
+                        stroke="currentColor"
+                      >
+                        <path 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          strokeWidth={2} 
+                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" 
+                        />
+                      </svg>
+                    )}
+                  </div>
+                )}
+              </button>
             </div>
           </div>
           <div className="p-6">

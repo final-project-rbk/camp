@@ -38,6 +38,11 @@ export default function AdminLogin() {
       const data = await response.json();
 
       if (data.success) {
+        if (data.data.user.role !== 'admin') {
+          setError('Access Denied: Only administrators can access this dashboard');
+          return;
+        }
+
         const token = data.data.token || data.data.accessToken;
         localStorage.setItem('userToken', token);
         localStorage.setItem('userData', JSON.stringify(data.data.user));

@@ -5,10 +5,14 @@ module.exports = (sequelize, DataTypes) => {
       critiriaId: { type: DataTypes.INTEGER, allowNull: true },
       rating: { 
         type: DataTypes.INTEGER, 
-        allowNull: false, 
+        allowNull: true, 
         validate: { min: 1, max: 5 } 
       },
-      value: { type: DataTypes.INTEGER, allowNull: true },
+      value: { 
+        type: DataTypes.INTEGER, 
+        allowNull: true,
+        validate: { min: 0, max: 100 }
+      },
     });
 
     return PlaceUser;
