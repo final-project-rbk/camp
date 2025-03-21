@@ -9,6 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { View, ActivityIndicator } from 'react-native';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { AuthProvider } from '../context/AuthContext';
+import { EXPO_PUBLIC_API_URL } from '../config';
 
 // Keep splash screen visible while we fetch the initial route
 SplashScreen.preventAutoHideAsync();
@@ -30,6 +31,7 @@ export default function RootLayout() {
       try {
         // For testing: Uncomment to reset onboarding status
         // await AsyncStorage.removeItem('hasSeenOnboarding');
+        // await AsyncStorage.removeItem('userToken');
         
         const hasSeenOnboarding = await AsyncStorage.getItem('hasSeenOnboarding');
         console.log('Initial route check - hasSeenOnboarding:', hasSeenOnboarding);
@@ -44,9 +46,37 @@ export default function RootLayout() {
           console.log('User has seen onboarding, checking auth token:', userToken ? 'exists' : 'none');
           
           if (userToken) {
-            // User is logged in
-            console.log('User is authenticated, going to home');
-            setInitialRoute('(tabs)');
+            try {
+              // Set up timeout for token verification
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
+              // Verify token validity by making a test request
+              const response = await fetch(`${EXPO_PUBLIC_API_URL}auth/verify`, {
+                headers: {
+                  'Authorization': `Bearer ${userToken}`
+                },
+                signal: controller.signal
+              });
+              
+              clearTimeout(timeoutId);
+              
+              if (response.ok) {
+                // Token is valid, go to home
+                console.log('Token verified, going to home');
+                setInitialRoute('(tabs)');
+              } else {
+                // Token is invalid, clear it and go to auth
+                console.log('Token invalid, clearing and going to auth');
+                await AsyncStorage.removeItem('userToken');
+                setInitialRoute('auth');
+              }
+            } catch (error) {
+              console.error('Error verifying token:', error);
+              // On error, clear token and go to auth
+              await AsyncStorage.removeItem('userToken');
+              setInitialRoute('auth');
+            }
           } else {
             // User needs to log in
             console.log('User needs to authenticate, going to auth');
@@ -109,7 +139,7 @@ export default function RootLayout() {
             name="(tabs)" 
             options={{ 
               headerShown: false,
-              // Prevent going back to auth screen
+              gestureEnabled: false,
             }} 
           />
           <Stack.Screen 

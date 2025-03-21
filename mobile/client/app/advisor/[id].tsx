@@ -1,11 +1,27 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Pressable, Dimensions, Alert } from 'react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  Image, 
+  ScrollView, 
+  TouchableOpacity, 
+  ActivityIndicator, 
+  Modal, 
+  Pressable, 
+  Dimensions, 
+  Alert,
+  StatusBar,
+  Platform,
+  SafeAreaView
+} from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { EXPO_PUBLIC_API_URL } from '@/config';
 import { uploadImageToCloudinary } from '@/config/cloudinary';
 import AuthService from '@/services/auth.service';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface Review {
   id: string;
@@ -34,6 +50,17 @@ interface User {
   profile_image: string;
 }
 
+interface Expertise {
+  icon: string;
+  name: string;
+}
+
+interface AdvisorBadge {
+  icon: string;
+  label: string;
+  color: string;
+}
+
 interface AdvisorProfile {
   id: number;
   user: {
@@ -48,6 +75,9 @@ interface AdvisorProfile {
   experience: string;
   points: number;
   rank: string;
+  expertise: Expertise[];
+  badges: AdvisorBadge[];
+  highlights: string[];
   places: Array<{
     id: number;
     name: string;
@@ -58,6 +88,9 @@ interface AdvisorProfile {
     status?: string;
   }>;
 }
+
+const { width, height } = Dimensions.get('window');
+const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
 
 export default function AdvisorProfileScreen() {
   const { id } = useLocalSearchParams();
@@ -153,12 +186,43 @@ export default function AdvisorProfileScreen() {
     }, [id])
   );
 
-  const getRankColor = (rank: string) => {
+  const getRankColor = (points: string | number) => {
+    const pointsNum = Number(points);
+    const rank = calculateRank(pointsNum);
     switch (rank.toLowerCase()) {
-      case 'admin': return '#E5E4E2'; // platinum color for admin
-      case 'advisor': return '#FFD700'; // gold color for advisor
-      default: return '#CD7F32'; // bronze color for regular users
+      case 'platinum': return '#E5E4E2';
+      case 'gold': return '#FFD700';
+      case 'silver': return '#C0C0C0';
+      case 'bronze': return '#CD7F32';
+      default: return '#CD7F32';
     }
+  };
+
+  const calculateRank = (points: number): string => {
+    if (points >= 1000) return 'Platinum';
+    if (points >= 750) return 'Gold';
+    if (points >= 500) return 'Silver';
+    return 'Bronze';
+  };
+
+  const getNextRankPoints = (points: number): number => {
+    if (points >= 1000) return 1000; // Platinum is max
+    if (points >= 750) return 1000; // Next is Platinum
+    if (points >= 500) return 750; // Next is Gold
+    if (points >= 250) return 500; // Next is Silver
+    return 250; // Next is Bronze
+  };
+
+  const getProgressPercentage = (points: string | number): number => {
+    const pointsNum = Number(points);
+    const nextRankPoints = getNextRankPoints(pointsNum);
+    const currentRankPoints = pointsNum < 250 ? 0 : 
+                             pointsNum < 500 ? 250 : 
+                             pointsNum < 750 ? 500 : 
+                             pointsNum < 1000 ? 750 : 1000;
+    const range = nextRankPoints - currentRankPoints;
+    const progress = pointsNum - currentRankPoints;
+    return Math.min((progress / range) * 100, 100);
   };
 
   const handleAddPlace = () => {
@@ -244,6 +308,16 @@ export default function AdvisorProfileScreen() {
 
   const handleEditProfile = () => {
     router.push(`/edit-profile?id=${id}`);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await AuthService.clearAuthData();
+      router.replace('/auth');
+    } catch (error) {
+      console.error('Logout error:', error);
+      Alert.alert('Error', 'Failed to logout');
+    }
   };
 
   const getStatusBadgeStyle = (status: string) => {
@@ -349,73 +423,213 @@ export default function AdvisorProfileScreen() {
   }
 
   return (
-    <>
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       <ScrollView style={styles.container}>
-        <View style={styles.header}>
-          <Pressable 
-            style={styles.backButton}
-            onPress={() => router.back()}
+        {/* Hero Header */}
+        <View style={styles.heroHeader}>
+          <Image
+            source={{ 
+              uri: !imageError ? (profile.user.profile_image || 'https://via.placeholder.com/150') 
+                              : 'https://via.placeholder.com/150'
+            }}
+            style={styles.heroBackground}
+            blurRadius={3}
+          />
+          <LinearGradient
+            colors={['rgba(10, 25, 47, 0.3)', 'rgba(10, 25, 47, 0.9)', '#0A192F']}
+            style={styles.heroGradient}
           >
-            <Ionicons name="arrow-back" size={24} color="#64FFDA" />
-          </Pressable>
-          <Text style={styles.headerTitle}>Advisor Profile</Text>
-          <Pressable 
-            style={styles.editButton}
-            onPress={handleEditProfile}
-          >
-            <Ionicons name="pencil" size={24} color="#64FFDA" />
-          </Pressable>
-        </View>
-
-        <View style={styles.profileSection}>
-          <View style={styles.profileImageContainer}>
-            <Image
-              source={{ 
-                uri: !imageError ? (profile.user.profile_image || 'https://via.placeholder.com/150') 
-                                : 'https://via.placeholder.com/150'
-              }}
-              style={styles.profileImage}
-              onError={() => setImageError(true)}
-            />
-            {loading && (
-              <View style={styles.imageLoadingOverlay}>
-                <ActivityIndicator size="large" color="#64FFDA" />
+            <View style={styles.headerTopRow}>
+              <Pressable 
+                style={styles.backButton}
+                onPress={() => router.back()}
+              >
+                <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+              </Pressable>
+              <View style={styles.headerButtons}>
+                <Pressable 
+                  style={[styles.editButton, { marginRight: 8 }]}
+                  onPress={handleLogout}
+                >
+                  <Ionicons name="log-out-outline" size={24} color="#64FFDA" />
+                </Pressable>
+                <Pressable 
+                  style={styles.editButton}
+                  onPress={handleEditProfile}
+                >
+                  <Ionicons name="pencil" size={24} color="#64FFDA" />
+                </Pressable>
               </View>
-            )}
-            <View style={styles.badgeContainer}>
-              <Ionicons name="compass" size={24} color="#64FFDA" />
-              <Text style={styles.badgeText}>Travel Advisor</Text>
             </View>
-          </View>
 
-          <View style={styles.profileInfo}>
-            <Text style={styles.name}>
-              {profile.user.first_name} {profile.user.last_name}
-            </Text>
-            <Text style={styles.email}>{profile.user.email}</Text>
-            
-            <View style={styles.rankContainer}>
-              <Text style={[styles.rank, { color: getRankColor(profile.rank) }]}>
-                {profile.rank.toUpperCase()}
+            <View style={styles.profileImageContainer}>
+              <Pressable onPress={() => setShowFullImage(true)}>
+                <Image
+                  source={{ 
+                    uri: !imageError ? (profile.user.profile_image || 'https://via.placeholder.com/150') 
+                                    : 'https://via.placeholder.com/150'
+                  }}
+                  style={styles.profileImage}
+                />
+              </Pressable>
+              <TouchableOpacity 
+                style={styles.editImageButton}
+                onPress={handleImagePress}
+              >
+                <Ionicons name="camera" size={20} color="#64FFDA" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.profileInfo}>
+              <Text style={styles.name}>
+                {profile.user.first_name} {profile.user.last_name}
               </Text>
-              <Text style={styles.points}>{profile.points} points</Text>
+              <Text style={styles.email}>{profile.user.email}</Text>
+            </View>
+          </LinearGradient>
+        </View>
+
+        {/* About & Experience Combined Section */}
+        <View style={styles.combinedSection}>
+          {/* About Card */}
+          <View style={styles.infoCard}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.iconContainer}>
+                <Ionicons name="compass" size={24} color="#64FFDA" />
+              </View>
+              <Text style={styles.sectionTitle}>About Me</Text>
+            </View>
+            <View style={styles.cardContent}>
+              {profile.badges && profile.badges.length > 0 && (
+                <View style={styles.badgeContainer}>
+                  {profile.badges.map((badge, index) => (
+                    <View key={index} style={styles.badge}>
+                      <Ionicons name={badge.icon as any} size={16} color={badge.color} />
+                      <Text style={styles.badgeText}>{badge.label}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+              
+              <Text style={styles.bio}>{profile.bio}</Text>
+
+              {profile.highlights && profile.highlights.length > 0 && (
+                <View style={styles.highlightsContainer}>
+                  {profile.highlights.map((highlight, index) => (
+                    <View key={index} style={styles.highlight}>
+                      <Ionicons name="checkmark-circle" size={20} color="#64FFDA" />
+                      <Text style={styles.highlightText}>{highlight}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* Rank Progress Card */}
+          <View style={styles.rankCard}>
+            <View style={styles.sectionHeader}>
+              <View style={[styles.iconContainer, { backgroundColor: `rgba(${getRankColor(profile.points)}, 0.1)` }]}>
+                <Ionicons name="trophy" size={24} color={getRankColor(profile.points)} />
+              </View>
+              <Text style={styles.sectionTitle}>Rank Progress</Text>
+            </View>
+            <View style={styles.rankContent}>
+              <View style={styles.rankHeader}>
+                <View style={[styles.rankBadge, { backgroundColor: `rgba(${getRankColor(profile.points)}, 0.1)` }]}>
+                  <Ionicons name="trophy" size={20} color={getRankColor(profile.points)} />
+                  <Text style={[styles.rankText, { color: getRankColor(profile.points) }]}>
+                    {calculateRank(profile.points).toUpperCase()}
+                  </Text>
+                </View>
+                <Text style={styles.pointsText}>{profile.points} points</Text>
+              </View>
+              
+              <View style={styles.progressBarContainer}>
+                <View style={styles.progressBarBackground}>
+                  <View 
+                    style={[
+                      styles.progressBarFill,
+                      { 
+                        width: `${getProgressPercentage(profile.points)}%`,
+                        backgroundColor: getRankColor(profile.points)
+                      }
+                    ]} 
+                  />
+                </View>
+              </View>
+
+              <View style={styles.rankLevels}>
+                <View style={styles.rankLevelItem}>
+                  <View style={[styles.rankDot, { backgroundColor: '#CD7F32' }]} />
+                  <Text style={styles.rankLevel}>Bronze</Text>
+                </View>
+                <View style={styles.rankLevelItem}>
+                  <View style={[styles.rankDot, { backgroundColor: '#C0C0C0' }]} />
+                  <Text style={styles.rankLevel}>Silver</Text>
+                </View>
+                <View style={styles.rankLevelItem}>
+                  <View style={[styles.rankDot, { backgroundColor: '#FFD700' }]} />
+                  <Text style={styles.rankLevel}>Gold</Text>
+                </View>
+                <View style={styles.rankLevelItem}>
+                  <View style={[styles.rankDot, { backgroundColor: '#E5E4E2' }]} />
+                  <Text style={styles.rankLevel}>Platinum</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          {/* Experience Card */}
+          <View style={styles.infoCard}>
+            <View style={styles.sectionHeader}>
+              <View style={[styles.iconContainer, { backgroundColor: `rgba(${getRankColor(profile.points)}, 0.1)` }]}>
+                <Ionicons name="trophy" size={24} color={getRankColor(profile.points)} />
+              </View>
+              <Text style={styles.sectionTitle}>Experience</Text>
+            </View>
+            <View style={styles.cardContent}>
+              <View style={styles.experienceStats}>
+                <View style={styles.experienceStat}>
+                  <Text style={styles.experienceValue}>{profile.places.length}</Text>
+                  <Text style={styles.experienceLabel}>Places Added</Text>
+                </View>
+                <View style={styles.experienceStatDivider} />
+                <View style={styles.experienceStat}>
+                  <Text style={styles.experienceValue}>
+                    {profile.places.reduce((sum, place) => sum + place.reviewCount, 0)}
+                  </Text>
+                  <Text style={styles.experienceLabel}>Total Reviews</Text>
+                </View>
+              </View>
+              
+              <Text style={styles.experience}>{profile.experience}</Text>
+
+              {profile.expertise && profile.expertise.length > 0 && (
+                <View style={styles.expertiseContainer}>
+                  <Text style={styles.expertiseTitle}>Expertise Areas:</Text>
+                  <View style={styles.expertiseGrid}>
+                    {profile.expertise.map((item, index) => (
+                      <View key={index} style={styles.expertiseItem}>
+                        <Ionicons name={item.icon as any} size={20} color="#64FFDA" />
+                        <Text style={styles.expertiseText}>{item.name}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
             </View>
           </View>
         </View>
 
+        {/* Places Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>About</Text>
-          <Text style={styles.bio}>{profile.bio}</Text>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Experience</Text>
-          <Text style={styles.experience}>{profile.experience}</Text>
-        </View>
-
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>My Places</Text>
+          <View style={styles.placesHeader}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="location" size={24} color="#64FFDA" />
+              <Text style={styles.sectionTitle}>My Places</Text>
+            </View>
             <TouchableOpacity 
               style={styles.addButton}
               onPress={handleAddPlace}
@@ -426,11 +640,7 @@ export default function AdvisorProfileScreen() {
           </View>
 
           {profile.places.length > 0 ? (
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false}
-              style={styles.placesScroll}
-            >
+            <View style={styles.placesGrid}>
               {profile.places.map((place) => (
                 <TouchableOpacity
                   key={place.id}
@@ -442,27 +652,10 @@ export default function AdvisorProfileScreen() {
                       source={{ uri: place.image }}
                       style={styles.placeImage}
                     />
-                    <View style={styles.placeActions}>
-                      <TouchableOpacity 
-                        style={styles.actionButton}
-                        onPress={(e) => {
-                          e.stopPropagation();
-                          console.log('Edit button clicked for place:', place.id);
-                          router.push(`/edit-place?id=${place.id}`);
-                        }}
-                      >
-                        <Ionicons name="pencil" size={20} color="#64FFDA" />
-                      </TouchableOpacity>
-                      <TouchableOpacity 
-                        style={[styles.actionButton, styles.deleteButton]}
-                        onPress={(e) => {
-                          e.stopPropagation();
-                          handleDeletePlace(place.id);
-                        }}
-                      >
-                        <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
-                      </TouchableOpacity>
-                    </View>
+                    <LinearGradient
+                      colors={['transparent', 'rgba(10, 25, 47, 0.8)']}
+                      style={styles.placeGradient}
+                    />
                     <View style={[
                       styles.statusBadge,
                       getStatusBadgeStyle(place.status || 'pending')
@@ -472,11 +665,12 @@ export default function AdvisorProfileScreen() {
                       </Text>
                     </View>
                   </View>
+
                   <View style={styles.placeInfo}>
                     <Text style={styles.placeName}>{place.name}</Text>
                     <View style={styles.placeDetails}>
                       <View style={styles.locationContainer}>
-                        <Ionicons name="location" size={14} color="#8892B0" />
+                        <Ionicons name="location" size={14} color="#64FFDA" />
                         <Text style={styles.placeLocation}>{place.location}</Text>
                       </View>
                       <View style={styles.ratingContainer}>
@@ -488,11 +682,36 @@ export default function AdvisorProfileScreen() {
                       </View>
                     </View>
                   </View>
+
+                  <View style={styles.placeActions}>
+                    <TouchableOpacity 
+                      style={styles.actionButton}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        router.push(`/edit-place?id=${place.id}`);
+                      }}
+                    >
+                      <Ionicons name="pencil" size={20} color="#64FFDA" />
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={[styles.actionButton, styles.deleteButton]}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleDeletePlace(place.id);
+                      }}
+                    >
+                      <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
+                    </TouchableOpacity>
+                  </View>
                 </TouchableOpacity>
               ))}
-            </ScrollView>
+            </View>
           ) : (
-            <Text style={styles.noPlacesText}>No places added yet</Text>
+            <View style={styles.emptyPlaces}>
+              <Ionicons name="location-outline" size={64} color="#64FFDA" />
+              <Text style={styles.emptyPlacesText}>No places added yet</Text>
+              <Text style={styles.emptyPlacesSubtext}>Start adding amazing places!</Text>
+            </View>
           )}
         </View>
       </ScrollView>
@@ -549,11 +768,15 @@ export default function AdvisorProfileScreen() {
           />
         </Pressable>
       </Modal>
-    </>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#0A192F',
+  },
   container: {
     flex: 1,
     backgroundColor: '#0A192F',
@@ -574,99 +797,152 @@ const styles = StyleSheet.create({
     color: '#FF6B6B',
     fontSize: 16,
   },
-  header: {
+  heroHeader: {
+    height: height * 0.5,
+    position: 'relative',
+  },
+  heroBackground: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+  },
+  heroGradient: {
+    flex: 1,
+    paddingTop: Platform.OS === 'ios' ? 20 : STATUSBAR_HEIGHT + 20,
+  },
+  headerTopRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-    paddingTop: 60,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1D2D50',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    marginBottom: 20,
   },
   backButton: {
-    marginRight: 15,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#CCD6F6',
-  },
-  profileSection: {
-    padding: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(10, 25, 47, 0.5)',
+    justifyContent: 'center',
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#1D2D50',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  editButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(10, 25, 47, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 255, 218, 0.2)',
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   profileImageContainer: {
+    alignItems: 'center',
     position: 'relative',
+  },
+  profileImage: {
     width: 120,
     height: 120,
     borderRadius: 60,
-    marginBottom: 15,
+    borderWidth: 3,
+    borderColor: '#64FFDA',
+  },
+  editImageButton: {
+    position: 'absolute',
+    bottom: 0,
+    right: width * 0.5 - 80,
     backgroundColor: '#1D2D50',
-    overflow: 'hidden',
-  },
-  profileImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 60,
-  },
-  imageLoadingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(29, 45, 80, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  badgeContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(10, 25, 47, 0.9)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
     padding: 8,
-  },
-  badgeText: {
-    color: '#64FFDA',
-    marginLeft: 5,
-    fontSize: 12,
-    fontWeight: 'bold',
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#64FFDA',
   },
   profileInfo: {
     alignItems: 'center',
+    padding: 20,
   },
   name: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#CCD6F6',
-    marginBottom: 5,
+    color: '#FFFFFF',
+    marginBottom: 4,
   },
   email: {
     fontSize: 16,
     color: '#8892B0',
-    marginBottom: 10,
+    marginBottom: 20,
   },
-  rankContainer: {
+  rankCard: {
+    backgroundColor: '#1D2D50',
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 255, 218, 0.1)',
+    marginTop: 20,
+  },
+  rankContent: {
+    padding: 16,
+  },
+  rankHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  rankBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1D2D50',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
+    backgroundColor: 'rgba(100, 255, 218, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 20,
+    gap: 8,
   },
-  rank: {
-    fontSize: 14,
+  rankText: {
+    fontSize: 16,
     fontWeight: 'bold',
-    marginRight: 10,
   },
-  points: {
-    color: '#64FFDA',
-    fontSize: 14,
+  pointsText: {
+    fontSize: 16,
+    color: '#8892B0',
+  },
+  progressBarContainer: {
+    height: 8,
+    backgroundColor: 'rgba(100, 255, 218, 0.1)',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 16,
+  },
+  progressBarBackground: {
+    flex: 1,
+    backgroundColor: 'rgba(100, 255, 218, 0.1)',
+    borderRadius: 4,
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  rankLevels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+  },
+  rankLevelItem: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  rankDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  rankLevel: {
+    fontSize: 12,
+    color: '#8892B0',
   },
   section: {
     padding: 20,
@@ -675,65 +951,87 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 15,
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(100, 255, 218, 0.1)',
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#CCD6F6',
+    marginLeft: 10,
   },
   bio: {
     fontSize: 16,
     color: '#8892B0',
     lineHeight: 24,
+    marginTop: 12,
   },
   experience: {
     fontSize: 16,
     color: '#8892B0',
     lineHeight: 24,
+    marginTop: 12,
+  },
+  placesHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1D2D50',
-    paddingHorizontal: 15,
+    backgroundColor: 'rgba(100, 255, 218, 0.1)',
+    paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#64FFDA',
   },
   addButtonText: {
     color: '#64FFDA',
-    marginLeft: 5,
+    marginLeft: 8,
     fontSize: 14,
   },
-  placesScroll: {
-    marginHorizontal: -20,
-    paddingHorizontal: 20,
+  placesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 16,
   },
   placeCard: {
-    width: 280,
-    marginRight: 16,
+    width: '100%',
     backgroundColor: '#1D2D50',
     borderRadius: 16,
     overflow: 'hidden',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(100, 255, 218, 0.1)',
   },
   placeImageContainer: {
     position: 'relative',
-    width: '100%',
-    height: 180,
+    height: 200,
   },
   placeImage: {
     width: '100%',
     height: '100%',
   },
+  placeGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 100,
+  },
   placeInfo: {
-    padding: 15,
+    padding: 16,
   },
   placeName: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#CCD6F6',
+    color: '#FFFFFF',
     marginBottom: 8,
   },
   placeDetails: {
@@ -753,25 +1051,70 @@ const styles = StyleSheet.create({
   ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   rating: {
-    color: '#CCD6F6',
+    color: '#FFD700',
     marginLeft: 4,
     fontSize: 14,
+    fontWeight: 'bold',
   },
   reviewCount: {
     color: '#8892B0',
     fontSize: 12,
   },
-  noPlacesText: {
+  placeActions: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionButton: {
+    backgroundColor: 'rgba(10, 25, 47, 0.8)',
+    padding: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(100, 255, 218, 0.2)',
+  },
+  deleteButton: {
+    backgroundColor: 'rgba(255, 107, 107, 0.2)',
+    borderColor: 'rgba(255, 107, 107, 0.2)',
+  },
+  statusBadge: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  statusText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  emptyPlaces: {
+    alignItems: 'center',
+    padding: 40,
+  },
+  emptyPlacesText: {
+    fontSize: 18,
+    color: '#CCD6F6',
+    marginTop: 16,
+    fontWeight: 'bold',
+  },
+  emptyPlacesSubtext: {
+    fontSize: 14,
     color: '#8892B0',
-    fontSize: 16,
-    textAlign: 'center',
-    marginTop: 20,
+    marginTop: 8,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(10, 25, 47, 0.9)',
     justifyContent: 'flex-end',
   },
   modalContent: {
@@ -783,53 +1126,141 @@ const styles = StyleSheet.create({
   modalOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 15,
+    padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(100, 255, 218, 0.1)',
   },
   modalOptionText: {
     color: '#CCD6F6',
     fontSize: 16,
-    marginLeft: 15,
+    marginLeft: 16,
   },
   fullImageContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    backgroundColor: 'rgba(10, 25, 47, 0.95)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   fullImage: {
-    width: Dimensions.get('window').width,
-    height: Dimensions.get('window').width,
+    width: width,
+    height: width,
   },
-  editButton: {
-    marginLeft: 'auto',
+  combinedSection: {
+    padding: 20,
+    gap: 20,
   },
-  placeActions: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
+  infoCard: {
+    backgroundColor: '#1D2D50',
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 255, 218, 0.1)',
+  },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(100, 255, 218, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  cardContent: {
+    padding: 16,
+  },
+  badgeContainer: {
     flexDirection: 'row',
     gap: 8,
-    zIndex: 1,
+    marginBottom: 16,
   },
-  actionButton: {
-    backgroundColor: 'rgba(10, 25, 47, 0.8)',
-    padding: 8,
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(100, 255, 218, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 20,
+    gap: 6,
   },
-  deleteButton: {
-    backgroundColor: 'rgba(255, 107, 107, 0.2)',
+  badgeText: {
+    color: '#CCD6F6',
+    fontSize: 14,
+    fontWeight: '500',
   },
-  statusBadge: {
-    position: 'absolute',
-    top: 10,
-    left: 10,
-    zIndex: 1,
+  highlightsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 16,
   },
-  statusText: {
-    color: '#FFFFFF',
-    fontSize: 12,
+  highlight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(29, 45, 80, 0.5)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+  },
+  highlightText: {
+    color: '#CCD6F6',
+    fontSize: 14,
+  },
+  experienceStats: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(29, 45, 80, 0.5)',
+    borderRadius: 12,
+  },
+  experienceStat: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  experienceValue: {
+    fontSize: 24,
     fontWeight: 'bold',
+    color: '#64FFDA',
+    marginBottom: 4,
+  },
+  experienceLabel: {
+    fontSize: 14,
+    color: '#8892B0',
+  },
+  experienceStatDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: 'rgba(100, 255, 218, 0.1)',
+    marginHorizontal: 16,
+  },
+  expertiseContainer: {
+    marginTop: 16,
+  },
+  expertiseTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#CCD6F6',
+    marginBottom: 12,
+  },
+  expertiseGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  expertiseItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(29, 45, 80, 0.5)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    gap: 8,
+    width: '48%',
+  },
+  expertiseText: {
+    color: '#CCD6F6',
+    fontSize: 14,
   },
 }); 
