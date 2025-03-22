@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   View, 
   Text, 
@@ -11,14 +11,18 @@ import {
   Image,
   Pressable,
   Platform,
-  StatusBar
+  StatusBar,
+  Alert,
+  Animated
 } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
 import { TAB_BAR_HEIGHT } from '../components/TabBar';
 import { useRouter } from 'expo-router';
+import { useTheme } from '../context/ThemeContext';
 
 export default function Setting() {
   const router = useRouter();
+  const { theme, setTheme, isDark } = useTheme();
   // State for toggle settings
   const [toggleSettings, setToggleSettings] = useState({
     tripReminders: true,
@@ -30,12 +34,44 @@ export default function Setting() {
     locationSharing: true,
   });
 
+  // Animation value for theme switch
+  const [themeAnimation] = useState(new Animated.Value(isDark ? 1 : 0));
+
+  // Animate theme change
+  useEffect(() => {
+    Animated.spring(themeAnimation, {
+      toValue: isDark ? 1 : 0,
+      useNativeDriver: true,
+      friction: 8,
+      tension: 40,
+    }).start();
+  }, [isDark]);
+
   // Toggle setting handler
   const toggleSetting = (setting: string) => {
     setToggleSettings({
       ...toggleSettings,
       [setting]: !toggleSettings[setting as keyof typeof toggleSettings]
     });
+  };
+
+  // Handle theme change
+  const handleThemeChange = (newTheme: 'light' | 'dark' | 'system') => {
+    setTheme(newTheme);
+  };
+
+  // Get theme mode display text
+  const getThemeModeText = () => {
+    switch (theme) {
+      case 'light':
+        return 'Light';
+      case 'dark':
+        return 'Dark';
+      case 'system':
+        return 'System';
+      default:
+        return 'Dark';
+    }
   };
 
   // Handle contact methods
@@ -99,14 +135,14 @@ export default function Setting() {
           
           <TouchableOpacity 
             style={styles.contactItem}
-            onPress={() => handleContact('email', 'support@campyapp.com')}
+            onPress={() => handleContact('email', 'harayen806@campy.com')}
           >
             <View style={styles.contactIconContainer}>
               <Ionicons name="mail-outline" size={24} color="#64FFDA" />
             </View>
             <View style={styles.contactInfo}>
               <Text style={styles.contactLabel}>Email</Text>
-              <Text style={styles.contactValue}>support@campyapp.com</Text>
+              <Text style={styles.contactValue}>harayen806@campy.com</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#8892B0" />
           </TouchableOpacity>
@@ -246,10 +282,58 @@ export default function Setting() {
               Display & Accessibility
             </Text>
             
-            <TouchableOpacity style={styles.preferencesItem}>
+            <TouchableOpacity 
+              style={styles.preferencesItem}
+              onPress={() => {
+                Alert.alert(
+                  'Theme Mode',
+                  'Choose your preferred theme',
+                  [
+                    {
+                      text: 'Light',
+                      onPress: () => handleThemeChange('light'),
+                    },
+                    {
+                      text: 'Dark',
+                      onPress: () => handleThemeChange('dark'),
+                    },
+                    {
+                      text: 'System',
+                      onPress: () => handleThemeChange('system'),
+                    },
+                    {
+                      text: 'Cancel',
+                      style: 'cancel',
+                    },
+                  ],
+                  { cancelable: true }
+                );
+              }}
+            >
               <Text style={styles.preferencesLabel}>Theme Mode</Text>
-              <View style={styles.preferencesValue}>
-                <Text style={styles.preferencesValueText}>Dark</Text>
+              <View style={styles.themeSelector}>
+                <Animated.View
+                  style={[
+                    styles.themeIcon,
+                    {
+                      transform: [
+                        {
+                          rotate: themeAnimation.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: ['0deg', '180deg'],
+                          }),
+                        },
+                      ],
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name={isDark ? 'moon' : 'sunny'}
+                    size={24}
+                    color="#64FFDA"
+                  />
+                </Animated.View>
+                <Text style={styles.preferencesValueText}>{getThemeModeText()}</Text>
                 <Ionicons name="chevron-forward" size={18} color="#8892B0" />
               </View>
             </TouchableOpacity>
@@ -560,6 +644,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#FF6B6B',
+  },
+  themeSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  themeIcon: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
     
