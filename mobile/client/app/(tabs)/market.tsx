@@ -203,6 +203,7 @@ export default function Market() {
 
       const roomId = response.data.id;
       const isNewRoom = response.data.isNew;
+      console.log(response.data, "response.data");
 
       // Navigate to chat room
       router.push({
@@ -211,7 +212,7 @@ export default function Market() {
           roomId,
           isNewRoom: isNewRoom ? '1' : '0'
         }
-      } as any);
+      });
 
     } catch (error) {
       console.error('Error handling chat:', error);
@@ -229,7 +230,7 @@ export default function Market() {
       Alert.alert('Error', 'Please login to create listings');
       return;
     }
-    router.push('/market/new' as any);
+    router.push('/market/new');
   };
 
   const handleMyChatsPress = () => {
@@ -237,7 +238,7 @@ export default function Market() {
       Alert.alert('Error', 'Please login to view your chats');
       return;
     }
-    router.push('/chat/room' as any);
+    router.push('/chat/room');
   };
 
   if (loading) {
@@ -367,7 +368,7 @@ export default function Market() {
             <TouchableOpacity
               key={item.id}
               style={styles.itemCard}
-              onPress={() => router.push(`/market/${item.id}` as any)}
+              onPress={() => router.push(`/market/${item.id}`)}
             >
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 {(item.media || []).map((mediaItem) => (

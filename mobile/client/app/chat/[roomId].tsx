@@ -17,8 +17,7 @@ const MessagesScreen = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [typingUsers, setTypingUsers] = useState(new Set());
   const { accessToken, user } = useAuth();
-  const { roomId } = useLocalSearchParams();
-  const { searchParams } = useLocalSearchParams();
+  const { roomId, isNewRoom } = useLocalSearchParams();
   
   const socketRef = useRef<Socket | null>(null);
   const flatListRef = useRef(null);
@@ -60,7 +59,7 @@ const MessagesScreen = () => {
     socketRef.current.on('user_joined', (data) => {
       console.log('User joined room:', data);
       // If this is a new room, send a welcome message
-      if (searchParams.isNewRoom === '1') {
+      if (isNewRoom === '1') {
         sendMessage('👋 Hi! I\'m interested in your item.');
       }
     });

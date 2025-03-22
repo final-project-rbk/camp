@@ -140,8 +140,11 @@ const RoomsScreen = () => {
         style={styles.roomItem}
         onPress={() => router.push({
           pathname: `/chat/${item.id}`,
-          params: { roomId: item.id }
-        } as any)}
+          params: {
+            roomId: item.id,
+            isNew: false
+          }
+        })}
       >
         <View style={styles.avatarContainer}>
           <Image
