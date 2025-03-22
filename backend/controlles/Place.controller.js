@@ -1,4 +1,4 @@
-const { Place, Media, Review, Categorie, Citiria, PlaceUser } = require('../models');
+const { Place, Media, Review, Categorie, Citiria, PlaceUser, User } = require('../models');
 
 const placeController = {
   // Get all places with related data

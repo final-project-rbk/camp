@@ -482,3 +482,40 @@ module.exports.deleteMarketplaceCategory = async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+
+// Add this new function to your controller
+module.exports.deleteItem = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id; // Get from auth middleware
+
+    const item = await MarketplaceItem.findByPk(id);
+    
+    if (!item) {
+      return res.status(404).json({ error: 'Item not found' });
+    }
+
+    // Check if the user is the owner of the item
+    if (item.sellerId !== userId) {
+      return res.status(403).json({ error: 'Not authorized to delete this item' });
+    }
+
+    // Delete associated media first
+    await Media.destroy({
+      where: { marketplaceItemId: id }
+    });
+
+    // Delete item category associations
+    await MarketplaceItemCategorie.destroy({
+      where: { marketplaceItemId: id }
+    });
+
+    // Finally delete the item
+    await item.destroy();
+
+    res.status(200).json({ message: 'Item deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting item:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
