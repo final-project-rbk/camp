@@ -1,328 +1,240 @@
-import React, { useEffect, useRef } from 'react';
-import {
-  StyleSheet,
-  View,
-  Text,
-  Image,
-  TouchableOpacity,
-  Animated,
-  Easing,
-  Dimensions,
-  SafeAreaView,
-} from 'react-native';
+import { useState, useRef, useEffect } from "react"
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, ImageBackground, Animated, FlatList } from "react-native"
+import { useRouter } from "expo-router"
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import React from "react"
 
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get("window")
 
-const App = () => {
-  // Animation values
-  const moonY = useRef(new Animated.Value(0)).current;
-  const moonRotation = useRef(new Animated.Value(0)).current;
-  const fireScale1 = useRef(new Animated.Value(1)).current;
-  const fireScale2 = useRef(new Animated.Value(0.9)).current;
-  const fireOpacity = useRef(new Animated.Value(0.8)).current;
+const slides = [
+  {
+    id: "1",
+    title: "Discover Hidden Camping Spots",
+    description: "Explore the best camping destinations in Tunisia, from mountains to deserts!",
+    image: "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?q=80&w=1470&auto=format&fit=crop",
+    buttonText: "Next",
+  },
+  {
+    id: "2",
+    title: "Plan & Organize Your Trips",
+    description: "Create personalized trip plans with weather updates and recommendations.",
+    image: "https://images.unsplash.com/photo-1452421822248-d4c2b47f0c81?q=80&w=1374&auto=format&fit=crop",
+    buttonText: "Next",
+  },
+  {
+    id: "3",
+    title: "Connect & Share with the Community",
+    description: "Meet fellow campers, share your adventures, and find the best camping gear!",
+    image: "https://images.unsplash.com/photo-1517824806704-9040b037703b?q=80&w=1470&auto=format&fit=crop",
+    buttonText: "Get Started",
+  },
+]
 
-  // Moon floating animation
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(moonY, {
-          toValue: -15,
-          duration: 3000,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-        Animated.timing(moonY, {
-          toValue: 0,
-          duration: 3000,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
+export default function OnboardingScreen() {
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const scrollX = useRef(new Animated.Value(0)).current
+  const slidesRef = useRef(null)
+  const router = useRouter()
 
-    // Moon rotation animation
-    Animated.loop(
-      Animated.timing(moonRotation, {
-        toValue: 1,
-        duration: 30000, // 30 seconds for a full rotation
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
-    ).start();
-  }, [moonY, moonRotation]);
-
-  // Fire flickering animations
-  useEffect(() => {
-    interface FireAnimationParams {
-      value: any;
-      min: any;
-      max: any;
-      duration: any;
+  const completeOnboarding = async () => {
+    try {
+      console.log('Completing onboarding...');
+      
+      // Mark that user has seen onboarding
+      await AsyncStorage.setItem('hasSeenOnboarding', 'true');
+      console.log('Onboarding marked as complete');
+      
+      // Clear any existing auth tokens to ensure clean login state
+      await AsyncStorage.removeItem('userToken');
+      await AsyncStorage.removeItem('userData');
+      console.log('Cleared any existing auth data');
+      
+      // Navigate to auth screen
+      console.log('Navigating to auth screen...');
+      router.replace('/auth');
+    } catch (error) {
+      console.error('Error completing onboarding:', error);
+      // If there's an error, still try to navigate to auth
+      router.replace('/auth');
     }
+  }
 
-    const createFireAnimation = ({ value, min, max, duration }: FireAnimationParams): Animated.CompositeAnimation => {
-      return Animated.loop(
-        Animated.sequence([
-          Animated.timing(value, {
-            toValue: max,
-            duration: duration,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
-          }),
-          Animated.timing(value, {
-            toValue: min,
-            duration: duration,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
-          }),
-        ])
-      );
-    };
+  const viewableItemsChanged = useRef(({ viewableItems }: { viewableItems: Array<{ index: number }> }) => {
+    if (viewableItems && viewableItems.length > 0) {
+      setCurrentIndex(viewableItems[0].index)
+    }
+  }).current
 
-    createFireAnimation({ value: fireScale1, min: 0.9, max: 1.1, duration: 700 }).start();
-    createFireAnimation({ value: fireScale2, min: 0.85, max: 1.05, duration: 500 }).start();
-    createFireAnimation({ value: fireOpacity, min: 0.7, max: 1, duration: 600 }).start();
-  }, [fireScale1, fireScale2, fireOpacity]);
+  const viewConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current
 
-  // Interpolate moon rotation to degrees
-  const moonSpin = moonRotation.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
+  const scrollTo = () => {
+    if (currentIndex < slides.length - 1) {
+      // Cast slidesRef.current to FlatList type to access scrollToIndex
+      const flatList = slidesRef.current as any;
+      flatList?.scrollToIndex({ index: currentIndex + 1 });
+    } else {
+      // On last slide, complete onboarding
+      completeOnboarding()
+    }
+  }
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        {/* Sky background */}
-        <Image 
-          source={{ uri: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Sky-P4O74VD0VeAkYxUAXD59ALFy5s8GgO.png' }} 
-          style={styles.skyBackground} 
-          resizeMode="cover" 
-        />
-        
-        {/* Stars */}
-        <Image 
-          source={{ uri: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Stars-U2dtVHVNrwmUrL4rrXyoSl2vippfRZ.png' }} 
-          style={styles.stars} 
-          resizeMode="cover" 
-        />
-        
-        {/* Animated Moon */}
-        <Animated.View
-          style={[
-            styles.moonContainer,
-            {
-              transform: [
-                { translateY: moonY },
-                { rotate: moonSpin },
-              ],
-            },
-          ]}
-        >
-          <Image 
-            source={{ uri: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Moon-zPVfkjllg1i4DBN64UVNfsraVgkT8d.png' }} 
-            style={styles.moon} 
-            resizeMode="contain" 
-          />
-        </Animated.View>
-        
-        {/* Hills and Trees */}
-        <View style={styles.landscapeContainer}>
-          <Image 
-            source={{ uri: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Hills%20and%20trees-q9t2JWCRvFB76KWgRMksWZ81RRpozc.png' }} 
-            style={styles.landscape} 
-            resizeMode="stretch" 
-          />
-        </View>
-        
-        {/* Tent */}
-        <View style={styles.tentContainer}>
-          <Image 
-            source={{ uri: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Tent-WlkeLGHB2WkMFJn42WytTl9c0jtIsu.png' }} 
-            style={styles.tent} 
-            resizeMode="contain" 
-          />
-        </View>
-        
-        {/* Animated Fire */}
-        <View style={styles.fireContainer}>
-          <Animated.View
-            style={[
-              styles.fireGlow,
-              {
-                opacity: fireOpacity,
-                transform: [{ scale: fireScale2 }],
-              },
-            ]}
-          />
-          <Animated.Image
-            source={{ uri: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Fire-oEDx1qhwDiUeDCYkRe0smiImm1UMAs.png' }}
-            style={[
-              styles.fire,
-              {
-                transform: [{ scale: fireScale1 }],
-              },
-            ]}
-            resizeMode="contain"
-          />
-        </View>
-        
-        {/* Text Content */}
-        <View style={styles.textContainer}>
-          <Text style={styles.title}>Camp-tastic!</Text>
-          <Text style={styles.quote}>
-            "the most wonderful, awe-inspiring and{'\n'}
-            simply fantastic camping experiences"
-          </Text>
-        </View>
-        
-        {/* Button */}
-        <TouchableOpacity style={styles.button}>
-          <Text style={styles.buttonText}>Get Started!</Text>
-        </TouchableOpacity>
-        
-        {/* Bottom Line */}
-        <View style={styles.bottomLine} />
+  const Indicator = ({ scrollX }: { scrollX: Animated.Value }) => {
+    return (
+      <View style={styles.indicatorContainer}>
+        {slides.map((_, i) => {
+          const inputRange = [(i - 1) * width, i * width, (i + 1) * width]
+
+          const scale = scrollX.interpolate({
+            inputRange,
+            outputRange: [0.8, 1.4, 0.8],
+            extrapolate: "clamp",
+          })
+
+          const opacity = scrollX.interpolate({
+            inputRange,
+            outputRange: [0.4, 1, 0.4],
+            extrapolate: "clamp",
+          })
+
+          return (
+            <Animated.View
+              key={`indicator-${i}`}
+              style={[
+                styles.indicator,
+                {
+                  transform: [{ scale }],
+                  opacity,
+                  backgroundColor: i === currentIndex ? "#ffffff" : "rgba(255, 255, 255, 0.5)",
+                },
+              ]}
+            />
+          )
+        })}
       </View>
-    </SafeAreaView>
-  );
-};
+    )
+  }
+  const OnboardingItem = ({ item }: { item: {
+    buttonText: any
+    description: string
+    title: string;
+    image: string;
+  } }) => {
+  
+    return (
+      <View style={styles.slide}>
+        <ImageBackground source={{ uri: item.image }} style={styles.image} resizeMode="cover">
+          <View style={styles.overlay}>
+            <View style={styles.contentContainer}>
+              <Text style={styles.title}>{item.title || ''}</Text>
+              <Text style={styles.description}>{item.description || ''}</Text>
+            </View>
 
-    const styles = StyleSheet.create({
+            <TouchableOpacity style={styles.button} onPress={scrollTo}>
+              <Text style={styles.buttonText}>{item.buttonText}</Text>
+            </TouchableOpacity>
+          </View>
+        </ImageBackground>
+      </View>
+    )
+  }
+  return (
+    <View style={styles.container}>
+      <Animated.FlatList
+        data={slides}
+        renderItem={({ item }) => <OnboardingItem item={item} />}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        pagingEnabled
+        bounces={false}
+        keyExtractor={(item) => item.id}
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], { useNativeDriver: false })}
+        scrollEventThrottle={32}
+        onViewableItemsChanged={(info: any) => {
+          if (info.viewableItems[0]?.index !== null) {
+            setCurrentIndex(info.viewableItems[0].index);
+          }
+        }}
+        viewabilityConfig={viewConfig}
+        ref={slidesRef}
+      />
+      <Indicator scrollX={scrollX} />
+    </View>
+  )
+}
+
+const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F2231',
+    backgroundColor: "#0b1c24",
   },
-  content: {
+  slide: {
+    width,
+    height,
+  },
+  image: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 40,
-    position: 'relative',
+    width: "100%",
+    height: "100%",
   },
-  skyBackground: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-    top: 0,
-    left: 0,
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(11, 28, 36, 0.7)",
+    justifyContent: "space-between",
+    paddingVertical: 100,
+    paddingHorizontal: 20,
   },
-  stars: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-    top: 0,
-    left: 0,
-    opacity: 0.8,
-  },
-  moonContainer: {
-    position: 'absolute',
-    top: '10%',
-    right: '15%',
-    width: 80,
-    height: 80,
-    zIndex: 10,
-  },
-  moon: {
-    width: '100%',
-    height: '100%',
-  },
-  landscapeContainer: {
-    position: 'absolute',
-    bottom: '40%',
-    width: '100%',
-    height: '20%',
-    zIndex: 20,
-  },
-  landscape: {
-    width: '100%',
-    height: '100%',
-  },
-  tentContainer: {
-    position: 'absolute',
-    bottom: '30%',
-    left: '20%',
-    width: 150,
-    height: 100,
-    zIndex: 30,
-  },
-  tent: {
-    width: '100%',
-    height: '100%',
-  },
-  fireContainer: {
-    position: 'absolute',
-    bottom: '28%',
-    right: '25%',
-    width: 60,
-    height: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 40,
-  },
-  fireGlow: {
-    position: 'absolute',
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255, 165, 0, 0.3)',
-    zIndex: 39,
-  },
-  fire: {
-    width: '100%',
-    height: '100%',
-    zIndex: 40,
-  },
-  textContainer: {
-    position: 'absolute',
-    bottom: '15%',
-    alignItems: 'center',
-    zIndex: 50,
+  contentContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   title: {
     fontSize: 32,
-    fontWeight: 'bold',
-    color: '#4ECDC4',
-    marginBottom: 5,
+    fontWeight: "bold",
+    color: "#ffffff",
+    textAlign: "center",
+    marginBottom: 20,
   },
-  phonetic: {
-    fontSize: 16,
-    color: '#4ECDC4',
-    marginBottom: 15,
-    fontStyle: 'italic',
-  },
-  quote: {
-    fontSize: 16,
-    color: '#E0E0E0',
-    textAlign: 'center',
-    fontStyle: 'italic',
-    lineHeight: 22,
+  description: {
+    fontSize: 18,
+    color: "#ffffff",
+    textAlign: "center",
+    paddingHorizontal: 20,
+    lineHeight: 26,
   },
   button: {
-    position: 'absolute',
-    bottom: '5%',
-    backgroundColor: '#1D3E53',
+    backgroundColor: "#19545c",
     paddingVertical: 15,
-    paddingHorizontal: 30,
+    paddingHorizontal: 40,
     borderRadius: 30,
-    width: '80%',
-    alignItems: 'center',
-    zIndex: 60,
+    alignSelf: "center",
+    marginBottom: 50,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   buttonText: {
-    color: 'white',
+    color: "#ffffff",
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "bold",
   },
-  bottomLine: {
-    position: 'absolute',
-    bottom: '2%',
-    width: 50,
-    height: 4,
-    backgroundColor: '#333',
-    borderRadius: 2,
-    opacity: 0.5,
+  indicatorContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    position: "absolute",
+    bottom: 50,
+    width: "100%",
   },
-});
+  indicator: {
+    height: 10,
+    width: 10,
+    borderRadius: 5,
+    marginHorizontal: 5,
+  },
+})
 
-export default App;

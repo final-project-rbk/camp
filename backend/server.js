@@ -7,6 +7,8 @@ const db = require("./models/index");
 const blogRoutes = require('./routes/blogs.routes');
 const marcketPlaceRoutes = require('./routes/marchetPlace.routes');
 const placeRoutes = require('./routes/Place.routes');
+const critiriaRoutes = require('./routes/critiria.routes');
+
 const userRoutes = require('./routes/user.routes');
 const formularAdvisorRoutes = require('./routes/formularAdvisor.routes');
 const authRoutes = require('./routes/auth.routes');
@@ -17,7 +19,10 @@ const jwt = require('jsonwebtoken');
 
 // const advisorMediaRoutes = require('./routes/advisorMedia.routes');
 
+const adminPlaceRoutes = require('./routes/admin.place.routes');
 const app = express();
+
+
 const server = require('http').createServer(app);
 
 // Configure Socket.IO with proper settings for mobile
@@ -116,11 +121,43 @@ io.on('connection', (socket) => {
   // Join a chat room
   socket.on('join_room', async (roomId) => {
     try {
+      console.log(`Attempting to join room with ID: ${roomId}`);
+      
+      // Convert roomId to number to ensure type consistency
+      const roomIdInt = parseInt(roomId, 10);
+      
+      if (isNaN(roomIdInt)) {
+        console.error(`Invalid room ID: ${roomId}`);
+        socket.emit('room_error', { message: 'Invalid room ID format' });
+        return;
+      }
+      
+      // First check if the room exists
+      let roomExists = await db.Room.findByPk(roomIdInt);
+      
+      // If room doesn't exist, try to create it
+      if (!roomExists) {
+        console.log(`Room with ID ${roomIdInt} does not exist - attempting to recreate`);
+        
+        try {
+          roomExists = await db.Room.create({
+            id: roomIdInt,
+            name: `Room_recovered_${Date.now()}`
+          });
+          
+          console.log(`Successfully recreated room with ID ${roomIdInt}`);
+        } catch (recreateError) {
+          console.error(`Failed to recreate room: ${recreateError.message}`);
+          socket.emit('room_error', { message: 'Room does not exist and could not be recreated' });
+          return;
+        }
+      }
+
       // Check if user is already in the room
       const existingMember = await db.RoomUser.findOne({
         where: {
           userId: socket.user.id,
-          roomId: roomId
+          roomId: roomIdInt
         }
       });
 
@@ -128,15 +165,15 @@ io.on('connection', (socket) => {
       if (!existingMember) {
         await db.RoomUser.create({
           userId: socket.user.id,
-          roomId: roomId
+          roomId: roomIdInt
         });
       }
 
-      socket.join(roomId);
-      console.log(`User ${socket.user.first_name} (${socket.id}) joined room ${roomId}`);
+      socket.join(roomIdInt.toString());
+      console.log(`User ${socket.user.first_name} (${socket.id}) joined room ${roomIdInt}`);
       
       // Notify others in the room
-      socket.to(roomId).emit('user_joined', {
+      socket.to(roomIdInt.toString()).emit('user_joined', {
         user: {
           id: socket.user.id,
           first_name: socket.user.first_name,
@@ -147,11 +184,17 @@ io.on('connection', (socket) => {
       });
     } catch (error) {
       console.error('Error joining room:', error);
-      socket.emit('room_error', { 
-        message: 'Failed to join room: ' + (error.name === 'SequelizeUniqueConstraintError' 
-          ? 'You are already a member of this room' 
-          : error.message)
-      });
+      let errorMessage = 'Failed to join room';
+      
+      if (error.name === 'SequelizeUniqueConstraintError') {
+        errorMessage = 'You are already a member of this room';
+      } else if (error.name === 'SequelizeForeignKeyConstraintError') {
+        errorMessage = 'The room you\'re trying to join does not exist';
+      } else {
+        errorMessage = error.message;
+      }
+      
+      socket.emit('room_error', { message: errorMessage });
     }
   });
 
@@ -160,12 +203,34 @@ io.on('connection', (socket) => {
     try {
       const { roomId, message, mediaUrls } = data;
       
+      console.log(`Attempting to send message to room: ${roomId}, content: ${message?.substring(0, 20)}..., Media URLs: ${JSON.stringify(mediaUrls || [])}`);
+      
+      // Convert roomId to number to ensure type consistency
+      const roomIdInt = parseInt(roomId, 10);
+      
+      if (isNaN(roomIdInt)) {
+        console.error(`Invalid room ID for message: ${roomId}`);
+        if (callback) callback({ success: false, error: 'Invalid room ID format' });
+        return;
+      }
+      
+      // First check if the room exists
+      const roomExists = await db.Room.findByPk(roomIdInt);
+      if (!roomExists) {
+        console.error(`Cannot send message - Room with ID ${roomIdInt} does not exist`);
+        if (callback) callback({ success: false, error: 'Room does not exist' });
+        return;
+      }
+
+      // Ensure mediaUrls is always an array
+      const normalizedMediaUrls = Array.isArray(mediaUrls) ? mediaUrls : [];
+      
       // Save message to database
       const newMessage = await db.Message.create({
-        senderId: socket.user.id,
-        roomId,
+        senderId: parseInt(socket.user.id, 10),
+        roomId: roomIdInt,
         content: message,
-        mediaUrls: mediaUrls || []
+        mediaUrls: normalizedMediaUrls
       });
 
       const messageWithUser = await db.Message.findOne({
@@ -176,19 +241,35 @@ io.on('connection', (socket) => {
         }]
       });
 
+      // Convert to JSON and ensure mediaUrls is present
+      const messageJSON = messageWithUser.toJSON();
+      if (!messageJSON.mediaUrls) {
+        messageJSON.mediaUrls = normalizedMediaUrls;
+      }
+
       // Broadcast message to room
-      io.to(roomId).emit('receive_message', {
-        ...messageWithUser.toJSON(),
+      io.to(roomIdInt.toString()).emit('receive_message', {
+        ...messageJSON,
         createdAt: new Date()
       });
 
+      console.log(`Message successfully sent to room ${roomIdInt}`);
+      
       // Send delivery confirmation
       if (callback) callback({ success: true, messageId: newMessage.id });
     } catch (error) {
       console.error('Error sending message:', error);
-      if (callback) callback({ success: false, error: error.message });
+      
+      let errorMessage = 'Failed to send message';
+      if (error.name === 'SequelizeForeignKeyConstraintError') {
+        errorMessage = 'The room you\'re trying to message does not exist';
+      } else {
+        errorMessage = error.message;
+      }
+      
+      if (callback) callback({ success: false, error: errorMessage });
       socket.emit('message_error', {
-        error: 'Failed to send message: ' + error.message,
+        error: errorMessage,
         timestamp: new Date()
       });
     }
@@ -291,11 +372,16 @@ app.use('/api/blogs', blogRoutes);
 app.use('/api/places', placeRoutes);
 app.use('/api/categories', require('./routes/categorie.routes')); 
 app.use('/api/users', userRoutes);
+app.use('/api/criteria', critiriaRoutes);
+app.use('/api/reviews', require('./routes/review.routes'));
 app.use('/api/formularAdvisor', formularAdvisorRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/marketplace', marcketPlaceRoutes);
 app.use('/api/events', eventRoutes);
+
+// Add the admin place routes
+app.use('/api/admin', adminPlaceRoutes);
 
 const port = process.env.PORT || 3000;
 

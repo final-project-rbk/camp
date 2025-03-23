@@ -4,8 +4,10 @@ import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
 import { EXPO_PUBLIC_API_URL } from '../../config';
-import { useAuth } from '../../hooks/useAuth'
+
 import { useAuth as auth } from '../../context/AuthContext'
+import { useAuth } from '../../hooks/useAuth';
+import { TAB_BAR_HEIGHT } from '../../components/TabBar';
 
 interface Category {
   id: string;
@@ -189,6 +191,8 @@ export default function Market() {
       // Show loading indicator
       setLoading(true);
 
+      console.log('Creating/getting chat room with seller ID:', sellerId);
+
       // Create or get chat room
       const response = await axios.post(
         `${EXPO_PUBLIC_API_URL}chat/rooms/get-or-create`,
@@ -201,24 +205,43 @@ export default function Market() {
         }
       );
 
-      const roomId = response.data.id;
-      const isNewRoom = response.data.isNew;
-      console.log(response.data, "response.data");
+      const roomData = response.data;
+      const roomId = roomData.id;
+      const isNewRoom = roomData.isNew;
+      
+      console.log('Chat room created/found:', { roomId, isNewRoom });
+
+      if (!roomId) {
+        throw new Error('Failed to get a valid room ID');
+      }
 
       // Navigate to chat room
       router.push({
         pathname: `/chat/${roomId}`,
         params: {
-          roomId,
+          roomId: roomId.toString(),
           isNewRoom: isNewRoom ? '1' : '0'
         }
       });
 
     } catch (error) {
       console.error('Error handling chat:', error);
+      
+      let errorMessage = 'Could not start chat. Please try again later.';
+      
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 401) {
+          errorMessage = 'Your session has expired. Please login again.';
+        } else if (error.response?.data?.error) {
+          errorMessage = error.response.data.error;
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+      }
+      
       Alert.alert(
-        'Error',
-        'Could not start chat. Please try again later.'
+        'Chat Error',
+        errorMessage
       );
     } finally {
       setLoading(false);
@@ -252,6 +275,7 @@ export default function Market() {
   return (
     <ScrollView 
       style={styles.container}
+      contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT + 20 }}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }

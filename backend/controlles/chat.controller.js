@@ -1,4 +1,4 @@
-const { Room, Message, RoomUser, User, Media } = require('../models');
+const { Room, Message, RoomUser, User, Media, sequelize } = require('../models');
 const {Sequelize}=require('sequelize');
 const media = require('../models/media');
 
@@ -70,37 +70,100 @@ const getRooms = async (req, res) => {
 };
 
 const getOrCreateRoom = async (req, res) => {
+  // Use a transaction to ensure data consistency
+  const transaction = await sequelize.transaction();
+  
   try {
     const { userId } = req.body;
     const currentUserId = req.user.id;
-    console.log(userId,currentUserId,"hhhh");
     
+    console.log("GetOrCreateRoom request - User IDs:", userId, currentUserId);
+    
+    // Validate input
+    if (!userId || !currentUserId) {
+      console.log("Invalid user IDs provided");
+      await transaction.rollback();
+      return res.status(400).json({ error: "Invalid user IDs" });
+    }
+    
+    // Convert to integers for consistency
+    const userIdInt = parseInt(userId, 10);
+    const currentUserIdInt = parseInt(currentUserId, 10);
+    
+    if (isNaN(userIdInt) || isNaN(currentUserIdInt)) {
+      console.log("User IDs are not valid integers");
+      await transaction.rollback();
+      return res.status(400).json({ error: "User IDs must be valid integers" });
+    }
 
     // Find a room that includes both users
     const rooms = await Room.findAll({
-
       include: [{
         model: User,
-        where: { id: [currentUserId, userId] },
+        where: { id: [currentUserIdInt, userIdInt] },
         through: { attributes: [] }
-      }]
+      }],
+      transaction
     });
-console.log("rooms",rooms);
+    
+    console.log("Rooms found:", rooms.length);
+    if (rooms.length > 0) {
+      console.log("Room details:", JSON.stringify(rooms.map(r => ({ 
+        id: r.id, 
+        name: r.name, 
+        userCount: r.users?.length || 0 
+      }))));
+    }
 
-    let room = rooms.find(r => r.users ?r.users.length===2:false) 
-    room.isNew = false;
+    // Find a room where both users are members (has exactly 2 users)
+    let room = rooms.find(r => r.users && r.users.length === 2);
+    
+    // Create response object
+    let responseRoom = null;
+    let isNewRoom = false;
 
     // If no room exists, create a new one
     if (!room) {
-      room = await Room.create({ name: `Room_${currentUserId}_${userId}` });
-      await RoomUser.bulkCreate([{ roomId: room.id, userId: currentUserId }, { roomId: room.id, userId }]);
-      room.isNew = true;
+      console.log("No existing room found, creating new room");
+      responseRoom = await Room.create({ 
+        name: `Room_${currentUserIdInt}_${userIdInt}` 
+      }, { transaction });
+      
+      const roomId = responseRoom.id;
+      console.log("New room created with ID:", roomId);
+      
+      // Create room user relationships
+      await RoomUser.bulkCreate([
+        { roomId, userId: currentUserIdInt }, 
+        { roomId, userId: userIdInt }
+      ], { transaction });
+      
+      console.log("RoomUser associations created");
+      isNewRoom = true;
+    } else {
+      console.log("Existing room found with ID:", room.id);
+      responseRoom = room;
+      isNewRoom = false;
     }
 
-    res.status(200).json(room);
+    // Commit the transaction
+    await transaction.commit();
+
+    // Add isNew property to response
+    const response = responseRoom.toJSON();
+    response.isNew = isNewRoom;
+
+    res.status(200).json(response);
   } catch (error) {
-    throw error
-    res.status(500).json({ error: error.message });
+    console.error("Error in getOrCreateRoom:", error);
+    
+    // Rollback the transaction
+    await transaction.rollback();
+    
+    res.status(500).json({ 
+      error: error.message,
+      details: error.name || 'Unknown error type'
+    });
   }
 };
 

@@ -17,6 +17,11 @@ const RoomsScreen = () => {
   const router = useRouter();
   const socketRef = useRef<Socket | null>(null);
   
+  // Handle navigation back to marketplace
+  const handleBackToMarketplace = () => {
+    router.push('/(tabs)/market');
+  };
+  
   useEffect(() => {
     // Initialize socket connection with auth token and better configuration
     socketRef.current = io(EXPO_PUBLIC_BASE_URL, {
@@ -203,6 +208,12 @@ const RoomsScreen = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={handleBackToMarketplace}
+        >
+          <Ionicons name="arrow-back" size={24} color="#64FFDA" />
+        </TouchableOpacity>
         <Text style={styles.title}>Messages</Text>
       </View>
 
@@ -238,14 +249,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#0A192F',
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#1D2D50',
   },
   title: {
+    flex: 1,
     fontSize: 24,
     fontWeight: 'bold',
     color: '#CCD6F6',
+    marginLeft: 32,
   },
   listContainer: {
     paddingVertical: 8,
@@ -327,6 +342,9 @@ const styles = StyleSheet.create({
     color: '#FF6B6B',
     fontSize: 16,
     textAlign: 'center',
+  },
+  backButton: {
+    padding: 8,
   },
 });
 

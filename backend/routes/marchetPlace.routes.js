@@ -13,7 +13,8 @@ const {
   getAllMarketplaceCategories,
   createMarketplaceCategory,
   updateMarketplaceCategory,
-  deleteMarketplaceCategory
+  deleteMarketplaceCategory,
+  deleteItem
 } = require('../controlles/marcketPlace.controller');
 const authMiddleware = require('../middleware/auth.middleware');
 
@@ -22,6 +23,7 @@ router.get('/items', getAllItems);                    // Get all items
 router.get('/items/:id', getItemById);               // Get single item by ID
 router.post('/items', authMiddleware, createItem);                    // Create a new item
 router.put('/items/:id/buy', authMiddleware, buyItem);               // Buy an item
+router.delete('/items/:id', authMiddleware, deleteItem);    // Delete an item
 
 // Category routes
 router.get('/categories', getAllMarketplaceCategories);           // Get all marketplace categories

@@ -1,10 +1,22 @@
 const { User, FormularAdvisor, AdvisorMedia, Advisor } = require('../models');
 const db = require('../models');
 
-const adminController = {
+const   adminController = {
     // Get all users with their status
     getAllUsers: async (req, res) => {
         try {
+            // Add debug logging
+            console.log('Request headers:', req.headers);
+            console.log('Request user:', req.user);
+
+            // Check if user exists
+            if (!req.user) {
+                return res.status(401).json({
+                    success: false,
+                    message: 'Authentication required'
+                });
+            }
+
             // Check if the requesting user is an admin
             if (req.user.role !== 'admin') {
                 return res.status(403).json({
@@ -26,7 +38,8 @@ const adminController = {
             console.error('Error fetching users:', error);
             res.status(500).json({
                 success: false,
-                error: 'Error fetching users'
+                error: 'Error fetching users',
+                details: error.message
             });
         }
     },
@@ -43,7 +56,6 @@ const adminController = {
             }
 
             const { userId } = req.params;
-            const { isBanned } = req.body;
 
             const user = await User.findByPk(userId);
             if (!user) {
@@ -61,11 +73,13 @@ const adminController = {
                 });
             }
 
-            await user.update({ isBanned });
+            // Toggle the ban status
+            const newBanStatus = !user.isBanned;
+            await user.update({ isBanned: newBanStatus });
 
             res.status(200).json({
                 success: true,
-                message: isBanned ? 'User banned successfully' : 'User unbanned successfully'
+                message: newBanStatus ? 'User banned successfully' : 'User unbanned successfully'
             });
         } catch (error) {
             console.error('Error toggling user ban:', error);

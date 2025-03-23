@@ -7,7 +7,7 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import { io,Socket } from 'socket.io-client';
 import { EXPO_PUBLIC_API_URL } from '../../config';
 import { useAuth } from '../../context/AuthContext';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
 const MessagesScreen = () => {
   const [messages, setMessages] = useState([]);
@@ -16,8 +16,10 @@ const MessagesScreen = () => {
   const [error, setError] = useState(null);
   const [isTyping, setIsTyping] = useState(false);
   const [typingUsers, setTypingUsers] = useState(new Set());
+  const [mediaUrls, setMediaUrls] = useState<string[]>([]);
   const { accessToken, user } = useAuth();
   const { roomId, isNewRoom } = useLocalSearchParams();
+  const router = useRouter();
   
   const socketRef = useRef<Socket | null>(null);
   const flatListRef = useRef(null);
@@ -25,101 +27,185 @@ const MessagesScreen = () => {
   const CLOUDINARY_UPLOAD_URL = "https://api.cloudinary.com/v1_1/dqh6arave/upload";
   const CLOUDINARY_UPLOAD_PRESET = "Ghassen123";
 
+  // Handle back button press
+  const handleBackPress = () => {
+    if (socketRef.current?.connected) {
+      socketRef.current.disconnect();
+    }
+    router.back();
+  };
+
   useEffect(() => {
     if (!roomId) return;
 
-    // Initialize socket connection with auth token and better configuration
-    socketRef.current = io(EXPO_PUBLIC_API_URL.replace('/api', ''), {
-      auth: { token: accessToken },
-      query: { token: accessToken },
-      transports: ['websocket', 'polling'],
-      timeout: 10000,
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      forceNew: true
-    });
-
-    // Handle connection events
-    socketRef.current.on('connect', () => {
-      console.log('Socket connected');
-      setError(null);
-      
-      // Join the room
-      socketRef.current?.emit('join_room', roomId);
-    });
-
-    socketRef.current.on('connect_error', (error) => {
-      console.error('Socket connection error:', error.message);
-      setError('Connection error: ' + error.message);
-    });
-
-    // Handle room join confirmation
-    socketRef.current.on('user_joined', (data) => {
-      console.log('User joined room:', data);
-      // If this is a new room, send a welcome message
-      if (isNewRoom === '1') {
-        sendMessage('👋 Hi! I\'m interested in your item.');
-      }
-    });
-
-    socketRef.current.on('disconnect', (reason) => {
-      console.log('Socket disconnected:', reason);
-      if (reason === 'io server disconnect') {
-        // Server disconnected, try to reconnect
-        socketRef.current?.connect();
-      }
-    });
-
-    socketRef.current.on('reconnect', (attemptNumber) => {
-      console.log('Socket reconnected after', attemptNumber, 'attempts');
-      setError(null);
-      
-      // Rejoin room after reconnection
-      socketRef.current?.emit('join_room', roomId);
-    });
-
-    socketRef.current.on('reconnect_error', (error) => {
-      console.error('Socket reconnection error:', error);
-      setError('Unable to reconnect to chat. Please check your connection.');
-    });
-
-    // Listen for new messages
-    socketRef.current.on('receive_message', (message) => {
-      setMessages(prev => [...prev, message]);
-      flatListRef.current?.scrollToEnd();
-      
-      // Mark message as read if it's not from current user
-      if (message.senderId !== user?.id) {
-        socketRef.current?.emit('message_read', {
-          messageId: message.id,
-          roomId
-        });
-      }
-    });
-
-    // Listen for typing status
-    socketRef.current.on('typing_status', ({ user: typingUser, isTyping }) => {
-      setTypingUsers(prev => {
-        const newSet = new Set(prev);
-        if (isTyping) {
-          newSet.add(typingUser.first_name);
-        } else {
-          newSet.delete(typingUser.first_name);
+    console.log('Starting chat with roomId:', roomId);
+    
+    // First validate that the room exists
+    const validateRoom = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get(
+          `${EXPO_PUBLIC_API_URL}chat/rooms/${roomId}/validate`,
+          {
+            headers: { Authorization: `Bearer ${accessToken}` },
+            timeout: 5000
+          }
+        );
+        
+        if (!response.data.exists) {
+          setError('This chat room no longer exists');
+          Alert.alert(
+            'Chat Room Error',
+            'This chat room no longer exists. Would you like to go back to your chats?',
+            [
+              {
+                text: 'Cancel',
+                style: 'cancel'
+              },
+              {
+                text: 'Go to My Chats',
+                onPress: () => router.replace('/chat/room')
+              }
+            ]
+          );
+          setLoading(false);
+          return false;
         }
-        return newSet;
-      });
-    });
-
-    // Fetch initial messages
-    fetchMessages();
-
-    return () => {
-      if (socketRef.current?.connected) {
-        socketRef.current.disconnect();
+        
+        return true;
+      } catch (error) {
+        console.error('Error validating room:', error);
+        return true; // Continue anyway and let socket connection handle errors
       }
     };
+    
+    // Connect to socket after validating room
+    validateRoom().then(isValid => {
+      if (!isValid) return;
+      
+      // Initialize socket connection with auth token and better configuration
+      socketRef.current = io(EXPO_PUBLIC_API_URL.replace('/api', ''), {
+        auth: { token: accessToken },
+        query: { token: accessToken },
+        transports: ['websocket', 'polling'],
+        timeout: 10000,
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        forceNew: true
+      });
+
+      // Handle connection events
+      socketRef.current.on('connect', () => {
+        console.log('Socket connected');
+        setError(null);
+        
+        // Make sure roomId is a string for socket.io rooms
+        const roomIdStr = roomId.toString();
+        console.log('Joining room:', roomIdStr);
+        
+        // Join the room
+        socketRef.current?.emit('join_room', roomIdStr);
+      });
+
+      socketRef.current.on('connect_error', (error) => {
+        console.error('Socket connection error:', error.message);
+        setError('Connection error: ' + error.message);
+      });
+
+      // Handle room join confirmation
+      socketRef.current.on('user_joined', (data) => {
+        console.log('User joined room:', data);
+        // If this is a new room, send a welcome message
+        if (isNewRoom === '1') {
+          sendMessage('👋 Hi! I\'m interested in your item.');
+        }
+      });
+
+      // Handle room errors
+      socketRef.current.on('room_error', (data) => {
+        console.error('Room error:', data.message);
+        setError('Chat room error: ' + data.message);
+        
+        if (data.message.includes('does not exist')) {
+          // Show alert with navigation option
+          Alert.alert(
+            'Chat Room Error',
+            'This chat room no longer exists. Would you like to go back to your chats?',
+            [
+              {
+                text: 'Cancel',
+                style: 'cancel'
+              },
+              {
+                text: 'Go to My Chats',
+                onPress: () => router.replace('/chat/room')
+              }
+            ]
+          );
+        } else {
+          Alert.alert('Chat Error', data.message);
+        }
+      });
+
+      socketRef.current.on('disconnect', (reason) => {
+        console.log('Socket disconnected:', reason);
+        if (reason === 'io server disconnect') {
+          // Server disconnected, try to reconnect
+          socketRef.current?.connect();
+        }
+      });
+
+      socketRef.current.on('reconnect', (attemptNumber) => {
+        console.log('Socket reconnected after', attemptNumber, 'attempts');
+        setError(null);
+        
+        // Rejoin room after reconnection with string roomId
+        socketRef.current?.emit('join_room', roomId.toString());
+      });
+
+      socketRef.current.on('reconnect_error', (error) => {
+        console.error('Socket reconnection error:', error);
+        setError('Unable to reconnect to chat. Please check your connection.');
+      });
+
+      // Listen for new messages
+      socketRef.current.on('receive_message', (message) => {
+        setMessages(prev => [...prev, message]);
+        flatListRef.current?.scrollToEnd();
+        
+        // Mark message as read if it's not from current user
+        if (message.senderId !== user?.id) {
+          socketRef.current?.emit('message_read', {
+            messageId: message.id,
+            roomId
+          });
+        }
+      });
+
+      // Listen for typing status
+      socketRef.current.on('typing_status', ({ user: typingUser, isTyping }) => {
+        setTypingUsers(prev => {
+          const newSet = new Set(prev);
+          if (isTyping) {
+            newSet.add(typingUser.first_name);
+          } else {
+            newSet.delete(typingUser.first_name);
+          }
+          return newSet;
+        });
+      });
+
+      // Fetch initial messages
+      fetchMessages();
+
+      return () => {
+        if (socketRef.current?.connected) {
+          socketRef.current.disconnect();
+        }
+      };
+    });
   }, [roomId, accessToken]);
 
   const fetchMessages = async () => {
@@ -151,31 +237,50 @@ const MessagesScreen = () => {
     }
   };
 
-  const sendMessage = async (mediaUrl = null) => {
-    if (!newMessage.trim() && !mediaUrl) return;
-    if (!socketRef.current?.connected) {
-      setError('Not connected to chat server. Please try again.');
-      return;
-    }
-
+  const sendMessage = async (content = null) => {
     try {
+      const messageText = content || newMessage.trim();
+      
+      // Check if there's any content to send (text or media)
+      if (!messageText && (!mediaUrls || mediaUrls.length === 0)) {
+        console.log('Nothing to send - no message text or media');
+        return;
+      }
+      
+      if (!socketRef.current?.connected) {
+        setError('Not connected to chat server. Please try again.');
+        return;
+      }
+
+      // Make sure roomId is a string for socket.io
+      const roomIdStr = roomId.toString();
+      console.log(`Sending message to room ${roomIdStr}: ${messageText?.substring(0, 20)}..., Media: ${mediaUrls?.length || 0} files`);
+      
       const messageData = {
-        roomId,
-        message: newMessage.trim(),
-        mediaUrls: mediaUrl ? [mediaUrl] : []
+        roomId: roomIdStr,
+        message: messageText,
+        mediaUrls: mediaUrls || []
       };
 
       // Send message with acknowledgment
       socketRef.current.emit('send_message', messageData, (response) => {
         if (!response.success) {
+          console.error('Failed to send message:', response.error);
           setError('Failed to send message: ' + response.error);
+          Alert.alert('Error', response.error);
+        } else {
+          console.log('Message sent successfully');
+          
+          // Clear message input and media URLs after sending
+          setNewMessage('');
+          setMediaUrls([]);
         }
       });
-      
-      setNewMessage('');
     } catch (error) {
-      setError('Error sending message: ' + (error instanceof Error ? error.message : 'Unknown error'));
-      console.error('Error sending message:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error sending message:', errorMessage);
+      setError('Error sending message: ' + errorMessage);
+      Alert.alert('Error', 'Failed to send message. Please try again.');
     }
   };
 
@@ -208,6 +313,9 @@ const MessagesScreen = () => {
       } as any);
       formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
 
+      // Show loading state
+      setLoading(true);
+
       const response = await fetch(CLOUDINARY_UPLOAD_URL, {
         method: 'POST',
         body: formData,
@@ -222,11 +330,20 @@ const MessagesScreen = () => {
         throw new Error('Failed to upload image');
       }
 
-      await sendMessage(data.secure_url);
+      // Add the uploaded image URL to the media URLs array
+      const newImageUrl = data.secure_url;
+      setMediaUrls([newImageUrl]);
+      
+      // Clear loading state
+      setLoading(false);
+      
+      // Show the image preview, but don't send automatically
+      console.log('Image uploaded successfully:', newImageUrl);
     } catch (error) {
       setError('Error uploading image');
       console.error('Error uploading image:', error);
       Alert.alert('Error', 'Failed to upload image. Please try again later.');
+      setLoading(false);
     }
   };
 
@@ -263,14 +380,17 @@ const MessagesScreen = () => {
           styles.messageContent,
           isOwnMessage ? styles.ownMessageContent : styles.otherMessageContent
         ]}>
-          {item.mediaUrls?.map((url, index) => (
-            <Image
-              key={index}
-              source={{ uri: url }}
-              style={styles.messageImage}
-              resizeMode="cover"
-            />
-          ))}
+          {/* Display media if available */}
+          {Array.isArray(item.mediaUrls) && item.mediaUrls.length > 0 && 
+            item.mediaUrls.map((url, index) => (
+              <Image
+                key={index}
+                source={{ uri: url }}
+                style={styles.messageImage}
+                resizeMode="cover"
+              />
+            ))
+          }
           {item.content && (
             <Text style={[
               styles.messageText,
@@ -297,6 +417,17 @@ const MessagesScreen = () => {
 
   return (
     <View style={styles.container}>
+      {/* Header with back button */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={handleBackPress}
+        >
+          <Ionicons name="arrow-back" size={24} color="#64FFDA" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Chat</Text>
+      </View>
+
       <FlatList
         ref={flatListRef}
         data={messages}
@@ -310,6 +441,22 @@ const MessagesScreen = () => {
         <Text style={styles.typingIndicator}>
           {Array.from(typingUsers).join(', ')} {typingUsers.size === 1 ? 'is' : 'are'} typing...
         </Text>
+      )}
+
+      {mediaUrls.length > 0 && (
+        <View style={styles.mediaPreviewContainer}>
+          {mediaUrls.map((url, index) => (
+            <View key={index} style={styles.mediaPreview}>
+              <Image source={{ uri: url }} style={styles.mediaPreviewImage} />
+              <TouchableOpacity 
+                style={styles.removeMediaButton}
+                onPress={() => setMediaUrls(prev => prev.filter((_, i) => i !== index))}
+              >
+                <Ionicons name="close-circle" size={20} color="#FF6B6B" />
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
       )}
 
       <View style={styles.inputContainer}>
@@ -329,12 +476,12 @@ const MessagesScreen = () => {
         <TouchableOpacity 
           onPress={() => sendMessage()}
           style={styles.sendButton}
-          disabled={!newMessage.trim()}
+          disabled={!newMessage.trim() && mediaUrls.length === 0}
         >
           <Ionicons 
             name="send" 
             size={24} 
-            color={newMessage.trim() ? "#64FFDA" : "#8892B0"} 
+            color={(newMessage.trim() || mediaUrls.length > 0) ? "#64FFDA" : "#8892B0"} 
           />
         </TouchableOpacity>
       </View>
@@ -440,6 +587,46 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
     margin: 20,
+  },
+  mediaPreviewContainer: {
+    flexDirection: 'row',
+    padding: 8,
+    backgroundColor: '#112240',
+  },
+  mediaPreview: {
+    position: 'relative',
+    marginRight: 8,
+  },
+  mediaPreviewImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+  },
+  removeMediaButton: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#0A192F',
+    borderRadius: 10,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#112240',
+    borderBottomWidth: 1,
+    borderBottomColor: '#1D2D50',
+  },
+  backButton: {
+    padding: 8,
+    marginRight: 8,
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#CCD6F6',
+    marginLeft: 8,
   },
 });
 

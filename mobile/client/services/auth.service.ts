@@ -3,9 +3,9 @@ import axios from 'axios';
 import { EXPO_PUBLIC_API_URL } from '../config';
 
 const AUTH_KEYS = {
-  TOKEN: 'accessToken',
+  TOKEN: 'userToken',
   REFRESH_TOKEN: 'refreshToken',
-  USER_DATA: 'user'
+  USER_DATA: 'userData'
 };
 
 interface AuthTokens {
