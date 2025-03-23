@@ -1,4 +1,4 @@
-const { MarketplaceItem, User, Chat, Review, MarketplaceCategorie, Media ,MarketplaceItemCategorie} = require('../models');
+const { MarketplaceItem, User, Review, MarketplaceCategorie, Media ,MarketplaceItemCategorie} = require('../models');
 const { connection } = require('../models'); 
 const { Op, Sequelize } = require('sequelize');
 
@@ -250,68 +250,6 @@ module.exports.getSellerProfile = async (req, res) => {
   }
 };
 
-// Send chat message using auth header
-module.exports.sendChatMessage = async (req, res) => {
-  try {
-    const { itemId, message } = req.body;
-    const senderId = req.user.id; // Get from auth middleware
-
-    const item = await MarketplaceItem.findByPk(itemId);
-    if (!item) {
-      return res.status(404).json({ error: 'Item not found' });
-    }
-
-    const recipientId = item.sellerId === senderId ? item.buyerId : item.sellerId;
-
-    const chat = await Chat.create({
-      message,
-      senderId,
-      recipientId,
-      itemId
-    });
-
-    res.status(201).json(chat);
-  } catch (error) {
-    console.error('Error sending chat message:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-};
-
-// Get chat history using auth header
-module.exports.getChatHistory = async (req, res) => {
-  try {
-    const { itemId } = req.params;
-    const userId = req.user.id; // Get from auth middleware
-
-    const chats = await Chat.findAll({
-      where: {
-        itemId,
-        [Op.or]: [
-          { senderId: userId },
-          { recipientId: userId }
-        ]
-      },
-      include: [
-        {
-          model: User,
-          as: 'sender',
-          attributes: ['id', 'first_name', 'last_name', 'profile_image']
-        },
-        {
-          model: User,
-          as: 'recipient',
-          attributes: ['id', 'first_name', 'last_name', 'profile_image']
-        }
-      ],
-      order: [['createdAt', 'ASC']]
-    });
-
-    res.status(200).json(chats);
-  } catch (error) {
-    console.error('Error fetching chat history:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-};
 
 // Search for an item by name
 module.exports.searchItemByName = async (req, res) => {
