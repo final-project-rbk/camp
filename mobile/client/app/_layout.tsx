@@ -7,6 +7,7 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { AuthProvider } from '../context/AuthContext';
 import { ThemeProvider } from '../context/ThemeContext';
 import { darkTheme, lightTheme } from '../constants/theme';
+import LocationPermissionCheck from '../components/LocationPermissionCheck';
 
 // Customize navigation themes
 const customDarkTheme = {
@@ -33,51 +34,60 @@ export default function RootLayout() {
       <AuthProvider>
         <NavigationThemeProvider value={colorScheme === 'dark' ? customDarkTheme : customLightTheme}>
           <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              gestureEnabled: false,
-              animation: 'fade',
-              contentStyle: {
-                backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background,
-              },
-            }}
-          >
-            <Stack.Screen 
-              name="onbording" 
-              options={{ 
+          <LocationPermissionCheck>
+            <Stack
+              screenOptions={{
                 headerShown: false,
                 gestureEnabled: false,
-              }} 
-            />
-            <Stack.Screen 
-              name="auth" 
-              options={{ 
-                headerShown: false,
-                gestureEnabled: false,
-              }} 
-            />
-            <Stack.Screen 
-              name="(tabs)" 
-              options={{ 
-                headerShown: false,
-                gestureEnabled: false,
-              }} 
-            />
-            <Stack.Screen 
-              name="[hints]" 
-              options={{ 
-                headerShown: false,
-                gestureEnabled: false,
-              }} 
-            />
-            <Stack.Screen 
-              name="+not-found" 
-              options={{ 
-                headerShown: false 
-              }} 
-            />
-          </Stack>
+                animation: 'fade',
+                contentStyle: {
+                  backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background,
+                },
+              }}
+            >
+              <Stack.Screen 
+                name="onbording" 
+                options={{ 
+                  headerShown: false,
+                  gestureEnabled: false,
+                }} 
+              />
+              <Stack.Screen 
+                name="auth" 
+                options={{ 
+                  headerShown: false,
+                  gestureEnabled: false,
+                }} 
+              />
+              <Stack.Screen 
+                name="(tabs)" 
+                options={{ 
+                  headerShown: false,
+                  gestureEnabled: false,
+                }} 
+              />
+              <Stack.Screen 
+                name="[hints]" 
+                options={{ 
+                  headerShown: false,
+                  gestureEnabled: false,
+                }} 
+              />
+              <Stack.Screen 
+                name="hints-screen" 
+                options={{ 
+                  headerShown: false,
+                  gestureEnabled: false,
+                }} 
+              />
+              <Stack.Screen 
+                name="+not-found" 
+                options={{ 
+                  headerShown: false 
+                }} 
+              />
+            </Stack>
+          </LocationPermissionCheck>
         </NavigationThemeProvider>
       </AuthProvider>
     </ThemeProvider>

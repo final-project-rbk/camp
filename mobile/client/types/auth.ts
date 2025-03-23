@@ -5,6 +5,7 @@ export interface User {
   last_name: string;
   profile_image?: string;
   role?: string;
+  locationPermission?: boolean;
 }
 
 export interface AuthState {

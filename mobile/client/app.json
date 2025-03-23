@@ -9,13 +9,32 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.campy.mobile",
+      "config": {
+        "googleMapsApiKey": "AIzaSyB5gnUWjb84t6klt5vcPjMOQylhQRFB5Wc"
+      },
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Campy needs your location to show you nearby camping sites and calculate distances.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Campy needs your location to show you nearby camping sites and calculate distances.",
+        "UIBackgroundModes": ["location"]
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      }
+        "backgroundColor": "#0A192F"
+      },
+      "package": "com.campy.mobile",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyB5gnUWjb84t6klt5vcPjMOQylhQRFB5Wc"
+        }
+      },
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "bundler": "metro",

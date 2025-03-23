@@ -190,6 +190,8 @@ const placeController = {
         name: place.name,
         description: place.description,
         location: place.location,
+        latitude: place.latitude,
+        longitude: place.longitude,
         images: images,
         rating: Number(
           (place.Reviews?.reduce((acc, rev) => acc + (rev.rating || 0), 0) / 
@@ -323,11 +325,11 @@ const placeController = {
   // Get a user's rating for a specific place
   getUserPlaceRating: async (req, res) => {
     try {
-      const { placeId, userId } = req.params;
+      const { id, userId } = req.params;
       
       const review = await Review.findOne({
         where: {
-          placeId,
+          placeId: id,
           userId
         },
         attributes: ['id', 'rating', 'comment', 'created_at']

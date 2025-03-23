@@ -73,6 +73,12 @@ export default function Sidebar({ isVisible, onClose }: SidebarProps) {
       description: 'Share your experiences'
     },
     { 
+      icon: 'partly-sunny-outline', 
+      label: 'Weather', 
+      route: '/weather',
+      description: 'Check forecasts for camping'
+    },
+    { 
       icon: 'bulb-outline', 
       label: 'Hints', 
       route: '/[hints]',
