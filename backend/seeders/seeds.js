@@ -1150,20 +1150,8 @@ module.exports = {
         }
       ]);
 
-      // Chats
-      console.log('Seeding chats...');
-      await queryInterface.bulkInsert('chats', [
-        {
-          message: 'Hello, I have a question about the beach.',
-          createdAt: now,
-          updatedAt: now
-        },
-        {
-          message: 'Sure, I can help you with that!',
-          createdAt: now,
-          updatedAt: now
-        }
-      ]);
+      
+      
 
       // Criteria
       console.log('Seeding critiria...');
@@ -1414,13 +1402,14 @@ module.exports = {
         'event_ratings',
         'favorites',
         'critiria',
-        'chats',
         'media',
         'reviews',
         'placeUsers',
         'placeCategories',
         'marketplace_item_categories',
+        'chats',
         'marketplace_items',
+        'marketplace_categorie',
         'comments',
         'blogs',
         'events',

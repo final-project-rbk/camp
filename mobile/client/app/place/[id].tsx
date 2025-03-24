@@ -398,14 +398,10 @@ export default function PlaceDetailsScreen() {
   }, []);
 
   const openDirections = () => {
-    console.log('openDirections called');
     if (!place || !place.latitude || !place.longitude) {
-      console.log('No valid coordinates for directions');
       Alert.alert('Error', 'Location coordinates not available for this place');
       return;
     }
-    
-    console.log('Using coordinates for directions:', place.latitude, place.longitude);
     
     // Format coordinates properly
     const lat = place.latitude;
@@ -416,20 +412,15 @@ export default function PlaceDetailsScreen() {
     if (Platform.OS === 'ios') {
       // Format for Apple Maps
       url = `http://maps.apple.com/?q=${place.name}&ll=${lat},${lng}`;
-      console.log('iOS directions URL:', url);
     } else {
       // Format for Google Maps on Android
       url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
-      console.log('Android directions URL:', url);
     }
-    
-    console.log('Opening URL for directions:', url);
     
     Linking.canOpenURL(url).then(supported => {
       if (supported) {
         Linking.openURL(url);
       } else {
-        console.log('Cannot open URL:', url);
         Alert.alert('Error', 'Could not open maps application');
       }
     }).catch(err => {
@@ -449,7 +440,6 @@ export default function PlaceDetailsScreen() {
     try {
       const response = await fetch(`${EXPO_PUBLIC_API_URL}criteria/debug`);
       const data = await response.json();
-      console.log('Criteria endpoint test:', data);
     } catch (error) {
       console.error('Error testing criteria endpoint:', error);
     }
@@ -465,8 +455,6 @@ export default function PlaceDetailsScreen() {
     // Only attempt to save to backend if user is logged in
     if (user && accessToken && place) {
       try {
-        console.log('Sending rating to backend:', { critiriaId: criteriaId, value });
-        
         const response = await fetch(`${EXPO_PUBLIC_API_URL}criteria/rate`, {
           method: 'POST',
           headers: {
@@ -480,11 +468,7 @@ export default function PlaceDetailsScreen() {
           })
         });
         
-        // Log the raw response for debugging
-        console.log('Rating response status:', response.status);
-        
         const data = await response.json();
-        console.log('Rating response data:', data);
         
         if (!data.success) {
           console.error('Error saving rating:', data.error, data.details);
@@ -552,8 +536,6 @@ export default function PlaceDetailsScreen() {
     // Only submit if user is logged in
     if (user && accessToken && place) {
       try {
-        console.log('Submitting star rating:', rating);
-        
         const response = await fetch(`${EXPO_PUBLIC_API_URL}places/rate`, {
           method: 'POST',
           headers: {
@@ -567,10 +549,7 @@ export default function PlaceDetailsScreen() {
           })
         });
         
-        console.log('Rating response status:', response.status);
-        
         const data = await response.json();
-        console.log('Star rating response:', data);
         
         if (!data.success) {
           console.error('Error saving star rating:', data.error);
@@ -653,19 +632,7 @@ export default function PlaceDetailsScreen() {
 
   // Render the map section
   const renderMapSection = () => {
-    console.log('Rendering map section');
-    console.log('Place data for map:', place ? {
-      id: place.id,
-      name: place.name,
-      hasLatitude: !!place.latitude,
-      hasLongitude: !!place.longitude,
-      latitude: place.latitude,
-      longitude: place.longitude,
-      platform: Platform.OS
-    } : 'No place data');
-
     if (!place || !place.latitude || !place.longitude) {
-      console.log('Missing place coordinates, showing unavailable message');
       return (
         <View style={styles.mapUnavailable}>
           <Ionicons name="map-outline" size={48} color="#8892B0" />
@@ -675,8 +642,6 @@ export default function PlaceDetailsScreen() {
     }
 
     try {
-      console.log('Attempting to render map with coordinates:', place.latitude, place.longitude);
-      
       // Create map region
       const region = {
         latitude: place.latitude,
@@ -684,7 +649,6 @@ export default function PlaceDetailsScreen() {
         latitudeDelta: 0.0922,
         longitudeDelta: 0.0421,
       };
-      console.log('Map region:', region);
 
       // Try standard map first
       return (
@@ -713,7 +677,6 @@ export default function PlaceDetailsScreen() {
             <TouchableOpacity
               style={styles.directionsButton}
               onPress={() => {
-                console.log('Direction button pressed');
                 openDirections();
               }}
             >
@@ -748,21 +711,17 @@ export default function PlaceDetailsScreen() {
 
   // Render a static map image fallback
   const renderStaticMap = () => {
-    console.log('Rendering static map fallback');
     if (!place || !place.latitude || !place.longitude) return null;
     
     // Static map URL using Google Maps Static API
     const apiKey = 'AIzaSyB5gnUWjb84t6klt5vcPjMOQylhQRFB5Wc'; // Using the key from app.json
     const mapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${place.latitude},${place.longitude}&zoom=15&size=600x300&maptype=roadmap&markers=color:red%7C${place.latitude},${place.longitude}&key=${apiKey}`;
     
-    console.log('Static map URL generated');
-    
     return (
       <View style={styles.staticMapContainer}>
         <Image 
           source={{ uri: mapUrl }}
           style={styles.staticMap}
-          onLoad={() => console.log('Static map image loaded successfully')}
           onError={(e) => console.error('Static map image failed to load:', e.nativeEvent.error)}
         />
       </View>

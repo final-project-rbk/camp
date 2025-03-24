@@ -81,7 +81,7 @@ const { width, height } = Dimensions.get('window');
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, accessToken } = useAuth();
+  const { user, accessToken, checkAuth } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [editField, setEditField] = useState<string | null>(null);

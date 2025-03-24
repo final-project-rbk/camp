@@ -23,8 +23,8 @@
     "@shopify/flash-list": "1.7.3",
     "axios": "^1.8.1",
     "cocoapods": "^0.0.0",
-    "d3-shape": "^3.2.0",
     "date-fns": "^4.1.0",
+    "d3-shape": "^3.2.0",
     "expo": "52.0.38",
     "expo-av": "~15.0.2",
     "expo-blur": "~14.0.3",
@@ -32,6 +32,7 @@
     "expo-constants": "17.0.8",
     "expo-font": "~13.0.4",
     "expo-haptics": "~14.0.1",
+    "expo-image": "~2.0.6",
     "expo-image-manipulator": "^13.0.6",
     "expo-image-picker": "~16.0.6",
     "expo-linear-gradient": "~14.0.2",
@@ -62,7 +63,8 @@
     "react-native-svg": "^15.11.2",
     "react-native-vector-icons": "^10.2.0",
     "react-native-web": "~0.19.13",
-    "react-native-webview": "13.12.5"
+    "react-native-webview": "13.12.5",
+    "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

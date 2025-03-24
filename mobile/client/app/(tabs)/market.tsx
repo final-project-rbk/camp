@@ -4,6 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
 import { EXPO_PUBLIC_API_URL } from '../../config';
+
+import { useAuth as auth } from '../../context/AuthContext'
 import { useAuth } from '../../hooks/useAuth';
 import { TAB_BAR_HEIGHT } from '../../components/TabBar';
 
@@ -58,6 +60,7 @@ export default function Market() {
   const [searchFilters, setSearchFilters] = useState<SearchFilters>({});
   const router = useRouter();
   const { isAuthenticated, user } = useAuth();
+   const { accessToken } = auth();
 
   const fetchCategories = async () => {
     try {
@@ -78,7 +81,7 @@ export default function Market() {
       ];
       setCategories(allCategories);
     } catch (error) {
-      console.error('Error fetching categories:', error);
+      // Error handling for category fetching
     }
   };
 
@@ -96,7 +99,7 @@ export default function Market() {
       }));
       setItems(Array.isArray(itemsWithMedia) ? itemsWithMedia : []);
     } catch (error) {
-      console.error('Error fetching marketplace items:', error);
+      // Error handling for marketplace items fetching
       setError('Failed to load items. Please try again.');
     } finally {
       setLoading(false);
@@ -132,10 +135,10 @@ export default function Market() {
         // Handle "No items found" as a success case
         setItems([]);
       } else if (axios.isAxiosError(error)) {
-        console.error('Error searching items:', error.response?.data || error.message);
+        // Error handling for axios errors
         setError(error.response?.data?.details || 'Failed to search items. Please try again.');
       } else {
-        console.error('Error searching items:', error);
+        // Error handling for other errors
         setError('Failed to search items. Please try again.');
       }
     } finally {
@@ -171,12 +174,71 @@ export default function Market() {
     fetchItems(selectedCategory).finally(() => setRefreshing(false));
   }, [selectedCategory]);
 
-  const handleChatPress = (sellerId: number) => {
+  const handleChatPress = async (sellerId: number) => {
     if (!isAuthenticated) {
       Alert.alert('Error', 'Please login to chat with sellers');
       return;
     }
-    router.push(`/chat/${sellerId}` as any);
+
+    if (sellerId === user?.id) {
+      Alert.alert('Error', 'You cannot chat with yourself');
+      return;
+    }
+
+    try {
+      // Show loading indicator
+      setLoading(true);
+
+      // Create or get chat room
+      const response = await axios.post(
+        `${EXPO_PUBLIC_API_URL}chat/rooms/get-or-create`,
+        { userId: sellerId },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      const roomData = response.data;
+      const roomId = roomData.id;
+      const isNewRoom = roomData.isNew;
+
+      if (!roomId) {
+        throw new Error('Failed to get a valid room ID');
+      }
+
+      // Navigate to chat room
+      router.push({
+        pathname: "/chat/[roomId]",
+        params: {
+          roomId: roomId.toString(),
+          isNewRoom: isNewRoom ? '1' : '0'
+        }
+      });
+
+    } catch (error) {
+      // Error handling for chat
+      let errorMessage = 'Could not start chat. Please try again later.';
+      
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 401) {
+          errorMessage = 'Your session has expired. Please login again.';
+        } else if (error.response?.data?.error) {
+          errorMessage = error.response.data.error;
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+      }
+      
+      Alert.alert(
+        'Chat Error',
+        errorMessage
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleNewItemPress = () => {
@@ -184,7 +246,15 @@ export default function Market() {
       Alert.alert('Error', 'Please login to create listings');
       return;
     }
-    router.push('/market/new' as any);
+    router.push('/market/new');
+  };
+
+  const handleMyChatsPress = () => {
+    if (!isAuthenticated) {
+      Alert.alert('Error', 'Please login to view your chats');
+      return;
+    }
+    router.push('/chat/room');
   };
 
   if (loading) {
@@ -205,13 +275,22 @@ export default function Market() {
     >
       <View style={styles.header}>
         <Text style={styles.title}>Marketplace</Text>
-        <TouchableOpacity 
-          style={styles.addButton}
-          onPress={handleNewItemPress}
-        >
-          <Ionicons name="add-circle-outline" size={24} color="#64FFDA" />
-          <Text style={styles.addButtonText}>Sell Item</Text>
-        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity 
+            style={styles.headerButton}
+            onPress={handleMyChatsPress}
+          >
+            <Ionicons name="chatbubbles-outline" size={24} color="#64FFDA" />
+            <Text style={styles.headerButtonText}>My Chats</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.headerButton}
+            onPress={handleNewItemPress}
+          >
+            <Ionicons name="add-circle-outline" size={24} color="#64FFDA" />
+            <Text style={styles.headerButtonText}>Sell Item</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.searchContainer}>
@@ -306,7 +385,7 @@ export default function Market() {
             <TouchableOpacity
               key={item.id}
               style={styles.itemCard}
-              onPress={() => router.push(`/market/${item.id}` as any)}
+              onPress={() => router.push(`/market/${item.id}`)}
             >
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 {(item.media || []).map((mediaItem) => (
@@ -374,6 +453,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  headerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerButtonText: {
+    marginLeft: 8,
+    color: '#64FFDA',
   },
   title: {
     fontSize: 24,

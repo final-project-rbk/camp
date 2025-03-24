@@ -62,9 +62,6 @@ const LocationPermissionCheck: React.FC<LocationPermissionCheckProps> = ({ child
       
       // Also get the current location when permission is granted
       const location = await LocationService.getCurrentLocation();
-      if (location) {
-        console.log('Location obtained:', location);
-      }
       
       setShowModal(false);
       setHasPermission(true);

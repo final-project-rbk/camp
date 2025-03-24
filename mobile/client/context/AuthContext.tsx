@@ -24,7 +24,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const bootstrapAsync = async () => {
       try {
         const userToken = await AsyncStorage.getItem('userToken');
-        console.log('Initial token check:', userToken ? 'Token exists' : 'No token');
         
         if (userToken) {
           try {
@@ -34,7 +33,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             
             // Check if token is expired
             if (decoded.exp && decoded.exp < currentTime) {
-              console.log('Token expired, logging out');
               await AsyncStorage.removeItem('userToken');
               setState({ isLoading: false, accessToken: null, user: null });
               return;
