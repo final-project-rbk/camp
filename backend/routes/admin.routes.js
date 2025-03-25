@@ -16,4 +16,7 @@ router.put('/users/:userId/ban', adminController.toggleUserBan);
 router.get('/advisor-applications', adminController.getAdvisorApplications);
 router.put('/advisor-applications/:formularId', adminController.handleAdvisorApplication);
 
+// Add this line to your existing routes
+router.get('/advisor/:advisorId', authMiddleware, adminController.getAdvisorDetails);
+
 module.exports = router; 

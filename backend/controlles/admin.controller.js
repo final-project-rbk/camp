@@ -1,4 +1,4 @@
-const { User, FormularAdvisor, AdvisorMedia, Advisor } = require('../models');
+const { User, FormularAdvisor, AdvisorMedia, Advisor, Review } = require('../models');
 const db = require('../models');
 
 const   adminController = {
@@ -123,6 +123,71 @@ const   adminController = {
             res.status(500).json({
                 success: false,
                 error: 'Error fetching applications'
+            });
+        }
+    },
+
+    // Add this new method to get advisor details with ratings
+    getAdvisorDetails: async (req, res) => {
+        try {
+            // Check if the requesting user is an admin or an advisor
+            if (req.user.role !== 'admin' && req.user.role !== 'advisor') {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Access denied. Admin or advisor privileges required.'
+                });
+            }
+
+            const { advisorId } = req.params;
+            
+            // Find advisor with reviews
+            const advisor = await Advisor.findOne({
+                where: { 
+                    [req.user.role === 'advisor' ? 'userId' : 'id']: advisorId 
+                },
+                include: [
+                    {
+                        model: User,
+                        attributes: ['id', 'first_name', 'last_name', 'email', 'bio', 'profile_image', 'points']
+                    },
+                    {
+                        model: Review,
+                        attributes: ['rating', 'comment', 'created_at'],
+                        include: [{
+                            model: User,
+                            attributes: ['first_name', 'last_name']
+                        }]
+                    }
+                ]
+            });
+
+            if (!advisor) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Advisor not found'
+                });
+            }
+
+            // Calculate average rating
+            let averageRating = 0;
+            if (advisor.Reviews && advisor.Reviews.length > 0) {
+                const totalRating = advisor.Reviews.reduce((sum, review) => sum + review.rating, 0);
+                averageRating = totalRating / advisor.Reviews.length;
+            }
+
+            res.status(200).json({
+                success: true,
+                data: {
+                    ...advisor.toJSON(),
+                    averageRating,
+                    reviewCount: advisor.Reviews?.length || 0
+                }
+            });
+        } catch (error) {
+            console.error('Error fetching advisor details:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Error fetching advisor details'
             });
         }
     },

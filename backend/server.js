@@ -2,6 +2,7 @@ require('dotenv').config();
 
 const express = require('express');
 const advisorRoutes = require('./routes/advisor.routes');
+const advisorDashboardRoutes = require('./routes/advisor.dashbored.routes');
 const cors = require('cors');
 const db = require("./models/index");
 const blogRoutes = require('./routes/blogs.routes');
@@ -31,6 +32,8 @@ app.use(express.urlencoded({extended: true}))
 
 // Connect all our routes to our application
 app.use('/api/advisor', advisorRoutes);
+// Add advisor dashboard routes
+app.use('/api/advisor/dashboard', advisorDashboardRoutes);
 
 app.use('/api/marketplace', marcketPlaceRoutes);
 
