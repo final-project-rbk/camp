@@ -7,6 +7,7 @@ import { jwtDecode } from 'jwt-decode';
 interface AuthContextType extends AuthState {
   signIn: (token: string, user: User) => Promise<void>;
   signOut: () => Promise<void>;
+  checkAuth: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,7 +24,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const bootstrapAsync = async () => {
       try {
         const userToken = await AsyncStorage.getItem('userToken');
-        console.log('Initial token check:', userToken ? 'Token exists' : 'No token');
         
         if (userToken) {
           try {
@@ -33,7 +33,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             
             // Check if token is expired
             if (decoded.exp && decoded.exp < currentTime) {
-              console.log('Token expired, logging out');
               await AsyncStorage.removeItem('userToken');
               setState({ isLoading: false, accessToken: null, user: null });
               return;
@@ -134,12 +133,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const checkAuth = async () => {
+    try {
+      setState(prev => ({ ...prev, isLoading: true }));
+      
+      // Initialize auth service and get stored data
+      await AuthService.initialize();
+      const token = await AuthService.getToken();
+      const user = await AuthService.getUser();
+
+      if (token && user) {
+        setState({
+          accessToken: token,
+          user,
+          isLoading: false,
+        });
+      } else {
+        setState({
+          accessToken: null,
+          user: null,
+          isLoading: false,
+        });
+      }
+    } catch (error) {
+      console.error('Error checking auth state:', error);
+      setState({
+        accessToken: null,
+        user: null,
+        isLoading: false,
+      });
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
         ...state,
         signIn,
         signOut,
+        checkAuth
       }}
     >
       {children}

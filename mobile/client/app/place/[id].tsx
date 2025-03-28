@@ -15,7 +15,8 @@ import {
   StatusBar,
   SafeAreaView,
   PanResponder,
-  Alert
+  Alert,
+  Linking
 } from 'react-native';
 import { useLocalSearchParams, Stack, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,6 +24,8 @@ import { EXPO_PUBLIC_API_URL } from '../../config';
 import FavoriteButton from '../../components/FavoriteButton';
 import { useAuth } from '../../context/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import LocationService from '../../services/location.service';
 
 const { width, height } = Dimensions.get('window');
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
@@ -99,6 +102,8 @@ interface PlaceDetails {
   name: string;
   description: string;
   location: string;
+  latitude: number | null;
+  longitude: number | null;
   images: string[];
   rating: number;
   categories: {
@@ -241,6 +246,8 @@ export default function PlaceDetailsScreen() {
   const [loadingWeather, setLoadingWeather] = useState(false);
   const [userRating, setUserRating] = useState(0);
   const [userReview, setUserReview] = useState('');
+  const [userLocation, setUserLocation] = useState<{latitude: number, longitude: number} | null>(null);
+  const [distance, setDistance] = useState<number | null>(null);
   
   const scrollX = useRef(new Animated.Value(0)).current;
 
@@ -282,11 +289,25 @@ export default function PlaceDetailsScreen() {
       if (data.success) {
         setPlace(data.data);
         
+        // Debug location information
+        console.log('Place Data:', {
+          id: data.data.id,
+          name: data.data.name,
+          hasLocation: !!data.data.location,
+          hasLatitude: !!data.data.latitude,
+          hasLongitude: !!data.data.longitude,
+          latitude: data.data.latitude,
+          longitude: data.data.longitude
+        });
+        
         checkIfFavorite(data.data.id);
         
         if (data.data.location) {
           fetchWeather(data.data.location);
         }
+
+        // Get user's current location for distance calculation
+        await getUserLocation();
       } else {
         console.error('Failed to fetch place details:', data.error);
       }
@@ -330,6 +351,84 @@ export default function PlaceDetailsScreen() {
     }
   };
 
+  // Get user's current location
+  const getUserLocation = async () => {
+    try {
+      const location = await LocationService.getCurrentLocation();
+      
+      if (location) {
+        setUserLocation(location);
+      }
+    } catch (error) {
+      console.error('Error getting user location:', error);
+    }
+  };
+
+  // Calculate distance between user and place
+  useEffect(() => {
+    if (userLocation && place && place.latitude && place.longitude) {
+      const calculatedDistance = LocationService.calculateDistance(
+        userLocation.latitude,
+        userLocation.longitude,
+        place.latitude,
+        place.longitude
+      );
+      
+      setDistance(calculatedDistance);
+    }
+  }, [userLocation, place]);
+
+  // Attempt to get user location as soon as the component mounts
+  useEffect(() => {
+    const getLocation = async () => {
+      try {
+        const permission = await LocationService.checkLocationPermission();
+        if (permission) {
+          const location = await LocationService.getCurrentLocation();
+          if (location) {
+            setUserLocation(location);
+          }
+        }
+      } catch (error) {
+        console.error('Error getting location in place details:', error);
+      }
+    };
+
+    getLocation();
+  }, []);
+
+  const openDirections = () => {
+    if (!place || !place.latitude || !place.longitude) {
+      Alert.alert('Error', 'Location coordinates not available for this place');
+      return;
+    }
+    
+    // Format coordinates properly
+    const lat = place.latitude;
+    const lng = place.longitude;
+    
+    // URL format differs by platform
+    let url;
+    if (Platform.OS === 'ios') {
+      // Format for Apple Maps
+      url = `http://maps.apple.com/?q=${place.name}&ll=${lat},${lng}`;
+    } else {
+      // Format for Google Maps on Android
+      url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+    }
+    
+    Linking.canOpenURL(url).then(supported => {
+      if (supported) {
+        Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'Could not open maps application');
+      }
+    }).catch(err => {
+      console.error('Error opening directions:', err);
+      Alert.alert('Error', 'Could not open maps application');
+    });
+  };
+
   useEffect(() => {
     if (id) {
       fetchPlaceDetails();
@@ -341,7 +440,6 @@ export default function PlaceDetailsScreen() {
     try {
       const response = await fetch(`${EXPO_PUBLIC_API_URL}criteria/debug`);
       const data = await response.json();
-      console.log('Criteria endpoint test:', data);
     } catch (error) {
       console.error('Error testing criteria endpoint:', error);
     }
@@ -357,8 +455,6 @@ export default function PlaceDetailsScreen() {
     // Only attempt to save to backend if user is logged in
     if (user && accessToken && place) {
       try {
-        console.log('Sending rating to backend:', { criteriaId, value });
-        
         const response = await fetch(`${EXPO_PUBLIC_API_URL}criteria/rate`, {
           method: 'POST',
           headers: {
@@ -368,15 +464,11 @@ export default function PlaceDetailsScreen() {
           body: JSON.stringify({
             userId: user.id,
             placeId: place.id,
-            ratings: [{ criteriaId, value }]
+            ratings: [{ critiriaId: criteriaId, value }]
           })
         });
         
-        // Log the raw response for debugging
-        console.log('Rating response status:', response.status);
-        
         const data = await response.json();
-        console.log('Rating response data:', data);
         
         if (!data.success) {
           console.error('Error saving rating:', data.error, data.details);
@@ -444,8 +536,6 @@ export default function PlaceDetailsScreen() {
     // Only submit if user is logged in
     if (user && accessToken && place) {
       try {
-        console.log('Submitting star rating:', rating);
-        
         const response = await fetch(`${EXPO_PUBLIC_API_URL}places/rate`, {
           method: 'POST',
           headers: {
@@ -459,10 +549,7 @@ export default function PlaceDetailsScreen() {
           })
         });
         
-        console.log('Rating response status:', response.status);
-        
         const data = await response.json();
-        console.log('Star rating response:', data);
         
         if (!data.success) {
           console.error('Error saving star rating:', data.error);
@@ -540,6 +627,104 @@ export default function PlaceDetailsScreen() {
         
         {place?.critiria && place.critiria.length > 0 && renderCriteria()}
       </>
+    );
+  };
+
+  // Render the map section
+  const renderMapSection = () => {
+    if (!place || !place.latitude || !place.longitude) {
+      return (
+        <View style={styles.mapUnavailable}>
+          <Ionicons name="map-outline" size={48} color="#8892B0" />
+          <Text style={styles.mapUnavailableText}>Map unavailable for this location</Text>
+        </View>
+      );
+    }
+
+    try {
+      // Create map region
+      const region = {
+        latitude: place.latitude,
+        longitude: place.longitude,
+        latitudeDelta: 0.0922,
+        longitudeDelta: 0.0421,
+      };
+
+      // Try standard map first
+      return (
+        <View style={styles.mapContainer}>
+          {/* Static map */}
+          {renderStaticMap()}
+          
+          {/* Custom overlays */}
+          <View style={styles.mapButtons}>
+            {/* Distance Button */}
+            {distance !== null && (
+              <TouchableOpacity
+                style={styles.distanceButton}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="locate-outline" size={20} color="#FFFFFF" />
+                <Text style={styles.distanceButtonText}>
+                  {distance < 1 
+                    ? `${Math.round(distance * 1000)} m` 
+                    : `${distance.toFixed(1)} km`}
+                </Text>
+              </TouchableOpacity>
+            )}
+            
+            {/* Directions Button */}
+            <TouchableOpacity
+              style={styles.directionsButton}
+              onPress={() => {
+                openDirections();
+              }}
+            >
+              <Ionicons name="navigate-circle" size={20} color="#FFFFFF" />
+              <Text style={styles.directionsButtonText}>Get Directions</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      );
+    } catch (error) {
+      console.error('Error rendering map:', error);
+      return (
+        <View style={styles.mapUnavailable}>
+          <Ionicons name="map-outline" size={48} color="#8892B0" />
+          <Text style={styles.mapUnavailableText}>Map unavailable at this moment. Please try again later.</Text>
+          {distance !== null && (
+            <View style={styles.coordinatesContainer}>
+              <Text style={styles.coordinatesText}>
+                Location: {place.latitude.toFixed(4)}, {place.longitude.toFixed(4)}
+              </Text>
+              <Text style={styles.coordinatesText}>
+                Distance: {distance < 1 
+                  ? `${Math.round(distance * 1000)} meters away` 
+                  : `${distance.toFixed(1)} km away`}
+              </Text>
+            </View>
+          )}
+        </View>
+      );
+    }
+  };
+
+  // Render a static map image fallback
+  const renderStaticMap = () => {
+    if (!place || !place.latitude || !place.longitude) return null;
+    
+    // Static map URL using Google Maps Static API
+    const apiKey = 'AIzaSyB5gnUWjb84t6klt5vcPjMOQylhQRFB5Wc'; // Using the key from app.json
+    const mapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${place.latitude},${place.longitude}&zoom=15&size=600x300&maptype=roadmap&markers=color:red%7C${place.latitude},${place.longitude}&key=${apiKey}`;
+    
+    return (
+      <View style={styles.staticMapContainer}>
+        <Image 
+          source={{ uri: mapUrl }}
+          style={styles.staticMap}
+          onError={(e) => console.error('Static map image failed to load:', e.nativeEvent.error)}
+        />
+      </View>
     );
   };
 
@@ -728,12 +913,80 @@ export default function PlaceDetailsScreen() {
             </TouchableOpacity>
           </View>
           
+          <View style={styles.divider} />
+          
+          <Text style={styles.sectionTitle}>Location</Text>
+          {renderMapSection()}
+          
           {renderRatingsSection()}
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+const mapStyle = [
+  {
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#1d2c4d"
+      }
+    ]
+  },
+  {
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#8ec3b9"
+      }
+    ]
+  },
+  {
+    "elementType": "labels.text.stroke",
+    "stylers": [
+      {
+        "color": "#1a3646"
+      }
+    ]
+  },
+  {
+    "featureType": "administrative.country",
+    "elementType": "geometry.stroke",
+    "stylers": [
+      {
+        "color": "#4b6878"
+      }
+    ]
+  },
+  {
+    "featureType": "administrative.province",
+    "elementType": "geometry.stroke",
+    "stylers": [
+      {
+        "color": "#4b6878"
+      }
+    ]
+  },
+  {
+    "featureType": "water",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#0e1626"
+      }
+    ]
+  },
+  {
+    "featureType": "water",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#4e6d70"
+      }
+    ]
+  }
+];
 
 const styles = StyleSheet.create({
   container: {
@@ -770,6 +1023,13 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  loadingText: {
+    color: '#8892B0',
+    marginTop: 8,
+  },
+  scrollView: {
+    flex: 1,
   },
   errorContainer: {
     flex: 1,
@@ -1033,5 +1293,186 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 12,
     fontWeight: '500',
+  },
+  mapContainer: {
+    height: 250,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 24,
+    position: 'relative',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 255, 218, 0.2)',
+  },
+  map: {
+    width: '100%',
+    height: '100%',
+  },
+  mapLocationPin: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    marginTop: -16,
+    marginLeft: -16,
+    zIndex: 10,
+  },
+  mapOverlay: {
+    position: 'absolute',
+    bottom: 16,
+    right: 16,
+    left: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  distanceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(10, 25, 47, 0.8)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(100, 255, 218, 0.3)',
+  },
+  distanceText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  directionsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#64FFDA',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+    minWidth: 150,
+  },
+  directionsButtonText: {
+    color: '#0A192F',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  mapLocationOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    padding: 16,
+    backgroundColor: 'transparent',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+  },
+  mapLocationCard: {
+    backgroundColor: 'rgba(10, 25, 47, 0.8)',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(100, 255, 218, 0.3)',
+    width: '90%',
+    marginTop: 10,
+  },
+  mapLocationName: {
+    color: '#CCD6F6',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  mapLocationAddress: {
+    color: '#8892B0',
+    fontSize: 16,
+  },
+  mapCoordinates: {
+    color: '#64FFDA',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  coordinatesContainer: {
+    padding: 16,
+    backgroundColor: 'rgba(10, 25, 47, 0.5)',
+    borderRadius: 16,
+    marginTop: 16,
+  },
+  coordinatesText: {
+    color: '#8892B0',
+    fontSize: 16,
+  },
+  mapUnavailable: {
+    height: 200,
+    backgroundColor: 'rgba(10, 25, 47, 0.5)',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(100, 255, 218, 0.2)',
+    borderStyle: 'dashed',
+  },
+  mapUnavailableText: {
+    color: '#8892B0',
+    fontSize: 16,
+    marginTop: 8,
+  },
+  staticMapContainer: {
+    width: '100%',
+    height: 250,
+    position: 'relative',
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#1D2D50',
+  },
+  staticMap: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 16,
+  },
+  mapPin: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    marginTop: -16,
+    marginLeft: -16,
+    zIndex: 5,
+  },
+  mapButtons: {
+    position: 'absolute',
+    bottom: 16,
+    right: 16,
+    left: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  distanceButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#1D2D50',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#64FFDA',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+    minWidth: 130,
+  },
+  distanceButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 }); 

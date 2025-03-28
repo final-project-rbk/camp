@@ -1,13 +1,102 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from "react-native";
 import { LinearGradient } from 'expo-linear-gradient';
 import { Tent, Map, Compass, Sun, Moon, Droplets, Wind, ThermometerSun, Info, AlertTriangle, CheckCircle, MapPin, Users, Calendar, Flame, Shield, BookOpen, Menu, X, ChevronLeft, Share2, Heart, Download } from "lucide-react-native";
-import { useState } from "react";
-import EssentialsTab from '../../components/EssentialsTab';
-import SafetyTab from '../../components/SafetyTab';
-import WeatherTab from '../../components/WeatherTab';
-import TutorialGalleryModal from '../../components/TutorialGalleryModal';
-import React from "react";
+import React, { useState } from "react";
 import { useRouter } from "expo-router";
+
+// Placeholder components until we create the actual components
+const EssentialsTab = () => (
+  <View style={{padding: 16}}>
+    <Text style={{color: '#F3F4F6', fontSize: 16, marginBottom: 12}}>Essential camping gear:</Text>
+    <View style={{marginLeft: 16}}>
+      <Text style={{color: '#9CA3AF', marginBottom: 8}}>• Tent with rainfly</Text>
+      <Text style={{color: '#9CA3AF', marginBottom: 8}}>• Sleeping bag rated for the temperature</Text>
+      <Text style={{color: '#9CA3AF', marginBottom: 8}}>• Sleeping pad or air mattress</Text>
+      <Text style={{color: '#9CA3AF', marginBottom: 8}}>• Headlamp or flashlight</Text>
+      <Text style={{color: '#9CA3AF', marginBottom: 8}}>• Multi-tool or knife</Text>
+      <Text style={{color: '#9CA3AF', marginBottom: 8}}>• Water bottles and water treatment</Text>
+      <Text style={{color: '#9CA3AF', marginBottom: 8}}>• First aid kit</Text>
+      <Text style={{color: '#9CA3AF', marginBottom: 8}}>• Fire starting tools</Text>
+    </View>
+  </View>
+);
+
+const SafetyTab = () => (
+  <View style={{padding: 16}}>
+    <Text style={{color: '#F3F4F6', fontSize: 16, marginBottom: 12}}>Camping safety tips:</Text>
+    <View style={{marginLeft: 16}}>
+      <Text style={{color: '#9CA3AF', marginBottom: 8}}>• Always tell someone where you're going</Text>
+      <Text style={{color: '#9CA3AF', marginBottom: 8}}>• Check weather forecasts before departing</Text>
+      <Text style={{color: '#9CA3AF', marginBottom: 8}}>• Store food securely to avoid wildlife encounters</Text>
+      <Text style={{color: '#9CA3AF', marginBottom: 8}}>• Know how to identify poisonous plants</Text>
+      <Text style={{color: '#9CA3AF', marginBottom: 8}}>• Keep a safe distance from wildlife</Text>
+      <Text style={{color: '#9CA3AF', marginBottom: 8}}>• Have emergency contact information</Text>
+    </View>
+  </View>
+);
+
+const WeatherTab = () => (
+  <View style={{padding: 16}}>
+    <Text style={{color: '#F3F4F6', fontSize: 16, marginBottom: 12}}>Weather preparedness:</Text>
+    <View style={{marginLeft: 16}}>
+      <Text style={{color: '#9CA3AF', marginBottom: 8}}>• Always check forecasts before your trip</Text>
+      <Text style={{color: '#9CA3AF', marginBottom: 8}}>• Pack layers for unexpected temperature changes</Text>
+      <Text style={{color: '#9CA3AF', marginBottom: 8}}>• Know how to set up a rain-proof shelter</Text>
+      <Text style={{color: '#9CA3AF', marginBottom: 8}}>• Recognize signs of approaching storms</Text>
+      <Text style={{color: '#9CA3AF', marginBottom: 8}}>• Have a weather emergency plan</Text>
+    </View>
+  </View>
+);
+
+const TutorialGalleryModal = ({ isOpen, onClose, title, steps }) => {
+  if (!isOpen) return null;
+  return (
+    <View style={{
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0,0,0,0.9)',
+      padding: 20,
+      justifyContent: 'center',
+    }}>
+      <View style={{
+        backgroundColor: '#1F2937',
+        borderRadius: 10,
+        padding: 20,
+        maxHeight: '80%',
+      }}>
+        <TouchableOpacity 
+          onPress={onClose}
+          style={{
+            position: 'absolute',
+            right: 10,
+            top: 10,
+            zIndex: 10,
+          }}
+        >
+          <X size={24} color="#64FFDA" />
+        </TouchableOpacity>
+
+        <Text style={{
+          color: '#64FFDA',
+          fontSize: 20,
+          fontWeight: 'bold',
+          marginBottom: 20,
+        }}>{title}</Text>
+        
+        <ScrollView>
+          {steps.map((step, index) => (
+            <View key={index} style={{marginBottom: 20}}>
+              <Text style={{color: '#9CA3AF', marginBottom: 10}}>Step {index + 1}: {step.description}</Text>
+            </View>
+          ))}
+        </ScrollView>
+      </View>
+    </View>
+  );
+};
 
 interface Tutorial {
   id: number;
@@ -308,7 +397,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   headerContent: {
-    // Remove this style as it's no longer needed
+    // Style for header content
   },
   section: {
     marginBottom: 24,
@@ -349,6 +438,9 @@ const styles = StyleSheet.create({
   activeTabText: {
     color: '#64FFDA',
     fontWeight: 'bold',
+  },
+  tabContent: {
+    marginTop: 16,
   },
   tutorialTabContainer: {
     marginVertical: 16,
@@ -435,110 +527,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
-  viewGalleryButton: {
-    backgroundColor: '#64FFDA',
-    padding: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 8,
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    width: '90%',
-    backgroundColor: '#1F2937',
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  closeButton: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    zIndex: 1,
-  },
-  galleryImage: {
-    width: '100%',
-    height: '100%',
-  },
-  navButtonLeft: {
-    position: 'absolute',
-    left: 16,
-    top: '50%',
-    transform: [{ translateY: -12 }],
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 20,
-    padding: 8,
-  },
-  navButtonRight: {
-    position: 'absolute',
-    right: 16,
-    top: '50%',
-    transform: [{ translateY: -12 }],
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 20,
-    padding: 8,
-  },
-  stepIndicator: {
-    position: 'absolute',
-    bottom: 16,
-    left: '50%',
-    transform: [{ translateX: -50 }],
-    flexDirection: 'row',
-    gap: 4,
-  },
-  stepDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.5)',
-  },
-  activeStepDot: {
-    backgroundColor: '#64FFDA',
-  },
-  galleryContent: {
-    padding: 16,
-  },
-  galleryTitle: {
-    color: '#64FFDA',
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  stepCounter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
-  },
-  stepText: {
-    color: '#9CA3AF',
-    fontSize: 14,
-  },
-  progressBar: {
-    flex: 1,
-    height: 4,
-    backgroundColor: '#0A192F',
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#64FFDA',
-  },
-  galleryDescription: {
-    color: '#9CA3AF',
-    fontSize: 14,
-  },
-  tabContent: {
-    marginTop: 16,
-  },
   imageIcon: {
     width: 20,
     height: 20,
@@ -561,4 +549,4 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 3,
   },
-});
+}); 
