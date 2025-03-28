@@ -72,43 +72,83 @@ const blogController = {
     // Add a comment to a blog
     addComment: async (req, res) => {
         try {
-            const { blogid } = req.params; // Change from 'id' to 'blogid'
-            if (!blogid) {
-                return res.status(400).json({ success: false, message: 'Blog ID is required in the URL' });
+            // Log all parameters to debug
+            console.log('Request parameters:', {
+                params: req.params,
+                body: req.body,
+                query: req.query
+            });
+            
+            // Extract blogId from various possible locations
+            const blogId = req.params.blogId || req.params.id || req.params.blogid || req.body.blogId;
+            
+            if (!blogId) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Blog ID is required',
+                    debug: { params: req.params, body: req.body }
+                });
             }   
-            const blog = await Blog.findOne({ where: { id: blogid } }); // Use blogid here
-            if (!blog) return res.status(404).json({ success: false, message: 'Blog post not found' });
-    
+            
+            console.log('Looking for blog with ID:', blogId);
+            
+            const blog = await Blog.findByPk(blogId);
+            if (!blog) {
+                console.log('Blog not found with ID:', blogId);
+                return res.status(404).json({ success: false, message: 'Blog post not found' });
+            }
+        
             const newComment = await Comment.create({
                 content: req.body.content,
                 userId: req.body.userId,
-                blogId: blogid // Use blogid here
+                blogId: blogId
             });
-            console.log('New Comment:', newComment.toJSON());
-    
+            
+            console.log('New Comment created:', newComment.toJSON());
+        
             const commentWithUser = await Comment.findByPk(newComment.id, {
                 include: [{
                     model: User,
-                    attributes: ['first_name', 'last_name']
+                    attributes: ['first_name', 'last_name', 'profile_image']
                 }]
             });
-    
+        
             res.status(201).json({ 
                 success: true, 
                 data: commentWithUser, 
                 message: 'Comment added successfully' 
             });
         } catch (error) {
-            console.log('Error details:', error);
-            res.status(500).json({ success: false, error: error.message, message: 'Error adding comment' });
+            console.error('Error adding comment:', error);
+            res.status(500).json({ 
+                success: false, 
+                error: error.message, 
+                message: 'Error adding comment' 
+            });
         }
     },
 
     // Delete a comment
     deleteComment: async (req, res) => {
         try {
-            const comment = await Comment.findByPk(req.params.commentId);
-            if (!comment) return res.status(404).json({ success: false, message: 'Comment not found' });
+            const { commentId } = req.params;
+            const userId = req.user.id; // Assuming your auth middleware adds user to req
+            
+            const comment = await Comment.findByPk(commentId);
+            if (!comment) {
+                return res.status(404).json({ 
+                    success: false, 
+                    message: 'Comment not found' 
+                });
+            }
+            
+            // Check if the current user is the owner of the comment
+            if (comment.userId !== userId) {
+                return res.status(403).json({ 
+                    success: false, 
+                    message: 'You are not authorized to delete this comment' 
+                });
+            }
             
             await comment.destroy();
             res.status(200).json({ success: true, message: 'Comment deleted successfully' });
@@ -180,11 +220,22 @@ const blogController = {
     // Update a comment
     updateComment: async (req, res) => {
         try {
-            const comment = await Comment.findByPk(req.params.commentId);
+            const { commentId } = req.params;
+            const userId = req.user.id; // Assuming your auth middleware adds user to req
+            
+            const comment = await Comment.findByPk(commentId);
             if (!comment) {
                 return res.status(404).json({ 
                     success: false, 
                     message: 'Comment not found' 
+                });
+            }
+            
+            // Check if the current user is the owner of the comment
+            if (comment.userId !== userId) {
+                return res.status(403).json({ 
+                    success: false, 
+                    message: 'You are not authorized to update this comment' 
                 });
             }
 
@@ -195,7 +246,7 @@ const blogController = {
             const updatedComment = await Comment.findByPk(comment.id, {
                 include: [{
                     model: User,
-                    attributes: ['first_name', 'last_name']
+                    attributes: ['first_name', 'last_name', 'profile_image']
                 }]
             });
 
