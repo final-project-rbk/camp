@@ -30,8 +30,14 @@ interface UserProfile {
   phone_number?: string;
   profile_image: string;
   bio: string;
+  experience?: string;
   points: number;
   created_at: string;
+  role: string;
+  rank?: string;
+  completed_sessions?: number;
+  rating?: number;
+  reviews?: number;
 }
 
 interface EditModalProps {
@@ -88,6 +94,7 @@ export default function ProfileScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [imageModalVisible, setImageModalVisible] = useState(false);
   const [hasExistingApplication, setHasExistingApplication] = useState(false);
+  const [advisorStats, setAdvisorStats] = useState(null);
 
   useEffect(() => {
     checkAuthAndFetchProfile();
@@ -124,6 +131,11 @@ export default function ProfileScreen() {
 
       if (data.success) {
         setProfile(data.data);
+        
+        // If the user is an advisor, fetch advisor-specific stats
+        if (data.data.role === 'advisor') {
+          fetchAdvisorStats(userData.id, token);
+        }
       } else {
         console.log('Failed to fetch profile:', data); // Debug log
         if (response.status === 401) {
@@ -140,6 +152,37 @@ export default function ProfileScreen() {
       setLoading(false);
     }
   };
+  
+  const fetchAdvisorStats = async (userId: number, token: string) => {
+    try {
+      const statsResponse = await fetch(`${EXPO_PUBLIC_API_URL}advisor/stats/${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (statsResponse.ok) {
+        const statsData = await statsResponse.json();
+        console.log('Advisor stats response:', statsData);
+        
+        if (statsData.success) {
+          setAdvisorStats(statsData.data);
+          // Update the profile with the advisor stats data
+          setProfile(prev => {
+            if (!prev) return null;
+            return {
+              ...prev,
+              rank: statsData.data.currentRank,
+              points: statsData.data.points
+            };
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching advisor stats:', error);
+    }
+  };
 
   const handleUpdate = async (field: string, value: string) => {
     try {
@@ -151,33 +194,88 @@ export default function ProfileScreen() {
         return;
       }
 
-      const response = await fetch(`${EXPO_PUBLIC_API_URL}users/${userData.id}`, {
+      // Make sure the API URL has proper formatting
+      let baseUrl = EXPO_PUBLIC_API_URL;
+      if (!baseUrl.endsWith('/')) {
+        baseUrl = `${baseUrl}/`;
+      }
+      
+      let endpoint;
+      let body;
+      
+      // Special handling for advisor experience update
+      if (userData.role === 'advisor' && field === 'experience') {
+        endpoint = `${baseUrl}advisor/experience/${userData.id}`;
+        body = JSON.stringify({ experience: value });
+        console.log('Updating advisor experience at:', endpoint);
+        console.log('Request body:', body);
+      } else {
+        // For other fields
+        endpoint = `${baseUrl}users/${userData.id}`;
+        body = JSON.stringify({ [field]: value });
+      }
+      
+      console.log('Making request to:', endpoint);
+      
+      const response = await fetch(endpoint, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
-        body: JSON.stringify({ [field]: value }),
+        body: body,
       });
 
-      if (response.status === 401) {
-        await checkAuth();
-        router.replace('/auth');
+      console.log('Response status:', response.status);
+      console.log('Response content type:', response.headers.get('content-type'));
+      
+      // Get the raw text response first
+      const responseText = await response.text();
+      console.log('Raw response text:', responseText);
+      
+      let data;
+      try {
+        // Try to parse the response as JSON
+        data = JSON.parse(responseText);
+        console.log('Parsed response data:', data);
+      } catch (parseError) {
+        console.error('Error parsing response as JSON:', parseError);
+        console.error('Response was not valid JSON:', responseText.substring(0, 200) + '...');
+        
+        Alert.alert(
+          'Error', 
+          'Server returned an invalid response. Please try again later.',
+          [{ text: 'OK' }]
+        );
         return;
       }
       
-      const data = await response.json();
       if (data.success) {
-        setProfile(data.data);
-        const updatedUser = { ...userData, [field]: value };
-        await AuthService.storeAuthData({ user: updatedUser, token });
-        Alert.alert('Success', 'Profile updated successfully');
+        // Update the local profile state
+        setProfile(prev => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            [field]: value
+          };
+        });
+        
+        Alert.alert('Success', `${field.charAt(0).toUpperCase() + field.slice(1)} updated successfully`);
+        
+        // Refresh the profile data
+        setTimeout(() => {
+          onRefresh();
+        }, 1000);
       } else {
-        Alert.alert('Error', 'Failed to update profile');
+        Alert.alert('Error', data.error || `Failed to update ${field}`);
       }
     } catch (error) {
       console.error('Update error:', error);
-      Alert.alert('Error', 'Something went wrong');
+      Alert.alert(
+        'Error', 
+        'Something went wrong with the request. Please check your connection and try again.'
+      );
     }
   };
 
@@ -406,7 +504,9 @@ export default function ProfileScreen() {
       }
     >
       <View style={styles.pageHeader}>
-        <Text style={styles.pageTitle}>Profile</Text>
+        <Text style={styles.pageTitle}>
+          {profile?.role === 'advisor' ? 'Advisor Profile' : 'Profile'}
+        </Text>
         <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
           <Ionicons name="log-out-outline" size={24} color="#64FFDA" />
         </TouchableOpacity>
@@ -427,7 +527,73 @@ export default function ProfileScreen() {
         >
           <Ionicons name="camera" size={24} color="#64FFDA" />
         </TouchableOpacity>
+        
+        <View style={styles.profileNameContainer}>
+          <Text style={styles.profileName}>
+            {profile?.first_name} {profile?.last_name}
+          </Text>
+          {profile?.role === 'advisor' && (
+            <View style={styles.advisorBadge}>
+              <Ionicons name="star" size={20} color="#64FFDA" />
+              <Text style={styles.advisorBadgeText}>Advisor</Text>
+            </View>
+          )}
+        </View>
       </View>
+
+      {profile?.role === 'advisor' && (
+        <View style={styles.advisorStatsSection}>
+          <Text style={styles.statsTitle}>Advisor Stats</Text>
+          <View style={styles.rankCard}>
+            <Text style={styles.rankTitle}>Current Rank</Text>
+            <View style={styles.rankValueContainer}>
+              <Text style={styles.rankValue}>{profile?.rank || 'Bronze'}</Text>
+              <View style={[styles.rankIconContainer, 
+                { backgroundColor: 
+                  profile?.rank === 'platinum' ? '#E5E4E2' : 
+                  profile?.rank === 'gold' ? '#FFD700' : 
+                  profile?.rank === 'silver' ? '#C0C0C0' : 
+                  '#CD7F32'
+                }
+              ]}>
+                <Ionicons name="trophy" size={24} color="#0A192F" />
+              </View>
+            </View>
+            <View style={styles.progressContainer}>
+              <View 
+                style={[
+                  styles.progressBar, 
+                  { width: `${(profile?.points || 0) % 100}%` }
+                ]} 
+              />
+            </View>
+            <Text style={styles.pointsText}>
+              {profile?.points || 0} Points
+            </Text>
+          </View>
+          
+          <View style={styles.statsGrid}>
+            <View style={styles.statBox}>
+              <Text style={styles.statNumber}>
+                {profile?.completed_sessions || 0}
+              </Text>
+              <Text style={styles.statLabel}>Sessions</Text>
+            </View>
+            <View style={styles.statBox}>
+              <Text style={styles.statNumber}>
+                {profile?.rating || '0.0'}
+              </Text>
+              <Text style={styles.statLabel}>Rating</Text>
+            </View>
+            <View style={styles.statBox}>
+              <Text style={styles.statNumber}>
+                {profile?.reviews || 0}
+              </Text>
+              <Text style={styles.statLabel}>Reviews</Text>
+            </View>
+          </View>
+        </View>
+      )}
 
       <View style={styles.infoSection}>
         {[
@@ -436,6 +602,7 @@ export default function ProfileScreen() {
           { label: 'Email', value: profile?.email, field: 'email' },
           { label: 'Phone', value: profile?.phone_number, field: 'phone_number' },
           { label: 'Bio', value: profile?.bio, field: 'bio' },
+          ...(profile?.role === 'advisor' ? [{ label: 'Experience', value: profile?.experience, field: 'experience' }] : []),
         ].map((item) => (
           <View key={item.field} style={styles.infoRow}>
             <View style={styles.infoContent}>
@@ -449,28 +616,32 @@ export default function ProfileScreen() {
         ))}
       </View>
 
-      <View style={styles.statsSection}>
-        <Text style={styles.statsTitle}>Stats</Text>
-        <View style={styles.statsRow}>
-          <Text style={styles.statsLabel}>Points</Text>
-          <Text style={styles.statsValue}>{profile?.points || 0}</Text>
+      {profile?.role !== 'advisor' && (
+        <View style={styles.statsSection}>
+          <Text style={styles.statsTitle}>Stats</Text>
+          <View style={styles.statsRow}>
+            <Text style={styles.statsLabel}>Points</Text>
+            <Text style={styles.statsValue}>{profile?.points || 0}</Text>
+          </View>
+          <View style={styles.statsRow}>
+            <Text style={styles.statsLabel}>Member since</Text>
+            <Text style={styles.statsValue}>
+              {new Date(profile?.created_at || '').toLocaleDateString()}
+            </Text>
+          </View>
         </View>
-        <View style={styles.statsRow}>
-          <Text style={styles.statsLabel}>Member since</Text>
-          <Text style={styles.statsValue}>
-            {new Date(profile?.created_at || '').toLocaleDateString()}
-          </Text>
-        </View>
-      </View>
+      )}
 
-      <TouchableOpacity 
-        style={styles.createFormularButton}
-        onPress={handleCreateFormular}
-      >
-        <Text style={styles.createFormularButtonText}>
-          {hasExistingApplication ? 'Update Advisor Application' : 'Create Advisor Application'}
-        </Text>
-      </TouchableOpacity>
+      {profile?.role !== 'advisor' && (
+        <TouchableOpacity 
+          style={styles.createFormularButton}
+          onPress={handleCreateFormular}
+        >
+          <Text style={styles.createFormularButtonText}>
+            {hasExistingApplication ? 'Update Advisor Application' : 'Create Advisor Application'}
+          </Text>
+        </TouchableOpacity>
+      )}
 
       <EditModal
         visible={!!editField}
@@ -483,6 +654,18 @@ export default function ProfileScreen() {
       />
       
       <ImageViewModal />
+
+      {profile?.role === 'advisor' && (
+        <View style={styles.bottomButtonContainer}>
+          <TouchableOpacity 
+            style={styles.dashboardButton}
+            onPress={() => router.push('/dashboared-advisor')}
+          >
+            <Ionicons name="stats-chart" size={20} color="#0A192F" style={styles.dashboardIcon} />
+            <Text style={styles.dashboardText}>Advisor Dashboard</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -657,5 +840,151 @@ const styles = StyleSheet.create({
     color: '#0A192F',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  profileNameContainer: {
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  profileName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#CCD6F6',
+    marginBottom: 8,
+  },
+  advisorBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#112240',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#64FFDA',
+  },
+  advisorBadgeText: {
+    color: '#64FFDA',
+    marginLeft: 5,
+    fontWeight: 'bold',
+  },
+  advisorStatsSection: {
+    padding: 20,
+    backgroundColor: '#112240',
+    marginHorizontal: 16,
+    borderRadius: 12,
+    marginVertical: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  rankCard: {
+    backgroundColor: '#1D2D50',
+    padding: 15,
+    borderRadius: 12,
+    marginVertical: 10,
+  },
+  rankTitle: {
+    color: '#8892B0',
+    fontSize: 14,
+  },
+  rankValueContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginVertical: 10,
+  },
+  rankValue: {
+    color: '#64FFDA',
+    fontSize: 28,
+    fontWeight: 'bold',
+    textTransform: 'capitalize',
+  },
+  rankIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  progressContainer: {
+    height: 8,
+    backgroundColor: '#0A192F',
+    borderRadius: 4,
+    marginTop: 10,
+    overflow: 'hidden',
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: '#64FFDA',
+    borderRadius: 4,
+  },
+  pointsText: {
+    color: '#CCD6F6',
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: 'right',
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 15,
+  },
+  statBox: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#1D2D50',
+    borderRadius: 8,
+    marginHorizontal: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  statNumber: {
+    color: '#64FFDA',
+    fontSize: 22,
+    fontWeight: 'bold',
+  },
+  statLabel: {
+    color: '#8892B0',
+    fontSize: 12,
+    marginTop: 5,
+  },
+  bottomButtonContainer: {
+    paddingHorizontal: 16,
+    marginTop: 24,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  dashboardButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#64FFDA',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  dashboardIcon: {
+    marginRight: 10,
+  },
+  dashboardText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#0A192F',
   },
 }); 

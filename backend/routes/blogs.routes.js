@@ -12,12 +12,15 @@ router.get('/:id', blogController.getBlogById);
 router.post('/', authMiddleware, blogController.createBlog);
 router.put('/:id', authMiddleware, blogController.updateBlog);
 router.delete('/:id', authMiddleware, blogController.deleteBlog);
-router.post('/:id/comments', authMiddleware, blogController.addComment);
-router.delete('/:blogId/comments/:commentId', authMiddleware, blogController.deleteComment);
 
 // Comment routes
+router.post('/:blogid/comments', authMiddleware, blogController.addComment);
 router.get('/comments/:blogid', blogController.getAllComments);
-router.put('/comments/:commentId', blogController.updateComment);
+router.put('/comments/:commentId', authMiddleware, blogController.updateComment);
+router.delete('/:blogId/comments/:commentId', authMiddleware, blogController.deleteComment);
+
+// Add this new route to handle the current frontend API call
+router.post('/comments/:id/blogid', authMiddleware, blogController.addComment);
 
 // Like routes
 router.post('/:id/like', blogController.toggleLike);

@@ -37,7 +37,7 @@ interface AdvisorFormular {
   };
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://192.168.1.15:3000/api/';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ;
 
 export default function Dashboard() {
   const router = useRouter();
@@ -71,7 +71,7 @@ export default function Dashboard() {
 
       // Fetch users first
       try {
-        const usersResponse = await fetch('http://192.168.1.15:3000/api/admin/users', {
+        const usersResponse = await fetch(`${API_URL}admin/users`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -93,7 +93,7 @@ export default function Dashboard() {
       // Fetch advisor applications using the formularAdvisor endpoint
       try {
         console.log('Fetching advisor applications...');
-        const formularsResponse = await fetch('http://192.168.1.15:3000/api/formularAdvisor', {
+        const formularsResponse = await fetch(`${API_URL}formularAdvisor`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -163,7 +163,7 @@ export default function Dashboard() {
   const handleUpdateRole = async (userId: number, newRole: string) => {
     try {
       const token = localStorage.getItem('userToken');
-      const response = await fetch(`http://192.168.1.15:3000/api/users/${userId}/role`, {
+      const response = await fetch(`${API_URL}users/${userId}/role`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -183,7 +183,7 @@ export default function Dashboard() {
   const handleAdvisorStatus = async (formularId: number, status: 'approved' | 'rejected') => {
     try {
       const token = localStorage.getItem('userToken');
-      const response = await fetch(`http://192.168.1.15:3000/api/formularAdvisor/${formularId}/status`, {
+      const response = await fetch(`${API_URL}formularAdvisor/${formularId}/status`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

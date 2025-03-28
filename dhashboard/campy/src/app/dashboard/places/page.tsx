@@ -306,8 +306,7 @@ export default function PlaceManagement() {
         categoryIds: formData.categoryIds
       });
 
-      const baseUrl = 'http://192.168.1.15:3000';
-      const url = `${baseUrl}/api/admin/places/${selectedPlace.id}`.replace(/\/+/g, '/').replace('http:/', 'http://');
+      const url = `${API_URL}admin/places/${selectedPlace.id}`;
       
       console.log('Making PUT request to:', url);
 
@@ -352,7 +351,7 @@ export default function PlaceManagement() {
         await fetchPlaces(); // Refresh the places list
         
         // Force a re-render of the specific place
-        const updatedPlace = await fetch(`${baseUrl}/api/admin/places/${selectedPlace.id}`).then(res => res.json());
+        const updatedPlace = await fetch(`${API_URL}admin/places/${selectedPlace.id}`).then(res => res.json());
         console.log('Fetched updated place:', updatedPlace);
 
         setShowEditModal(false);

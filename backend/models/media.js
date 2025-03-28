@@ -1,3 +1,46 @@
+// module.exports = (sequelize, DataTypes) => {
+//     const Media = sequelize.define('media', {
+//       url: { 
+//         type: DataTypes.STRING, 
+//         allowNull: false,
+//         validate: {
+//           isUrl: true
+//         }
+//       },
+      
+//       type: { 
+//         type: DataTypes.STRING, 
+//         allowNull: false,
+//         defaultValue: 'image'
+//       },
+//       placeId: {
+//         type: DataTypes.INTEGER,
+//         allowNull: true, // Changed to true to make it optional
+//         references: {
+//           model: 'places',
+//           key: 'id'
+//         }
+//       },
+  
+
+    
+//     });
+
+//     Media.associate = function(models) {
+//       // Media.belongsTo(models.Place, { 
+//       //   foreignKey: 'placeId',
+//       //   onDelete: 'CASCADE'
+//       // });
+
+//       Media.belongsTo(models.MarketplaceItem, { 
+//         foreignKey: 'marketplaceItemId',
+//         as: 'marketplaceItem',
+//         onDelete: 'CASCADE'
+//       });
+//     };
+
+//     return Media;
+// };
 
 module.exports = (sequelize, DataTypes) => {
   const Media = sequelize.define('Media', {

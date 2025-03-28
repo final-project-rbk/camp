@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://192.168.1.15:3000/api/';
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export default function AdminLogin() {
   const router = useRouter();

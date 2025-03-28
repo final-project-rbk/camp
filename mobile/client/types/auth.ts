@@ -1,13 +1,10 @@
 export interface User {
   id: number;
   email: string;
-  username?: string;
-  avatar?: string;
-  first_name?: string;
-  last_name?: string;
+  first_name: string;
+  last_name: string;
+  profile_image?: string;
   role?: string;
-  createdAt?: string;
-  updatedAt?: string;
 }
 
 export interface AuthState {

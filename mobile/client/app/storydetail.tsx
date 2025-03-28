@@ -14,7 +14,9 @@ interface Comment {
     id: number;
     content: string;
     createdAt: string;
-    user: {
+    userId?: number;
+    user?: {
+        id?: number;
         first_name: string;
         last_name: string;
         profile_image: string;
@@ -42,26 +44,40 @@ const DEFAULT_PROFILE_IMAGE = 'https://johannesippen.com/img/blog/humans-not-use
 const CommentItem = memo(({ comment, onMorePress }: { 
     comment: Comment, 
     onMorePress: (id: number, content: string) => void 
-}) => (
-    <View style={styles.commentCard}>
-        <View style={styles.commentHeaderRow}>
-            <View style={styles.commentAuthorContainer}>
-                <Image 
-                    source={{ uri: comment.user?.profile_image || DEFAULT_PROFILE_IMAGE }} 
-                    style={styles.commentAuthorImage}
-                />
-                <Text style={styles.commentAuthor}>
-                    {comment.user?.first_name || 'Anonymous'} {comment.user?.last_name || ''}
-                </Text>
+}) => {
+    const { user: currentUser } = useAuth();
+    
+    console.log('Comment data:', comment);
+    console.log('Current user ID:', currentUser?.id);
+    
+    const isCommentOwner = currentUser && 
+        (Number(currentUser.id) === Number(comment.userId || comment.user?.id));
+    
+    console.log('Is comment owner:', isCommentOwner);
+    
+    return (
+        <View style={styles.commentCard}>
+            <View style={styles.commentHeaderRow}>
+                <View style={styles.commentAuthorContainer}>
+                    <Image 
+                        source={{ uri: comment.user?.profile_image || DEFAULT_PROFILE_IMAGE }} 
+                        style={styles.commentAuthorImage}
+                    />
+                    <Text style={styles.commentAuthor}>
+                        {comment.user?.first_name || 'Anonymous'} {comment.user?.last_name || ''}
+                    </Text>
+                </View>
+                {isCommentOwner && (
+                    <TouchableOpacity onPress={() => onMorePress(comment.id, comment.content)}>
+                        <Icon name="more-vert" size={20} color="#64FFDA" />
+                    </TouchableOpacity>
+                )}
             </View>
-            <TouchableOpacity onPress={() => onMorePress(comment.id, comment.content)}>
-                <Icon name="more-vert" size={20} color="#64FFDA" />
-            </TouchableOpacity>
+            <Text style={styles.commentContent}>{comment.content}</Text>
+            <Text style={styles.commentDate}>{new Date(comment.createdAt).toLocaleString()}</Text>
         </View>
-        <Text style={styles.commentContent}>{comment.content}</Text>
-        <Text style={styles.commentDate}>{new Date(comment.createdAt).toLocaleString()}</Text>
-    </View>
-));
+    );
+});
 
 const decodeJWT = (token: string) => {
     try {
@@ -141,7 +157,7 @@ export default function StoryDetail() {
                 return;
             }
 
-            const response = await fetch(`${EXPO_PUBLIC_API_URL}blogs/comments/${id}`, {
+            const response = await fetch(`${EXPO_PUBLIC_API_URL}blogs/${id}/comments`, {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
@@ -178,7 +194,7 @@ export default function StoryDetail() {
                 return;
             }
 
-            const response = await fetch(`${EXPO_PUBLIC_API_URL}blogs/comments/${commentId}`, {
+            const response = await fetch(`${EXPO_PUBLIC_API_URL}blogs/${id}/comments/${commentId}`, {
                 method: 'DELETE',
                 headers: { 
                     'Content-Type': 'application/json',
