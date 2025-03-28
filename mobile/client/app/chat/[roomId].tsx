@@ -42,6 +42,8 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const MESSAGE_BUBBLE_MAX_WIDTH = SCREEN_WIDTH * 0.75;
 
+const DEFAULT_AVATAR = 'https://via.placeholder.com/30?text=User';
+
 const MessagesScreen = () => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
@@ -69,6 +71,64 @@ const MessagesScreen = () => {
 
   const CLOUDINARY_UPLOAD_URL = "https://api.cloudinary.com/v1_1/dqh6arave/upload";
   const CLOUDINARY_UPLOAD_PRESET = "Ghassen123";
+
+  // Animation values for typing dots
+  const dot1Opacity = useRef(new Animated.Value(0.3)).current;
+  const dot2Opacity = useRef(new Animated.Value(0.3)).current;
+  const dot3Opacity = useRef(new Animated.Value(0.3)).current;
+  
+  // Setup typing animation
+  useEffect(() => {
+    if (typingUsers.size > 0) {
+      // Create typing animation sequence
+      const animateDots = () => {
+        Animated.sequence([
+          // Dot 1 animation
+          Animated.timing(dot1Opacity, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+          // Dot 2 animation with a slight delay
+          Animated.timing(dot2Opacity, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+          // Dot 3 animation with a slight delay
+          Animated.timing(dot3Opacity, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+          // Reset all dots
+          Animated.parallel([
+            Animated.timing(dot1Opacity, {
+              toValue: 0.3,
+              duration: 400,
+              useNativeDriver: true,
+            }),
+            Animated.timing(dot2Opacity, {
+              toValue: 0.3,
+              duration: 400,
+              useNativeDriver: true,
+            }),
+            Animated.timing(dot3Opacity, {
+              toValue: 0.3,
+              duration: 400,
+              useNativeDriver: true,
+            }),
+          ]),
+        ]).start(() => {
+          if (typingUsers.size > 0) {
+            animateDots(); // Loop animation while typing
+          }
+        });
+      };
+      
+      animateDots();
+    }
+  }, [typingUsers.size]);
 
   // Handle showing full-sized image
   const handleViewImage = (imageUrl: string) => {
@@ -388,7 +448,7 @@ const MessagesScreen = () => {
     }
   };
 
-  const sendMessage = async (content = null) => {
+  const sendMessage = async (content: string | null = null) => {
     try {
       const messageText = content || newMessage.trim();
       
@@ -404,7 +464,7 @@ const MessagesScreen = () => {
       }
 
       // Make sure roomId is a string for socket.io
-      const roomIdStr = roomId.toString();
+      const roomIdStr = typeof roomId === 'string' ? roomId : String(roomId);
       console.log(`Sending message to room ${roomIdStr}: ${messageText?.substring(0, 20)}..., Media: ${mediaUrls?.length || 0} files`);
       
       const messageData = {
@@ -415,7 +475,7 @@ const MessagesScreen = () => {
       };
 
       // Send message with acknowledgment
-      socketRef.current.emit('send_message', messageData, (response) => {
+      socketRef.current.emit('send_message', messageData, (response: {success: boolean, error?: string}) => {
         if (!response.success) {
           console.error('Failed to send message:', response.error);
           setError('Failed to send message: ' + response.error);
@@ -452,7 +512,7 @@ const MessagesScreen = () => {
     }
   };
 
-  const uploadImage = async (uri) => {
+  const uploadImage = async (uri: string) => {
     try {
       const compressedImage = await ImageManipulator.manipulateAsync(
         uri,
@@ -502,7 +562,7 @@ const MessagesScreen = () => {
     }
   };
 
-  const handleTyping = (text) => {
+  const handleTyping = (text: string) => {
     setNewMessage(text);
     
     // Clear any existing typing timeout
@@ -522,7 +582,7 @@ const MessagesScreen = () => {
         setIsTyping(false);
         socketRef.current.emit('stop_typing', { roomId });
       }
-      }, 2000);
+    }, 2000);
   };
   
   // Format message timestamp
@@ -556,13 +616,22 @@ const MessagesScreen = () => {
 
   const renderMessage = ({ item }) => {
     const isOwnMessage = item.senderId === user?.id;
-    
+
     if (isOwnMessage) {
-      // Own message - right aligned blue bubble (YOUR MESSAGES)
+      // Own message - right aligned blue gradient bubble (YOUR MESSAGES)
       return (
-        <View style={styles.messageRow}>
+        <TouchableOpacity 
+          activeOpacity={0.8}
+          onLongPress={() => handleMessageLongPress(item.id)}
+          style={styles.messageRow}
+        >
           <View style={styles.ownMessageContainer}>
-            <View style={styles.ownMessageContent}>
+            <LinearGradient
+              colors={['#0084FF', '#0078FF']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.ownMessageContent}
+            >
               {/* Message text content */}
               {item.content && (
                 <Text style={styles.ownMessageText}>
@@ -586,17 +655,31 @@ const MessagesScreen = () => {
                   </TouchableOpacity>
                 ))
               }
-            </View>
+              
+              {/* Message delivery status */}
+              {getMessageStatus(item)}
+            </LinearGradient>
             <Text style={styles.timestamp}>
               {formatMessageTime(item.createdAt)}
             </Text>
+            
+            {/* Show reaction if any */}
+            {item.reaction && (
+              <View style={[styles.reactionContainer, styles.ownReactionContainer]}>
+                <Text>{REACTIONS[item.reaction.toUpperCase()]?.emoji || '👍'}</Text>
+              </View>
+            )}
           </View>
-        </View>
+        </TouchableOpacity>
       );
     } else {
       // Other user's message - left aligned gray bubble (THEIR MESSAGES)
       return (
-        <View style={styles.messageRow}>
+        <TouchableOpacity 
+          activeOpacity={0.8}
+          onLongPress={() => handleMessageLongPress(item.id)}
+          style={styles.messageRow}
+        >
           <View style={styles.otherMessageContainer}>
             <Image
               source={{ uri: otherUser?.profile_image || 'https://via.placeholder.com/30' }}
@@ -631,9 +714,16 @@ const MessagesScreen = () => {
               <Text style={styles.timestamp}>
                 {formatMessageTime(item.createdAt)}
               </Text>
+              
+              {/* Show reaction if any */}
+              {item.reaction && (
+                <View style={[styles.reactionContainer, styles.otherReactionContainer]}>
+                  <Text>{REACTIONS[item.reaction.toUpperCase()]?.emoji || '👍'}</Text>
+                </View>
+              )}
             </View>
           </View>
-        </View>
+        </TouchableOpacity>
       );
     }
   };
@@ -694,7 +784,7 @@ const MessagesScreen = () => {
           >
             <View style={styles.avatarContainer}>
               <Image 
-                source={{ uri: otherUser.profile_image || 'https://via.placeholder.com/30' }}
+                source={{ uri: otherUser.profile_image || DEFAULT_AVATAR }}
                 style={styles.headerAvatar}
               />
               {otherUser.isOnline && (
@@ -721,12 +811,20 @@ const MessagesScreen = () => {
       <FlatList
         ref={flatListRef}
         data={messages}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
         renderItem={renderMessage}
         ListHeaderComponent={<View style={styles.messageListPadding} />}
         ListFooterComponent={<View style={styles.messageListPadding} />}
-        onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
-        onLayout={() => flatListRef.current?.scrollToEnd()}
+        onContentSizeChange={() => {
+          if (flatListRef.current) {
+            flatListRef.current.scrollToEnd({animated: true});
+          }
+        }}
+        onLayout={() => {
+          if (flatListRef.current) {
+            flatListRef.current.scrollToEnd({animated: false});
+          }
+        }}
       />
       
       {/* Typing indicator */}
@@ -734,13 +832,13 @@ const MessagesScreen = () => {
         <View style={styles.typingIndicatorContainer}>
           <View style={styles.typingIndicatorBubble}>
             <View style={styles.typingIndicatorDots}>
-              <Animated.View style={styles.typingDot} />
-              <Animated.View style={[styles.typingDot, {animationDelay: '0.2s'}]} />
-              <Animated.View style={[styles.typingDot, {animationDelay: '0.4s'}]} />
+              <Animated.View style={[styles.typingDot, {opacity: dot1Opacity}]} />
+              <Animated.View style={[styles.typingDot, {opacity: dot2Opacity}]} />
+              <Animated.View style={[styles.typingDot, {opacity: dot3Opacity}]} />
             </View>
             <Text style={styles.typingIndicatorText}>
-          {Array.from(typingUsers).join(', ')} {typingUsers.size === 1 ? 'is' : 'are'} typing...
-        </Text>
+              {Array.from(typingUsers).join(', ')} {typingUsers.size === 1 ? 'is' : 'are'} typing...
+            </Text>
           </View>
         </View>
       )}
@@ -769,10 +867,10 @@ const MessagesScreen = () => {
             <View style={styles.replyBar} />
             <View style={styles.replyInfo}>
               <Text style={styles.replyToText}>
-                Replying to {replyingTo.senderId === user?.id ? 'yourself' : otherUser?.first_name}
+                Replying to {replyingTo.senderId === user?.id ? 'yourself' : otherUser?.first_name || 'user'}
               </Text>
               <Text style={styles.replyMessageText} numberOfLines={1}>
-                {replyingTo.content}
+                {replyingTo.content || 'Media message'}
               </Text>
             </View>
           </View>
@@ -799,6 +897,7 @@ const MessagesScreen = () => {
           placeholder="Type a message..."
           placeholderTextColor="#8892B0"
           multiline
+          maxLength={1000}
         />
         
         <TouchableOpacity 
@@ -822,7 +921,7 @@ const MessagesScreen = () => {
         <View style={styles.attachmentsPanel}>
           <TouchableOpacity style={styles.attachmentOption} onPress={pickImage}>
             <View style={[styles.attachmentIconBg, {backgroundColor: '#4CAF50'}]}>
-              <Ionicons name="image" size={24} color="#FFFFFF" />
+              <Ionicons name="image" size={28} color="#FFFFFF" />
             </View>
             <Text style={styles.attachmentText}>Image</Text>
           </TouchableOpacity>
@@ -833,7 +932,7 @@ const MessagesScreen = () => {
             setAttachmentsVisible(false);
           }}>
             <View style={[styles.attachmentIconBg, {backgroundColor: '#2196F3'}]}>
-              <Ionicons name="document" size={24} color="#FFFFFF" />
+              <Ionicons name="document" size={28} color="#FFFFFF" />
             </View>
             <Text style={styles.attachmentText}>Document</Text>
           </TouchableOpacity>
@@ -844,9 +943,19 @@ const MessagesScreen = () => {
             setAttachmentsVisible(false);
           }}>
             <View style={[styles.attachmentIconBg, {backgroundColor: '#FFC107'}]}>
-              <Ionicons name="location" size={24} color="#FFFFFF" />
+              <Ionicons name="location" size={28} color="#FFFFFF" />
             </View>
             <Text style={styles.attachmentText}>Location</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.attachmentOption} onPress={() => {
+            // Close the attachment panel
+            setAttachmentsVisible(false);
+          }}>
+            <View style={[styles.attachmentIconBg, {backgroundColor: '#FF5722'}]}>
+              <Ionicons name="close" size={28} color="#FFFFFF" />
+            </View>
+            <Text style={styles.attachmentText}>Cancel</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -870,6 +979,18 @@ const MessagesScreen = () => {
             style={styles.fullImage}
             resizeMode="contain"
           />
+          <View style={styles.imageModalFooter}>
+            <TouchableOpacity style={styles.imageModalButton} onPress={() => {
+              Alert.alert('Coming Soon', 'Download feature will be available soon');
+            }}>
+              <Ionicons name="download-outline" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.imageModalButton} onPress={() => {
+              Alert.alert('Coming Soon', 'Share feature will be available soon');
+            }}>
+              <Ionicons name="share-outline" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
       
@@ -880,12 +1001,14 @@ const MessagesScreen = () => {
         visible={reactionModalVisible}
         onRequestClose={() => setReactionModalVisible(false)}
       >
-        <TouchableOpacity 
+        <Pressable 
           style={styles.reactionModalOverlay}
-          activeOpacity={1}
           onPress={() => setReactionModalVisible(false)}
         >
-          <View style={styles.reactionModalContent}>
+          <Pressable style={styles.reactionModalContent}>
+            <View style={styles.reactionModalHeader}>
+              <Text style={styles.reactionModalTitle}>Add Reaction</Text>
+            </View>
             <View style={styles.reactionList}>
               {Object.values(REACTIONS).map((reaction) => (
                 <TouchableOpacity
@@ -897,8 +1020,8 @@ const MessagesScreen = () => {
                 </TouchableOpacity>
               ))}
             </View>
-          </View>
-        </TouchableOpacity>
+          </Pressable>
+        </Pressable>
       </Modal>
     </View>
   );
@@ -918,15 +1041,17 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    padding: 16,
     backgroundColor: '#112240',
     borderBottomWidth: 1,
     borderBottomColor: '#1D2D50',
-    elevation: 3,
+    elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    paddingTop: Platform.OS === 'ios' ? 50 : 16,
+    height: Platform.OS === 'ios' ? 90 : 70,
   },
   backButton: {
     padding: 8,
@@ -991,14 +1116,20 @@ const styles = StyleSheet.create({
     maxWidth: '80%',
   },
   ownMessageContent: {
-    backgroundColor: '#0084FF', // Classic Messenger blue
     borderRadius: 18,
     padding: 12,
     marginBottom: 4,
+    backgroundColor: '#0084FF',
+    elevation: 1,
+    shadowColor: 'rgba(0,0,0,0.1)',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.5,
+    shadowRadius: 2,
   },
   ownMessageText: {
-    color: '#FFFFFF', // White text
+    color: '#FFFFFF',
     fontSize: 16,
+    lineHeight: 22,
   },
   
   // Received message (other user's message)
@@ -1008,14 +1139,20 @@ const styles = StyleSheet.create({
     maxWidth: '80%',
   },
   otherMessageContent: {
-    backgroundColor: '#E4E6EB', // Light gray
+    backgroundColor: '#E4E6EB',
     borderRadius: 18,
     padding: 12,
     marginBottom: 4,
+    elevation: 1,
+    shadowColor: 'rgba(0,0,0,0.1)',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 1,
   },
   otherMessageText: {
-    color: '#050505', // Dark text
+    color: '#050505',
     fontSize: 16,
+    lineHeight: 22,
   },
   
   avatar: {
@@ -1024,12 +1161,15 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginRight: 8,
     alignSelf: 'flex-end',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   
   timestamp: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#8892B0',
-    marginBottom: 5,
+    marginTop: 2,
+    marginBottom: 2,
   },
   
   messageImage: {
@@ -1055,9 +1195,10 @@ const styles = StyleSheet.create({
   typingIndicatorContainer: {
     paddingHorizontal: 16,
     paddingVertical: 4,
+    marginBottom: 6,
   },
   typingIndicatorBubble: {
-    backgroundColor: '#1D2D50',
+    backgroundColor: 'rgba(29, 45, 80, 0.7)',
     borderRadius: 18,
     padding: 10,
     alignSelf: 'flex-start',
@@ -1076,6 +1217,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#64FFDA',
     marginRight: 3,
     opacity: 0.5,
+    // Add animation properties
+    transform: [{scale: 1}],
+    animationName: 'pulse',
+    animationDuration: '1.5s',
+    animationIterationCount: 'infinite',
+    animationTimingFunction: 'ease-in-out',
   },
   typingIndicatorText: {
     color: '#CCD6F6',
@@ -1089,14 +1236,18 @@ const styles = StyleSheet.create({
   },
   mediaPreviewContainer: {
     flexDirection: 'row',
-    padding: 8,
+    padding: 12,
     backgroundColor: '#112240',
     borderTopWidth: 1,
     borderTopColor: '#1D2D50',
   },
   mediaPreview: {
     position: 'relative',
-    marginRight: 8,
+    marginRight: 12,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 255, 218, 0.3)',
   },
   mediaPreviewImage: {
     width: 80,
@@ -1109,12 +1260,17 @@ const styles = StyleSheet.create({
     right: -4,
     backgroundColor: '#0A192F',
     borderRadius: 10,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
   },
   replyContainer: {
-    backgroundColor: '#112240',
+    backgroundColor: 'rgba(17, 34, 64, 0.95)',
     borderTopWidth: 1,
     borderTopColor: '#1D2D50',
-    padding: 8,
+    padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -1167,13 +1323,14 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 8,
+    padding: 12,
     backgroundColor: '#112240',
     borderTopWidth: 1,
     borderTopColor: '#1D2D50',
   },
   attachButton: {
     padding: 8,
+    borderRadius: 20,
   },
   input: {
     flex: 1,
@@ -1185,9 +1342,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#1D2D50',
     borderRadius: 24,
     paddingHorizontal: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1,
   },
   sendButton: {
-    padding: 8,
+    padding: 10,
+    backgroundColor: 'rgba(100, 255, 218, 0.1)',
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   sendButtonDisabled: {
     opacity: 0.5,
@@ -1195,67 +1361,101 @@ const styles = StyleSheet.create({
   attachmentsPanel: {
     flexDirection: 'row',
     backgroundColor: '#0A192F',
-    padding: 16,
+    padding: 20,
     justifyContent: 'space-around',
     borderTopWidth: 1,
     borderTopColor: '#1D2D50',
+    elevation: 5,
   },
   attachmentOption: {
     alignItems: 'center',
     width: 80,
   },
   attachmentIconBg: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
   },
   attachmentText: {
     color: '#CCD6F6',
-    fontSize: 12,
+    fontSize: 13,
+    fontWeight: '500',
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   fullImage: {
     width: '100%',
     height: '80%',
+    borderRadius: 4,
   },
   closeModal: {
     position: 'absolute',
-    top: 40,
+    top: 50,
     right: 20,
     zIndex: 10,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 20,
+    padding: 5,
+  },
+  imageModalFooter: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    width: '100%',
+  },
+  imageModalButton: {
+    backgroundColor: 'rgba(17, 34, 64, 0.7)',
+    padding: 12,
+    borderRadius: 25,
+    marginHorizontal: 10,
   },
   reactionModalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
   },
   reactionModalContent: {
     backgroundColor: '#112240',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    elevation: 5,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
   },
   reactionList: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    paddingVertical: 10,
+    paddingVertical: 12,
   },
   reactionButton: {
-    padding: 15,
+    padding: 16,
     backgroundColor: '#1D2D50',
-    borderRadius: 30,
+    borderRadius: 40,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    transform: [{scale: 1}],
   },
   reactionEmoji: {
-    fontSize: 24,
+    fontSize: 26,
   },
   reactionContainer: {
     position: 'absolute',
@@ -1265,12 +1465,40 @@ const styles = StyleSheet.create({
     padding: 4,
     borderWidth: 2,
     borderColor: '#0A192F',
+    zIndex: 5,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
   },
   ownReactionContainer: {
     right: 16,
   },
   otherReactionContainer: {
     left: 45,
+  },
+  readStatus: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+  },
+  sentStatus: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+  },
+  reactionModalHeader: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+    paddingBottom: 12,
+    marginBottom: 12,
+  },
+  reactionModalTitle: {
+    color: '#CCD6F6',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
 
