@@ -7,7 +7,8 @@ const {
   createItem, 
   buyItem, 
   getSellerProfile, 
- 
+  sendChatMessage, 
+  getChatHistory,
   getItemsByCategory,
   searchItemByName,
   getAllMarketplaceCategories,
@@ -43,6 +44,8 @@ router.get('/search', searchItemByName);             // Search items with filter
 // Seller route
 router.get('/sellers/:sellerId', getSellerProfile);   // View seller profile
 
-
+// Chat routes
+router.post('/chat', authMiddleware, sendChatMessage);               // Send a chat message
+router.get('/chat/:itemId', authMiddleware, getChatHistory);         // Get chat history
 
 module.exports = router;

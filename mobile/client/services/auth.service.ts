@@ -190,7 +190,9 @@ class AuthService {
       console.error('Error getting user data:', error);
       return null;
     }
+
   }
+  
 }
 
 export default AuthService.getInstance(); 

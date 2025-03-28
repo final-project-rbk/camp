@@ -8,13 +8,14 @@ const blogRoutes = require('./routes/blogs.routes');
 const marcketPlaceRoutes = require('./routes/marchetPlace.routes');
 const placeRoutes = require('./routes/Place.routes');
 const critiriaRoutes = require('./routes/critiria.routes');
+const advisorDashboardRoutes = require('./routes/advisor.dashbored.routes');
+const adminRoutes = require('./routes/admin.routes');
+const eventRoutes = require('./routes/event.routes');
 
 const userRoutes = require('./routes/user.routes');
 const formularAdvisorRoutes = require('./routes/formularAdvisor.routes');
 const authRoutes = require('./routes/auth.routes');
-const adminRoutes = require('./routes/admin.routes');
 const chatRoutes = require('./routes/chat.routes');
-const eventRoutes = require('./routes/event.routes');
 const jwt = require('jsonwebtoken');
 
 // const advisorMediaRoutes = require('./routes/advisorMedia.routes');
@@ -249,6 +250,7 @@ io.on('connection', (socket) => {
         where: { id: newMessage.id },
         include: [{
           model: db.User,
+          as: 'sender',
           attributes: ['id', 'first_name', 'last_name', 'profile_image']
         }]
       });
@@ -424,6 +426,9 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/marketplace', marcketPlaceRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/favorites', require('./routes/Favorite.routes'));
+app.use('/api/advisor', advisorRoutes);
+// Add advisor dashboard routes
+app.use('/api/advisor/dashboard', advisorDashboardRoutes);
 
 // Add the admin place routes
 app.use('/api/admin', adminPlaceRoutes);

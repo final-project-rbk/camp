@@ -19,7 +19,7 @@ const sendMessage = async (req, res) => {
     const message = await Message.create({
       content,
       roomId,
-      userId: req.user.id
+      senderId: req.user.id
     });
 
     if (mediaUrls && mediaUrls.length > 0) {
@@ -38,7 +38,14 @@ const getMessages = async (req, res) => {
     const { roomId } = req.params;
     const messages = await Message.findAll({
       where: { roomId },
-      include: [{ model: Media }, { model: User, attributes: ['id', 'first_name', 'last_name','profile_image'] }]
+      include: [
+        { 
+          model: User, 
+          as: 'sender',
+          attributes: ['id', 'first_name', 'last_name', 'profile_image']
+        }
+      ],
+      order: [['createdAt', 'ASC']]
     });
     res.status(200).json(messages);
   } catch (error) {
@@ -48,6 +55,11 @@ const getMessages = async (req, res) => {
 
 const getRooms = async (req, res) => {
   try {
+    console.log("Getting rooms for user:", req.user.id);
+    
+    // Log all available models
+    console.log("Available models:", Object.keys(require('../models')));
+    
     const rooms = await Room.findAll({
       include: [
         {
@@ -57,14 +69,46 @@ const getRooms = async (req, res) => {
         }
       ]
     });
+    
+    console.log("Total rooms found:", rooms.length);
 
     // Filter rooms to include only those where the authenticated user is a member
     const userRooms = rooms.filter(room => 
       room.users.some(user => user.id === req.user.id)
     );
+    
+    console.log("User rooms after filtering:", userRooms.length);
 
-    res.status(200).json(userRooms);
+    // Add last message to each room
+    const roomsWithLastMessage = await Promise.all(userRooms.map(async (room) => {
+      try {
+        const lastMessage = await Message.findOne({
+          where: { roomId: room.id },
+          order: [['createdAt', 'DESC']],
+          include: [
+            { 
+              model: User, 
+              as: 'sender',
+              attributes: ['id', 'first_name', 'last_name', 'profile_image']
+            }
+          ]
+        });
+        
+        const roomData = room.toJSON();
+        roomData.lastMessage = lastMessage;
+        return roomData;
+      } catch (error) {
+        console.error(`Error getting last message for room ${room.id}:`, error);
+        // Return room without last message in case of error
+        const roomData = room.toJSON();
+        roomData.lastMessage = null;
+        return roomData;
+      }
+    }));
+
+    res.status(200).json(roomsWithLastMessage);
   } catch (error) {
+    console.error("Error in getRooms:", error);
     res.status(500).json({ error: error.message });
   }
 };

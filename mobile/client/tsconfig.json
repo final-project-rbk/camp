@@ -16,5 +16,5 @@
     "expo-env.d.ts",
     "app/onboarding",
     ".expo/types/**/*.ts"
-  ]
+, "app/onboarding", "app/advisorProfile.tsx"  ]
 }

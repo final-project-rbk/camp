@@ -157,7 +157,7 @@ export default function MarketplaceManagement() {
   const fetchCategories = async () => {
     try {
       const token = localStorage.getItem('userToken');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}marketplace/categories`, {
+      const response = await fetch(`${API_URL}marketplace/categories`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

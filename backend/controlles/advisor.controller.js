@@ -1,303 +1,195 @@
-const { User, Advisor, Place, Event,Review } = require('../models'); // Adjust the path as necessary
+const { User, Advisor, Event, Review } = require('../models');
 
-// Migrate user to advisor
-module.exports.migrateUserToAdvisor = async (req, res) => {
+// Get advisor profile with all related data
+exports.getAdvisorProfile = async (req, res) => {
   try {
-    const { userId } = req.body; // Expect userId in request body
-    const user = await User.findByPk(userId);
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
+    const advisor = await Advisor.findOne({
+      where: { userId: req.params.id },
+      include: [{
+        model: User,
+        attributes: ['id', 'first_name', 'last_name', 'email', 'bio', 'experience', 'profile_image']
+      }]
+    });
+
+    if (!advisor) {
+      return res.status(404).json({ error: "Advisor not found" });
     }
 
-    // Check if user is already an advisor
-    const existingAdvisor = await Advisor.findOne({ where: { userId: user.id } });
-    if (existingAdvisor) {
-      return res.status(400).json({ error: "User is already an advisor" });
+    // Get advisor's reviews
+    const reviews = await Review.findAll({
+      where: { advisorId: advisor.id },
+      include: [{
+        model: User,
+        attributes: ['first_name', 'last_name']
+      }]
+    });
+
+    // Calculate average rating
+    let rating = 0;
+    if (reviews.length > 0) {
+      rating = reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length;
     }
 
-    // Create advisor and update user role
-    const advisor = await Advisor.create({ userId: user.id });
-    await user.update({ role: "advisor" });
-
-    return res.status(201).json({ message: `User with ID ${userId} migrated to advisor with ID ${advisor.id}`, advisor });
-  } catch (error) {
-    console.error("Error migrating user to advisor:", error);
-    return res.status(500).json({ error: "Internal server error" });
-  }
-};
-
-// Get all places (with advisor relation if applicable)
-module.exports.getAllPlaces = async (req, res) => {
-  try {
-    const places = await Place.findAll({
-      include: [{ model: Event, include: [Advisor] }], // Include related event and advisor
+    // Get advisor's events count
+    const eventsCount = await Event.count({
+      where: { advisorId: advisor.id }
     });
-    return res.status(200).json(places);
-  } catch (error) {
-    console.error("Error fetching places:", error);
-    return res.status(500).json({ error: "Internal server error" });
-  }
-};
 
-// Get all events for an advisor
-module.exports.getAllEvents = async (req, res) => {
-  try {
-    const advisorId = req.query.advisorId; // Optional filter by advisor
-    const where = advisorId ? { advisorId } : {};
-    const events = await Event.findAll({
-      where,
-      include: [{ model: Advisor, include: [User] }], // Include advisor and user details
+    const advisorProfile = {
+      id: advisor.id,
+      userId: advisor.userId,
+      currentRank: advisor.currentRank,
+      points: advisor.points,
+      isVerified: advisor.isVerified,
+      first_name: advisor.User.first_name,
+      last_name: advisor.User.last_name,
+      email: advisor.User.email,
+      bio: advisor.User.bio,
+      experience: advisor.User.experience,
+      profile_image: advisor.User.profile_image,
+      rating: parseFloat(rating.toFixed(1)),
+      reviews_count: reviews.length,
+      events_count: eventsCount
+    };
+
+    return res.status(200).json({
+      success: true,
+      data: advisorProfile
     });
-    return res.status(200).json(events);
   } catch (error) {
-    console.error("Error fetching events:", error);
+    console.error("Error in getAdvisorProfile:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
 
 // Update advisor profile
-module.exports.updateAdvisorProfile = async (req, res) => {
+exports.updateAdvisorProfile = async (req, res) => {
   try {
-    const advisor = await Advisor.findByPk(req.params.id, { include: [User] });
+    const { field, value } = req.body;
+    const userId = req.params.id;
+
+    const advisor = await Advisor.findOne({
+      where: { userId },
+      include: [{ model: User }]
+    });
+
     if (!advisor) {
       return res.status(404).json({ error: "Advisor not found" });
     }
 
-    // Update advisor and related user fields
-    await advisor.update(req.body.advisor || {});
-    await advisor.User.update(req.body.user || {});
+    // Fields that belong to the User model
+    const userFields = ['first_name', 'last_name', 'email', 'bio', 'experience', 'profile_image'];
 
-    return res.status(200).json({ advisor, user: advisor.User });
+    if (userFields.includes(field)) {
+      // Update User model
+      await advisor.User.update({ [field]: value });
+      console.log(`Updated user field ${field}`);
+    } else {
+      // Update Advisor model
+      await advisor.update({ [field]: value });
+      console.log(`Updated advisor field ${field}`);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully"
+    });
   } catch (error) {
     console.error("Error updating advisor profile:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
 
-// Add a camping place
-module.exports.addPlace = async (req, res) => {
+// Get advisor stats
+exports.getAdvisorStats = async (req, res) => {
   try {
-    const { name, location, description, images, exclusive_details, eventId, advisorId } = req.body;
-    if (!advisorId) {
-      return res.status(400).json({ error: "Advisor ID is required" });
-    }
+    const advisor = await Advisor.findOne({
+      where: { userId: req.params.id },
+      attributes: ['currentRank', 'points', 'isVerified']
+    });
 
-    const advisor = await Advisor.findByPk(advisorId);
     if (!advisor) {
       return res.status(404).json({ error: "Advisor not found" });
     }
-
-    const place = await Place.create({
-      name,
-      location,
-      description,
-      images,
-      exclusive_details,
-      eventId: eventId || null,
-      advisorId, // Assuming Place has an advisorId field (add to schema if needed)
-    });
-
-    return res.status(201).json(place);
-  } catch (error) {
-    console.error("Error adding place:", error);
-    return res.status(500).json({ error: "Internal server error" });
-  }
-};
-
-// Update a camping place
-module.exports.updatePlace = async (req, res) => {
-  try {
-    const place = await Place.findByPk(req.params.id);
-    if (!place) {
-      return res.status(404).json({ error: "Place not found" });
-    }
-
-    await place.update(req.body);
-    return res.status(200).json(place);
-  } catch (error) {
-    console.error("Error updating place:", error);
-    return res.status(500).json({ error: "Internal server error" });
-  }
-};
-
-// Delete a camping place
-module.exports.deletePlace = async (req, res) => {
-  try {
-    const place = await Place.findByPk(req.params.id);
-    if (!place) {
-      return res.status(404).json({ error: "Place not found" });
-    }
-
-    await place.destroy();
-    return res.status(200).json({ message: "Place deleted successfully" });
-  } catch (error) {
-    console.error("Error deleting place:", error);
-    return res.status(500).json({ error: "Internal server error" });
-  }
-};
-
-// Add a camping event
-module.exports.addEvent = async (req, res) => {
-  try {
-    const { title, date, description, location, images, exclusive_details, advisorId } = req.body;
-    if (!advisorId) {
-      return res.status(400).json({ error: "Advisor ID is required" });
-    }
-
-    const advisor = await Advisor.findByPk(advisorId);
-    if (!advisor) {
-      return res.status(404).json({ error: "Advisor not found" });
-    }
-
-    const event = await Event.create({
-      title,
-      date,
-      description,
-      location,
-      images,
-      exclusive_details,
-      advisorId,
-    });
-
-    return res.status(201).json(event);
-  } catch (error) {
-    console.error("Error adding event:", error);
-    return res.status(500).json({ error: "Internal server error" });
-  }
-};
-
-// Update a camping event
-module.exports.updateEvent = async (req, res) => {
-  try {
-    const event = await Event.findByPk(req.params.id);
-    if (!event) {
-      return res.status(404).json({ error: "Event not found" });
-    }
-
-    await event.update(req.body);
-    return res.status(200).json(event);
-  } catch (error) {
-    console.error("Error updating event:", error);
-    return res.status(500).json({ error: "Internal server error" });
-  }
-};
-
-// Delete a camping event
-module.exports.deleteEvent = async (req, res) => {
-  try {
-    const event = await Event.findByPk(req.params.id);
-    if (!event) {
-      return res.status(404).json({ error: "Event not found" });
-    }
-
-    await event.destroy();
-    return res.status(200).json({ message: "Event deleted successfully" });
-  } catch (error) {
-    console.error("Error deleting event:", error);
-    return res.status(500).json({ error: "Internal server error" });
-  }
-};
-
-// Get advisor profile with reviews and points
-module.exports.getAdvisorProfile = async (req, res) => {
-    try {
-      const advisor = await Advisor.findByPk(req.params.id, {
-        include: [
-          { 
-            model: User, 
-            attributes: ["first_name", "last_name", "bio", "experience", "points", "rank"] 
-          },
-          { 
-            model: Event, 
-            attributes: ["title", "date", "status"],
-            include: [{ model: Review, attributes: ["rating", "comment", "created_at"] }]
-          },
-          { 
-            model: Review, 
-            attributes: ["rating", "comment", "created_at"],
-            include: [{ model: User, attributes: ["first_name", "last_name"] }]
-          },
-        ],
-      });
-  
-      if (!advisor) {
-        return res.status(404).json({ error: "Advisor not found" });
-      }
-  
-      // Build the profile response
-      const profile = {
-        advisorId: advisor.id,
-        user: advisor.User,
-        events: advisor.Events.map(event => ({
-          title: event.title,
-          date: event.date,
-          status: event.status,
-          reviews: event.Reviews.map(review => ({
-            rating: review.rating,
-            comment: review.comment || "No comment provided",
-            created_at: review.created_at,
-          })),
-        })),
-        points: advisor.points, // Use advisor.points only, since User.points is synced
-        rank: advisor.currentRank,
-        reviews: advisor.Reviews.map(review => ({
-          rating: review.rating,
-          comment: review.comment || "No comment provided",
-          reviewer: `${review.User.first_name} ${review.User.last_name}`,
-          created_at: review.created_at,
-        })),
-      };
-  
-      return res.status(200).json(profile);
-    } catch (error) {
-      console.error("Error fetching advisor profile:", error);
-      return res.status(500).json({ error: "Internal server error" });
-    }
-  };
-// Update points dynamically (e.g., after a review or event completion)
-module.exports.updatePoints = async (req, res) => {
-  try {
-    const { advisorId, points } = req.body;
-    const advisor = await Advisor.findByPk(advisorId);
-    if (!advisor) {
-      return res.status(404).json({ error: "Advisor not found" });
-    }
-
-    // Calculate new points
-    const newPoints = advisor.points + points;
-    await advisor.update({ points: newPoints });
-
-    // Fetch all ranks from EventRating (assuming it's the rank table)
-    const ranks = await sequelize.models.event_rating.findAll({
-      order: [['targetPoints', 'ASC']] // Order by targetPoints ascending
-    });
-
-    // Determine the new rank based on newPoints
-    let newRank = "bronze"; // Default to lowest rank
-    for (const rank of ranks) {
-      if (newPoints >= rank.targetPoints && (rank.totalPoints === null || newPoints <= rank.totalPoints)) {
-        newRank = rank.name;
-      } else if (newPoints > rank.totalPoints) {
-        // Continue to next rank if points exceed this rank's totalPoints
-        continue;
-      } else {
-        // Stop if points are below targetPoints of next rank
-        break;
-      }
-    }
-
-    // Update advisor's rank
-    await advisor.update({ currentRank: newRank });
-    // Optionally sync User model (commented out as per your latest code)
-    // await advisor.User.update({ points: newPoints, rank: newRank });
 
     return res.status(200).json({
-      message: "Points and rank updated",
-      points: newPoints,
-      rank: newRank
+      success: true,
+      data: {
+        currentRank: advisor.currentRank,
+        points: advisor.points,
+        isVerified: advisor.isVerified
+      }
     });
   } catch (error) {
-    console.error("Error updating points:", error);
+    console.error("Error getting advisor stats:", error);
     return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// Add a specific method for updating advisor experience
+exports.updateAdvisorExperience = async (req, res) => {
+  try {
+    const { experience } = req.body;
+    const userId = req.params.id;
+
+    console.log('updateAdvisorExperience called with:', { userId, experience, body: req.body });
+
+    if (!experience && experience !== '') {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Experience field is required" 
+      });
+    }
+
+    // Find the advisor first
+    const advisor = await Advisor.findOne({
+      where: { userId }
+    });
+
+    if (!advisor) {
+      console.log('Advisor not found for userId:', userId);
+      return res.status(404).json({ 
+        success: false, 
+        error: "Advisor not found" 
+      });
+    }
+
+    console.log('Found advisor with id:', advisor.id);
+
+    // Find the associated user
+    const user = await User.findByPk(userId);
+    
+    if (!user) {
+      console.log('User not found with id:', userId);
+      return res.status(404).json({
+        success: false,
+        error: "Associated user not found"
+      });
+    }
+    
+    console.log('Found user with id:', user.id);
+    console.log('Current experience:', user.experience);
+    console.log('New experience:', experience);
+
+    // Update the experience field directly on the user
+    await user.update({ experience: experience });
+    
+    console.log('User updated, new experience:', user.experience);
+
+    return res.status(200).json({
+      success: true,
+      message: "Experience updated successfully",
+      data: {
+        id: advisor.id,
+        userId: userId,
+        experience: experience
+      }
+    });
+  } catch (error) {
+    console.error("Error updating advisor experience:", error);
+    return res.status(500).json({ 
+      success: false, 
+      error: "Internal server error: " + error.message 
+    });
   }
 };

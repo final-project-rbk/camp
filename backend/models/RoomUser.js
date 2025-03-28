@@ -1,27 +1,36 @@
 module.exports = (sequelize, DataTypes) => {
-  const RoomUser = sequelize.define('RoomUser', {
-    userId: {
+  const RoomUser = sequelize.define('room_user', {
+    roomId: {
+      field: 'room_id',
       type: DataTypes.INTEGER,
       allowNull: false,
-      primaryKey: true,
       references: {
-        model: 'Users',
+        model: 'rooms',
         key: 'id'
       }
     },
-    roomId: {
+    userId: {
+      field: 'user_id',
       type: DataTypes.INTEGER,
       allowNull: false,
-      primaryKey: true,
       references: {
-        model: 'Rooms',
+        model: 'users',
         key: 'id'
       }
+    },
+    createdAt: {
+      field: 'created_at',
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW
+    },
+    updatedAt: {
+      field: 'updated_at',
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW
     }
   }, {
-    tableName: 'roomusers',
-    timestamps: true
-  })
+    tableName: 'room_users'
+  });
 
   return RoomUser;
-};
+}; 

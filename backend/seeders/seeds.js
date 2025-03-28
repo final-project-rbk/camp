@@ -1150,8 +1150,20 @@ module.exports = {
         }
       ]);
 
-      
-      
+      // Chats
+      console.log('Seeding chats...');
+      await queryInterface.bulkInsert('chats', [
+        {
+          message: 'Hello, I have a question about the beach.',
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          message: 'Sure, I can help you with that!',
+          createdAt: now,
+          updatedAt: now
+        }
+      ]);
 
       // Criteria
       console.log('Seeding critiria...');

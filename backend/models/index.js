@@ -1,4 +1,4 @@
-const { Sequelize, DataTypes, Transaction } = require("sequelize");
+const { Sequelize, DataTypes,Transaction } = require("sequelize");
 
 // Initialize Sequelize connection
 const connection = new Sequelize(process.env.Database, process.env.User, process.env.Password, {
@@ -15,7 +15,7 @@ const Rank = require("./rank")(connection, DataTypes);
 const Favorite = require("./Favorite")(connection, DataTypes);
 const Media = require("./media")(connection, DataTypes);
 const Categorie = require("./categorie")(connection, DataTypes);
-
+const Chat = require("./Chat")(connection, DataTypes);
 const Advisor = require("./advisor")(connection, DataTypes);
 const Citiria=require("./critiria")(connection,DataTypes)
 const Review=require("./review")(connection,DataTypes)
@@ -24,16 +24,17 @@ const PlaceCategorie = require("./PlaceCategorie")(connection,DataTypes)
 const Blog = require("./blog")(connection,DataTypes)
 const Comment = require("./Comment")(connection, DataTypes);
 
+// Add new models
+const Room = require("./Room")(connection, DataTypes);
+const RoomUser = require("./RoomUser")(connection, DataTypes);
+const Message = require("./Message")(connection, DataTypes);
+
 const MarketplaceItem = require("./marcketPlaceItem")(connection, DataTypes);
 const MarketplaceCategorie = require("./marcketPlaceCategorie")(connection, DataTypes);
 const MarketplaceItemCategorie = require("./marcketPlaceItemCategorie")(connection, DataTypes);
 
 const FormularAdvisor = require("./FormularAdvisor")(connection, DataTypes);
 const AdvisorMedia = require("./AdvisorMedia")(connection, DataTypes);
-
-const Room = require("./Room")(connection, DataTypes);
-const Message = require("./Message")(connection, DataTypes);
-const RoomUser = require("./RoomUser")(connection, DataTypes);
 
 // Define relationships
 const defineAssociations = () => {
@@ -133,7 +134,8 @@ MarketplaceItem.belongsTo(User, { foreignKey: 'sellerId', as: 'seller' });
   });
 
   // Chat relationships for marketplace
-
+  MarketplaceItem.hasMany(Chat, { foreignKey: "itemId", onDelete: "CASCADE" });
+  Chat.belongsTo(MarketplaceItem, { foreignKey: "itemId" });
 // FormularAdvisor associations
 User.hasOne(FormularAdvisor, { foreignKey: "userId" });
 FormularAdvisor.belongsTo(User, { foreignKey: "userId" });
@@ -149,20 +151,27 @@ FormularAdvisor.belongsTo(Advisor, { foreignKey: "advisorId" });
 Place.hasMany(Favorite, { foreignKey: "placeId" });
 Favorite.belongsTo(Place, { foreignKey: "placeId" });
 
-User.hasMany(Message, { foreignKey: 'userId' });
-Message.belongsTo(User, { foreignKey: 'userId' });
+  User.hasMany(Chat, { foreignKey: "senderId", as: "sentChats" });
+  Chat.belongsTo(User, { foreignKey: "senderId", as: "sender" });
 
-User.belongsToMany(Room, { through: RoomUser, foreignKey: 'userId' });
-Room.belongsToMany(User, { through: RoomUser, foreignKey: 'roomId' });
-
-Room.hasMany(Message, { foreignKey: 'roomId' });
-Message.belongsTo(Room, { foreignKey: 'roomId' });
-
-Message.hasMany(Media, { foreignKey: 'messageId' });
-Media.belongsTo(Message, { foreignKey: 'messageId' });
+  User.hasMany(Chat, { foreignKey: "recipientId", as: "receivedChats" });
+  Chat.belongsTo(User, { foreignKey: "recipientId", as: "recipient" });
 
   MarketplaceItem.hasMany(Media, { foreignKey: 'marketplaceItemId', as: 'media',onDelete: 'CASCADE' });
   Media.belongsTo(MarketplaceItem, { foreignKey: 'marketplaceItemId',as: 'marketplaceItem',onDelete: 'CASCADE'});
+
+  // Chat room associations
+  Room.belongsToMany(User, { through: RoomUser, foreignKey: "roomId" });
+  User.belongsToMany(Room, { through: RoomUser, foreignKey: "userId" });
+
+  Message.belongsTo(Room, { foreignKey: "roomId" });
+  Room.hasMany(Message, { foreignKey: "roomId" });
+
+  Message.belongsTo(User, { foreignKey: "senderId", as: "sender" });
+  User.hasMany(Message, { foreignKey: "senderId", as: "sentMessages" });
+
+  Message.belongsTo(Message, { foreignKey: "replyToId", as: "replyTo" });
+  Message.hasMany(Message, { foreignKey: "replyToId", as: "replies" });
 };
 
 // Call the function to define associations
@@ -181,7 +190,7 @@ connection
 
 // Sync the database
 // connection
-//   .sync({ alter: true }) // Use alter: true to update tables without dropping them
+//   .sync({ force: true }) // Use alter: true to update tables without dropping them
 //   .then(() => console.log("Tables are created or updated"))
 //   .catch((err) => {
 //     console.error("Error syncing tables:", err);
@@ -198,6 +207,7 @@ module.exports = {
   Favorite,
   Media,
   Categorie,
+  Chat,
   Advisor,
   Citiria,
   Review,
@@ -210,7 +220,8 @@ module.exports = {
   MarketplaceItemCategorie,
   FormularAdvisor,
   AdvisorMedia,
+  // Add new models to exports
   Room,
-  Message,
-  RoomUser
+  RoomUser,
+  Message
 };

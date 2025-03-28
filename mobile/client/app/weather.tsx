@@ -178,7 +178,7 @@ export default function WeatherScreen() {
 
   // Get background gradient based on weather and time of day
   const getBackgroundGradient = () => {
-    if (!weatherData.current) return ['#0A192F', '#1F2937'];
+    if (!weatherData.current) return ['#0A192F', '#1F2937'] as const;
     
     const { is_day, condition } = weatherData.current;
     const conditionText = condition.text.toLowerCase();
@@ -186,32 +186,32 @@ export default function WeatherScreen() {
     if (is_day) {
       // Daytime gradients
       if (conditionText.includes('sunny') || conditionText.includes('clear')) {
-        return ['#4A90E2', '#87CEEB'];
+        return ['#4A90E2', '#87CEEB'] as const;
       } else if (conditionText.includes('cloud')) {
-        return ['#7899B3', '#A3B5C7'];
+        return ['#7899B3', '#A3B5C7'] as const;
       } else if (conditionText.includes('rain') || conditionText.includes('drizzle')) {
-        return ['#465A6E', '#758A9B'];
+        return ['#465A6E', '#758A9B'] as const;
       } else if (conditionText.includes('snow')) {
-        return ['#B4C4D6', '#D6E3F3'];
+        return ['#B4C4D6', '#D6E3F3'] as const;
       } else if (conditionText.includes('fog') || conditionText.includes('mist')) {
-        return ['#939FAD', '#B8C4CF'];
+        return ['#939FAD', '#B8C4CF'] as const;
       } else {
-        return ['#5A81A6', '#7FA1C3']; // Default day
+        return ['#5A81A6', '#7FA1C3'] as const; // Default day
       }
     } else {
       // Nighttime gradients
       if (conditionText.includes('clear')) {
-        return ['#0F2044', '#1F3A67'];
+        return ['#0F2044', '#1F3A67'] as const;
       } else if (conditionText.includes('cloud')) {
-        return ['#1E2C3D', '#2A3C54'];
+        return ['#1E2C3D', '#2A3C54'] as const;
       } else if (conditionText.includes('rain') || conditionText.includes('drizzle')) {
-        return ['#151F2B', '#212E3F'];
+        return ['#151F2B', '#212E3F'] as const;
       } else if (conditionText.includes('snow')) {
-        return ['#1C2739', '#2A3B51'];
+        return ['#1C2739', '#2A3B51'] as const;
       } else if (conditionText.includes('fog') || conditionText.includes('mist')) {
-        return ['#1D2533', '#2C3749'];
+        return ['#1D2533', '#2C3749'] as const;
       } else {
-        return ['#0A192F', '#1F2937']; // Default night
+        return ['#0A192F', '#1F2937'] as const; // Default night
       }
     }
   };

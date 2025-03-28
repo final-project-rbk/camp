@@ -1,20 +1,18 @@
 const express = require('express');
 const router = express.Router();
-const { migrateUserToAdvisor, getAllPlaces, getAllEvents,updateAdvisorProfile,updatePlace,deletePlace,updateEvent,deleteEvent,addPlace,addEvent,getAdvisorProfile,updatePoints } = require('../controlles/advisor.controller');
+const advisorController = require('../controlles/advisor.controller');
 const authMiddleware = require('../middleware/auth.middleware');
 
-// Protected routes
-router.post('/migrate', authMiddleware, migrateUserToAdvisor);
-router.get('/places', authMiddleware, getAllPlaces);
-router.get('/events', authMiddleware, getAllEvents);
-router.put('/profile/:id', authMiddleware, updateAdvisorProfile);
-router.put('/place/:id', authMiddleware, updatePlace);
-router.delete('/place/:id', authMiddleware, deletePlace);
-router.put('/event/:id', authMiddleware, updateEvent);
-router.delete('/event/:id', authMiddleware, deleteEvent);
-router.post('/place', authMiddleware, addPlace);
-router.post('/event', authMiddleware, addEvent);
-router.post('/points', authMiddleware, updatePoints);
-router.get('/advisor/:id', authMiddleware, getAdvisorProfile);
+// Get advisor profile
+router.get('/advisor/:id', authMiddleware, advisorController.getAdvisorProfile);
+
+// Update advisor profile
+router.put('/profile/:id', authMiddleware, advisorController.updateAdvisorProfile);
+
+// Get advisor stats
+router.get('/stats/:id', authMiddleware, advisorController.getAdvisorStats);
+
+// Update advisor experience
+router.put('/experience/:id', authMiddleware, advisorController.updateAdvisorExperience);
 
 module.exports = router;

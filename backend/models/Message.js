@@ -1,38 +1,66 @@
 module.exports = (sequelize, DataTypes) => {
-  const Message = sequelize.define('Message', {
+  const Message = sequelize.define('message', {
     content: {
       type: DataTypes.TEXT,
-      allowNull: false
-    },
-    replyToId: {
-      type: DataTypes.INTEGER,
       allowNull: true
     },
-    mediaUrls: {
-      type: DataTypes.JSON,
-      allowNull: true,
-      defaultValue: []
+    senderId: {
+      field: 'sender_id',
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'users',
+        key: 'id'
+      }
     },
-    reactions: {
-      type: DataTypes.JSON,
-      allowNull: true,
-      defaultValue: {}
+    roomId: {
+      field: 'room_id',
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'rooms',
+        key: 'id'
+      }
     },
     isRead: {
+      field: 'is_read',
       type: DataTypes.BOOLEAN,
-      allowNull: false,
       defaultValue: false
+    },
+    readAt: {
+      field: 'read_at',
+      type: DataTypes.DATE,
+      allowNull: true
+    },
+    replyToId: {
+      field: 'reply_to_id',
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'messages',
+        key: 'id'
+      }
+    },
+    mediaUrls: {
+      field: 'media_urls',
+      type: DataTypes.JSON,
+      allowNull: true
+    },
+    reaction: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    createdAt: {
+      field: 'created_at',
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW
+    },
+    updatedAt: {
+      field: 'updated_at',
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW
     }
-  }, {
-    timestamps: true
   });
-
-  Message.associate = (models) => {
-    Message.belongsTo(models.User, { foreignKey: 'userId' });
-    Message.belongsTo(models.Room, { foreignKey: 'roomId' });
-    Message.belongsTo(models.Message, { as: 'ReplyTo', foreignKey: 'replyToId' });
-    Message.hasMany(models.Media, { foreignKey: 'messageId' });
-  };
 
   return Message;
 };
