@@ -16,7 +16,8 @@ import {
   SafeAreaView,
   PanResponder,
   Alert,
-  Linking
+  Linking,
+  Share
 } from 'react-native';
 import { useLocalSearchParams, Stack, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -287,23 +288,31 @@ export default function PlaceDetailsScreen() {
       const data = await response.json();
       
       if (data.success) {
-        setPlace(data.data);
+        // Process images if needed
+        let processedPlace = { ...data.data };
+        
+        // Handle images parsing if needed
+        if (typeof processedPlace.images === 'string') {
+          try {
+            processedPlace.images = JSON.parse(processedPlace.images);
+          } catch (e) {
+            // If parsing fails, treat as single image string
+            processedPlace.images = [processedPlace.images];
+          }
+        }
+        
+        // Ensure images is an array with at least one item
+        if (!Array.isArray(processedPlace.images) || processedPlace.images.length === 0) {
+          processedPlace.images = ['https://via.placeholder.com/400'];
+        }
+        
+        setPlace(processedPlace);
         
         // Debug location information
-        console.log('Place Data:', {
-          id: data.data.id,
-          name: data.data.name,
-          hasLocation: !!data.data.location,
-          hasLatitude: !!data.data.latitude,
-          hasLongitude: !!data.data.longitude,
-          latitude: data.data.latitude,
-          longitude: data.data.longitude
-        });
+        checkIfFavorite(processedPlace.id);
         
-        checkIfFavorite(data.data.id);
-        
-        if (data.data.location) {
-          fetchWeather(data.data.location);
+        if (processedPlace.location) {
+          fetchWeather(processedPlace.location);
         }
 
         // Get user's current location for distance calculation
@@ -364,6 +373,66 @@ export default function PlaceDetailsScreen() {
     }
   };
 
+  const openDirections = () => {
+    if (!place || !place.latitude || !place.longitude) {
+      Alert.alert('Error', 'Location coordinates not available for this place');
+      return;
+    }
+    
+    // Format coordinates properly
+    const lat = place.latitude;
+    const lng = place.longitude;
+    
+    // URL format differs by platform
+    let url;
+    if (Platform.OS === 'ios') {
+      // Format for Apple Maps
+      url = `http://maps.apple.com/?q=${place.name}&ll=${lat},${lng}`;
+    } else {
+      // Format for Google Maps on Android
+      url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+    }
+    
+    Linking.canOpenURL(url).then(supported => {
+      if (supported) {
+        Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'Could not open maps application');
+      }
+    }).catch(err => {
+      console.error('Error opening directions:', err);
+      Alert.alert('Error', 'Could not open maps application');
+    });
+  };
+
+  // Share functionality
+  const handleShare = async () => {
+    if (!place) return;
+    
+    try {
+      let message = `Check out ${place.name} at ${place.location}`;
+      
+      if (place.rating) {
+        message += ` - Rated ${place.rating}/5`;
+      }
+      
+      if (place.description) {
+        // Add a short description preview
+        const shortDesc = place.description.length > 100 
+          ? place.description.substring(0, 100) + '...'
+          : place.description;
+        message += `\n\n${shortDesc}`;
+      }
+      
+      await Share.share({
+        message,
+        title: place.name,
+      });
+    } catch (error) {
+      console.error('Error sharing place:', error);
+    }
+  };
+
   // Calculate distance between user and place
   useEffect(() => {
     if (userLocation && place && place.latitude && place.longitude) {
@@ -396,38 +465,6 @@ export default function PlaceDetailsScreen() {
 
     getLocation();
   }, []);
-
-  const openDirections = () => {
-    if (!place || !place.latitude || !place.longitude) {
-      Alert.alert('Error', 'Location coordinates not available for this place');
-      return;
-    }
-    
-    // Format coordinates properly
-    const lat = place.latitude;
-    const lng = place.longitude;
-    
-    // URL format differs by platform
-    let url;
-    if (Platform.OS === 'ios') {
-      // Format for Apple Maps
-      url = `http://maps.apple.com/?q=${place.name}&ll=${lat},${lng}`;
-    } else {
-      // Format for Google Maps on Android
-      url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
-    }
-    
-    Linking.canOpenURL(url).then(supported => {
-      if (supported) {
-        Linking.openURL(url);
-      } else {
-        Alert.alert('Error', 'Could not open maps application');
-      }
-    }).catch(err => {
-      console.error('Error opening directions:', err);
-      Alert.alert('Error', 'Could not open maps application');
-    });
-  };
 
   useEffect(() => {
     if (id) {
@@ -676,9 +713,7 @@ export default function PlaceDetailsScreen() {
             {/* Directions Button */}
             <TouchableOpacity
               style={styles.directionsButton}
-              onPress={() => {
-                openDirections();
-              }}
+              onPress={() => openDirections()}
             >
               <Ionicons name="navigate-circle" size={20} color="#FFFFFF" />
               <Text style={styles.directionsButtonText}>Get Directions</Text>
@@ -722,7 +757,7 @@ export default function PlaceDetailsScreen() {
         <Image 
           source={{ uri: mapUrl }}
           style={styles.staticMap}
-          onError={(e) => console.error('Static map image failed to load:', e.nativeEvent.error)}
+          onError={() => {}}
         />
       </View>
     );
@@ -802,6 +837,21 @@ export default function PlaceDetailsScreen() {
                   source={{ uri: item }} 
                   style={styles.heroImage}
                   resizeMode="cover"
+                  onError={() => {}}
+                />
+                <LinearGradient
+                  colors={['transparent', 'transparent', 'rgba(10, 25, 47, 0.7)']}
+                  style={styles.imageGradient}
+                  locations={[0, 0.6, 1]}
+                />
+              </View>
+            )}
+            ListEmptyComponent={() => (
+              <View style={styles.heroSlide}>
+                <Image 
+                  source={{ uri: 'https://via.placeholder.com/400' }}
+                  style={styles.heroImage}
+                  resizeMode="cover"
                 />
                 <LinearGradient
                   colors={['transparent', 'transparent', 'rgba(10, 25, 47, 0.7)']}
@@ -817,6 +867,13 @@ export default function PlaceDetailsScreen() {
             initialIsFavorite={isFavorite} 
             style={styles.favoriteButton} 
           />
+          
+          <Pressable 
+            style={styles.shareButton}
+            onPress={handleShare}
+          >
+            <Ionicons name="share-social" size={22} color="#FFFFFF" />
+          </Pressable>
           
           <View style={styles.paginationContainer}>
             {place.images.map((_, i) => {
@@ -1474,5 +1531,14 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  shareButton: {
+    position: 'absolute',
+    top: 16,
+    right: 64, // Position it next to the favorite button
+    zIndex: 10,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderRadius: 20,
+    padding: 8,
   },
 }); 
