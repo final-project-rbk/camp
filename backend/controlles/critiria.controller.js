@@ -107,10 +107,10 @@ const critiriaController = {
 
       // Process each rating
       const results = await Promise.all(
-        ratings.map(async ({ criteriaId, value }) => {
-          console.log('Processing rating:', { criteriaId, value });
+        ratings.map(async ({ critiriaId, value }) => {
+          console.log('Processing rating:', { critiriaId, value });
           
-          if (!criteriaId || typeof value !== 'number') {
+          if (!critiriaId || typeof value !== 'number') {
             return { error: true, message: 'Invalid rating data' };
           }
 
@@ -120,7 +120,7 @@ const critiriaController = {
               where: {
                 userId,
                 placeId,
-                critiriaId: criteriaId
+                critiriaId
               },
               defaults: {
                 value
@@ -132,11 +132,11 @@ const critiriaController = {
               await placeUser.update({ value });
             }
 
-            return { criteriaId, success: true };
+            return { critiriaId, success: true };
           } catch (err) {
             console.error('Error processing individual rating:', err);
             return { 
-              criteriaId, 
+              critiriaId, 
               success: false, 
               error: err.message,
               errorDetail: err.toString()

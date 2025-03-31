@@ -51,7 +51,8 @@ const userController = {
         email,
         phone_number,
         profile_image,
-        bio
+        bio,
+        locationPermission
       } = req.body;
 
       // Check if the requesting user has permission to update this profile
@@ -77,7 +78,8 @@ const userController = {
         email: email || user.email,
         phone_number: phone_number || user.phone_number,
         profile_image: profile_image || user.profile_image,
-        bio: bio || user.bio
+        bio: bio || user.bio,
+        locationPermission: locationPermission !== undefined ? locationPermission : user.locationPermission
       });
 
       // Exclude sensitive data from response
@@ -258,6 +260,45 @@ const userController = {
       });
     }
   },
+
+  // Update location permission
+  updateLocationPermission: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { locationPermission } = req.body;
+
+      // Check if the requesting user has permission to update this profile
+      if (!req.user || (req.user.id !== parseInt(id) && !req.user.isAdmin)) {
+        return res.status(403).json({
+          success: false,
+          error: 'Unauthorized to update this profile'
+        });
+      }
+
+      const user = await User.findByPk(id);
+      
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          error: 'User not found'
+        });
+      }
+
+      await user.update({ locationPermission });
+
+      res.status(200).json({
+        success: true,
+        message: 'Location permission updated successfully',
+        data: { locationPermission }
+      });
+    } catch (error) {
+      console.error('Error in updateLocationPermission:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error updating location permission'
+      });
+    }
+  }
 };
 
 module.exports = userController; 

@@ -7,6 +7,7 @@ import SafetyTab from '../../components/SafetyTab';
 import WeatherTab from '../../components/WeatherTab';
 import TutorialGalleryModal from '../../components/TutorialGalleryModal';
 import React from "react";
+import { useRouter } from "expo-router";
 
 interface Tutorial {
   id: number;
@@ -26,6 +27,7 @@ const getImageUri = (image: string | any): string => {
 };
 
 export default function Hints() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('essentials');
   const [activeTutorialTab, setActiveTutorialTab] = useState<'fire' | 'shelter' | 'food' | 'gear'>('fire');
   const [galleryVisible, setGalleryVisible] = useState(false);
@@ -152,6 +154,13 @@ export default function Hints() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={() => router.push('/(tabs)/home')}
+        >
+          <ChevronLeft size={24} color="#64FFDA" />
+          <Text style={styles.backButtonText}>Home</Text>
+        </TouchableOpacity>
         <View style={styles.headerContent}>
           <Tent size={22} color="#64FFDA" />
         </View>
@@ -284,9 +293,19 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 24,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backButtonText: {
+    color: '#64FFDA',
+    fontSize: 16,
+    fontWeight: '500',
+    marginLeft: 4,
   },
   headerContent: {
     // Remove this style as it's no longer needed
