@@ -111,7 +111,7 @@ const   adminController = {
                         model: AdvisorMedia
                     }
                 ],
-                order: [['created_at', 'DESC']]
+                order: [['createdAt', 'DESC']]
             });
 
             res.status(200).json({
@@ -224,11 +224,11 @@ const   adminController = {
                 });
             }
 
-            // Start a transaction
-            const t = await db.sequelize.transaction();
+            // Use sequelize directly from the connection export
+            const transaction = await db.connection.transaction();
 
             try {
-                await formular.update({ status }, { transaction: t });
+                await formular.update({ status }, { transaction });
 
                 if (status === 'approved') {
                     // Create advisor record
@@ -236,26 +236,26 @@ const   adminController = {
                         userId: formular.userId,
                         isVerified: true,
                         cin: formular.cin
-                    }, { transaction: t });
+                    }, { transaction });
 
                     // Update user role
                     await User.update(
                         { role: 'advisor' },
                         { 
                             where: { id: formular.userId },
-                            transaction: t 
+                            transaction
                         }
                     );
                 }
 
-                await t.commit();
+                await transaction.commit();
 
                 res.status(200).json({
                     success: true,
                     message: `Application ${status} successfully`
                 });
             } catch (error) {
-                await t.rollback();
+                await transaction.rollback();
                 throw error;
             }
         } catch (error) {
@@ -263,6 +263,153 @@ const   adminController = {
             res.status(500).json({
                 success: false,
                 message: 'Error updating application',
+                error: error.message
+            });
+        }
+    },
+
+    // Add this method to your adminController
+    updateUserRole: async (req, res) => {
+        try {
+            // Check if user is admin
+            if (req.user.role !== 'admin') {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Access denied. Admin privileges required.'
+                });
+            }
+
+            const { userId } = req.params;
+            const { role } = req.body;
+
+            // Validate role
+            if (!['user', 'advisor', 'admin'].includes(role)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid role. Must be "user", "advisor", or "admin"'
+                });
+            }
+
+            const user = await User.findByPk(userId);
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'User not found'
+                });
+            }
+
+            // Prevent admin from changing their own role
+            if (user.id === req.user.id) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Cannot change your own role'
+                });
+            }
+
+            // Start transaction to ensure database consistency
+            const transaction = await db.connection.transaction();
+
+            try {
+                // If changing to advisor, check if advisor record already exists
+                if (role === 'advisor' && user.role !== 'advisor') {
+                    // Check if the advisor record already exists
+                    const existingAdvisor = await Advisor.findOne({
+                        where: { userId: user.id }
+                    });
+
+                    if (!existingAdvisor) {
+                        // Create a new advisor record
+                        await Advisor.create({
+                            userId: user.id,
+                            isVerified: true,
+                            cin: 'Admin assigned' // Default value
+                        }, { transaction });
+                    }
+                }
+
+                // Update the user role
+                await user.update({ role }, { transaction });
+                
+                await transaction.commit();
+
+                res.status(200).json({
+                    success: true,
+                    message: `User role updated to ${role} successfully`
+                });
+            } catch (error) {
+                await transaction.rollback();
+                throw error;
+            }
+        } catch (error) {
+            console.error('Error updating user role:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error updating user role',
+                error: error.message
+            });
+        }
+    },
+
+    // Remove advisor role and delete advisor record
+    removeAdvisorRole: async (req, res) => {
+        try {
+            // Check if user is admin
+            if (req.user.role !== 'admin') {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Access denied. Admin privileges required.'
+                });
+            }
+
+            const { userId } = req.params;
+
+            const user = await User.findByPk(userId);
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'User not found'
+                });
+            }
+
+            if (user.role !== 'advisor') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'User is not an advisor'
+                });
+            }
+
+            // Start a transaction
+            const transaction = await db.connection.transaction();
+
+            try {
+                // Find the advisor record
+                const advisor = await Advisor.findOne({
+                    where: { userId: user.id }
+                });
+
+                if (advisor) {
+                    // Delete the advisor record
+                    await advisor.destroy({ transaction });
+                }
+
+                // Update user role to user
+                await user.update({ role: 'user' }, { transaction });
+
+                await transaction.commit();
+
+                res.status(200).json({
+                    success: true,
+                    message: 'User role updated to user and removed from advisors'
+                });
+            } catch (error) {
+                await transaction.rollback();
+                throw error;
+            }
+        } catch (error) {
+            console.error('Error removing advisor role:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error updating user role',
                 error: error.message
             });
         }

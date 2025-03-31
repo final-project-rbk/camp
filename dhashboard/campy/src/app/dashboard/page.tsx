@@ -53,6 +53,10 @@ export default function Dashboard() {
   const [modalPage, setModalPage] = useState(1);
   const [token, setToken] = useState('');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<() => Promise<void>>(() => Promise.resolve());
+  const [confirmMessage, setConfirmMessage] = useState('');
+  const [confirmTitle, setConfirmTitle] = useState('');
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -90,10 +94,10 @@ export default function Dashboard() {
         setUsers([]);
       }
 
-      // Fetch advisor applications using the formularAdvisor endpoint
+      // Fetch advisor applications using the correct endpoint
       try {
         console.log('Fetching advisor applications...');
-        const formularsResponse = await fetch(`${API_URL}formularAdvisor`, {
+        const formularsResponse = await fetch(`${API_URL}admin/advisor-applications`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -163,27 +167,54 @@ export default function Dashboard() {
   const handleUpdateRole = async (userId: number, newRole: string) => {
     try {
       const token = localStorage.getItem('userToken');
-      const response = await fetch(`${API_URL}users/${userId}/role`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ role: newRole }),
-      });
+      
+      // Find the current user to check their role
+      const currentUser = users.find(user => user.id === userId);
+      
+      // If changing from advisor to another role, use the remove-advisor endpoint
+      if (currentUser?.role === 'advisor' && newRole !== 'advisor') {
+        const response = await fetch(`${API_URL}admin/users/${userId}/remove-advisor`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          }
+        });
 
-      if (!response.ok) throw new Error('Failed to update user role');
-      await loadDashboardData();
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to remove advisor role');
+        }
+      } 
+      // Otherwise use the regular role update endpoint
+      else {
+        // Always use the role update endpoint for other cases
+        const response = await fetch(`${API_URL}admin/users/${userId}/role`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ role: newRole }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to update user role');
+        }
+      }
+      
+      await loadDashboardData(); // Reload the dashboard data
     } catch (error) {
       console.error('Error:', error);
-      setError('Failed to update user role');
+      setError(error instanceof Error ? error.message : 'Failed to update user role');
     }
   };
 
   const handleAdvisorStatus = async (formularId: number, status: 'approved' | 'rejected') => {
     try {
       const token = localStorage.getItem('userToken');
-      const response = await fetch(`${API_URL}formularAdvisor/${formularId}/status`, {
+      const response = await fetch(`${API_URL}admin/advisor-applications/${formularId}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -219,6 +250,30 @@ export default function Dashboard() {
     }
   };
 
+  const handleRemoveAdvisor = async (userId: number) => {
+    try {
+      const token = localStorage.getItem('userToken');
+      const response = await fetch(`${API_URL}admin/users/${userId}/remove-advisor`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to remove advisor role');
+      }
+      
+      setShowModal(false);
+      await loadDashboardData(); // Reload data after role update
+    } catch (error) {
+      console.error('Error:', error);
+      setError(error instanceof Error ? error.message : 'Failed to remove advisor role');
+    }
+  };
+
   const filteredUsers = users.filter(user => {
     const searchLower = searchQuery.toLowerCase();
     const fullName = `${user.first_name} ${user.last_name}`.toLowerCase();
@@ -228,6 +283,66 @@ export default function Dashboard() {
     
     return matchesSearch && matchesRole;
   });
+
+  const handleRoleChangeWithConfirm = (userId: number, newRole: string) => {
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+    
+    const actionTitle = user.role === 'advisor' && newRole !== 'advisor' 
+      ? 'Remove Advisor Role' 
+      : 'Change User Role';
+      
+    const actionMsg = user.role === 'advisor' && newRole !== 'advisor'
+      ? `Are you sure you want to remove advisor role from ${user.first_name} ${user.last_name}?`
+      : `Are you sure you want to change ${user.first_name} ${user.last_name}'s role to ${newRole}?`;
+
+    setConfirmTitle(actionTitle);
+    setConfirmMessage(actionMsg);
+    setConfirmAction(() => () => handleUpdateRole(userId, newRole));
+    setShowConfirmModal(true);
+  };
+
+  const handleBanWithConfirm = (userId: number) => {
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+    
+    const actionMsg = user.isBanned 
+      ? `Are you sure you want to unban ${user.first_name} ${user.last_name}?`
+      : `Are you sure you want to ban ${user.first_name} ${user.last_name}?`;
+
+    setConfirmTitle(user.isBanned ? 'Unban User' : 'Ban User');
+    setConfirmMessage(actionMsg);
+    setConfirmAction(() => () => handleBanUser(userId));
+    setShowConfirmModal(true);
+  };
+
+  const handleAdvisorStatusWithConfirm = (formularId: number, status: 'approved' | 'rejected') => {
+    if (!selectedFormular) return;
+    
+    const user = users.find(u => u.id === selectedFormular.userId);
+    if (!user) return;
+    
+    const actionMsg = status === 'approved'
+      ? `Are you sure you want to approve ${user.first_name} ${user.last_name}'s advisor application?`
+      : `Are you sure you want to reject ${user.first_name} ${user.last_name}'s advisor application?`;
+
+    setConfirmTitle(status === 'approved' ? 'Approve Application' : 'Reject Application');
+    setConfirmMessage(actionMsg);
+    setConfirmAction(() => () => handleAdvisorStatus(formularId, status));
+    setShowConfirmModal(true);
+  };
+
+  const handleRemoveAdvisorWithConfirm = (userId: number) => {
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+    
+    const actionMsg = `Are you sure you want to remove advisor status from ${user.first_name} ${user.last_name}?`;
+
+    setConfirmTitle('Remove Advisor Status');
+    setConfirmMessage(actionMsg);
+    setConfirmAction(() => () => handleRemoveAdvisor(userId));
+    setShowConfirmModal(true);
+  };
 
   if (loading) {
     return (
@@ -370,7 +485,7 @@ export default function Dashboard() {
                       <td className="px-6 py-4">
                         <select
                           value={user.role}
-                          onChange={(e) => handleUpdateRole(user.id, e.target.value)}
+                          onChange={(e) => handleRoleChangeWithConfirm(user.id, e.target.value)}
                           className="px-3 py-1 rounded-md text-sm mr-2"
                           style={{
                             backgroundColor: 'rgba(100, 255, 218, 0.1)',
@@ -396,7 +511,7 @@ export default function Dashboard() {
                       </td>
                       <td className="px-6 py-4 space-x-2">
                         <button
-                          onClick={() => handleBanUser(user.id)}
+                          onClick={() => handleBanWithConfirm(user.id)}
                           className="px-3 py-1 rounded-md text-sm mr-2"
                           style={{
                             backgroundColor: user.isBanned ? '#4CAF50' : '#FF6B6B',
@@ -519,29 +634,13 @@ export default function Dashboard() {
                     )}
                   </div>
                   <div className="flex space-x-2">
-                    {selectedFormular.status === 'pending' && (
-                      <>
-                        <button
-                          onClick={() => handleAdvisorStatus(selectedFormular.id, 'approved')}
-                          className="px-4 py-2 rounded-md bg-green-500 text-white hover:bg-green-600"
-                        >
-                          Approve
-                        </button>
-                        <button
-                          onClick={() => handleAdvisorStatus(selectedFormular.id, 'rejected')}
-                          className="px-4 py-2 rounded-md bg-red-500 text-white hover:bg-red-600"
-                        >
-                          Reject
-                        </button>
-                      </>
-                    )}
                     {(() => {
                       const user = users.find(u => u.id === selectedFormular.userId);
                       if (user) {
                         if (user.role === 'user') {
                           return (
                             <button
-                              onClick={() => handleAdvisorStatus(selectedFormular.id, 'approved')}
+                              onClick={() => handleAdvisorStatusWithConfirm(selectedFormular.id, 'approved')}
                               className="px-4 py-2 rounded-md bg-green-500 text-white hover:bg-green-600"
                             >
                               Accept Demand
@@ -550,14 +649,10 @@ export default function Dashboard() {
                         } else if (user.role === 'advisor') {
                           return (
                             <button
-                              onClick={() => {
-                                handleUpdateRole(user.id, 'user');
-                                setShowModal(false);
-                                setModalPage(1);
-                              }}
-                              className="px-4 py-2 rounded-md bg-yellow-500 text-white hover:bg-yellow-600"
+                              onClick={() => handleRemoveAdvisorWithConfirm(user.id)}
+                              className="px-4 py-2 rounded-md bg-red-500 text-white hover:bg-red-600"
                             >
-                              Switch to User
+                              Return to User
                             </button>
                           );
                         }
@@ -574,6 +669,30 @@ export default function Dashboard() {
                       Close
                     </button>
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+          {showConfirmModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+              <div className="bg-[#0A192F] rounded-lg p-6 max-w-md w-full border border-[#64FFDA]">
+                <h3 className="text-xl font-bold text-[#64FFDA] mb-4">{confirmTitle}</h3>
+                <p className="text-[#CCD6F6] mb-6">{confirmMessage}</p>
+                <div className="flex justify-end space-x-4">
+                  <button
+                    onClick={() => setShowConfirmModal(false)}
+                    className="px-4 py-2 rounded-md bg-[#112240] text-[#CCD6F6] hover:bg-opacity-80"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      confirmAction().then(() => setShowConfirmModal(false));
+                    }}
+                    className="px-4 py-2 rounded-md bg-[#64FFDA] text-[#0A192F] hover:opacity-90"
+                  >
+                    Confirm
+                  </button>
                 </div>
               </div>
             </div>
