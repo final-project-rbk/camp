@@ -1,10 +1,10 @@
-const { Event, Advisor, User } = require('../models');
+const { Event } = require('../models');
 
 exports.getEvents = async (req, res) => {
   try {
     const events = await Event.findAll({
       order: [['date', 'ASC']],
-      attributes: ['id', 'title', 'description', 'date', 'location', 'images', 'status'],
+      attributes: ['id', 'title', 'description', 'date', 'location', 'images'],
       where: {
         status: 'approved'
       }
@@ -18,21 +18,7 @@ exports.getEvents = async (req, res) => {
 
 exports.getEventById = async (req, res) => {
   try {
-    const event = await Event.findByPk(req.params.id, {
-      include: [
-        {
-          model: Advisor,
-          attributes: ['id'],
-          include: [
-            {
-              model: User,
-              attributes: ['id', 'first_name', 'last_name', 'profile_image']
-            }
-          ]
-        }
-      ]
-    });
-    
+    const event = await Event.findByPk(req.params.id);
     if (!event) {
       return res.status(404).json({ success: false, error: 'Event not found' });
     }

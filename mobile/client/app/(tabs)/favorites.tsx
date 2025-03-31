@@ -20,7 +20,7 @@ export default function Favorites() {
   const [favorites, setFavorites] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user, accessToken, checkAuth } = useAuth();
+  const { user, accessToken, isLoading } = useAuth();
   const router = useRouter();
   
   // Check if user is authenticated
@@ -37,9 +37,7 @@ export default function Favorites() {
       setLoading(true);
       setError(null);
       
-      const apiUrl = `${EXPO_PUBLIC_API_URL}favorites/user/${user?.id}`;
-      
-      const response = await fetch(apiUrl, {
+      const response = await fetch(`${EXPO_PUBLIC_API_URL}favorites/user/${user?.id}`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
@@ -47,36 +45,10 @@ export default function Favorites() {
       });
       
       if (!response.ok) {
-        console.error(`Server error: ${response.status} ${response.statusText}`);
-        const errorText = await response.text();
-        console.error(`Response body: ${errorText}`);
-        
-        if (response.status === 401) {
-          // Try to refresh authentication
-          await checkAuth();
-          throw new Error('Authentication error - please sign in again');
-        } else {
-          throw new Error(`Server returned ${response.status}: ${errorText}`);
-        }
+        throw new Error('Failed to fetch favorites');
       }
       
-      // Get response as text first for debugging
-      const responseText = await response.text();
-      
-      // Parse JSON only if there's content
-      let data;
-      if (responseText.trim()) {
-        try {
-          data = JSON.parse(responseText);
-        } catch (parseError) {
-          console.error('Error parsing response:', parseError);
-          console.error('Response preview:', responseText.substring(0, 200) + '...');
-          throw new Error('Invalid JSON response from server');
-        }
-      } else {
-        console.error('Empty response from server');
-        throw new Error('Empty response from server');
-      }
+      const data = await response.json();
       
       if (data.success) {
         setFavorites(data.data);
@@ -86,18 +58,6 @@ export default function Favorites() {
     } catch (error) {
       console.error('Error fetching favorites:', error);
       setError(error instanceof Error ? error.message : 'An error occurred');
-      
-      // If there was an authentication error, prompt to login
-      if (error instanceof Error && error.message.includes('Authentication error')) {
-        Alert.alert(
-          "Authentication Required",
-          "Your session has expired. Please sign in again.",
-          [
-            { text: "Cancel", onPress: () => router.replace('/home') },
-            { text: "Sign In", onPress: () => router.push('/auth') }
-          ]
-        );
-      }
     } finally {
       setLoading(false);
     }
@@ -105,7 +65,7 @@ export default function Favorites() {
 
   // Redirect to login if not authenticated
   useEffect(() => {
-    if (!loading && !isAuthenticated) {
+    if (!isLoading && !isAuthenticated) {
       Alert.alert(
         "Authentication Required",
         "Please sign in to view your favorites",
@@ -115,7 +75,7 @@ export default function Favorites() {
         ]
       );
     }
-  }, [loading, isAuthenticated]);
+  }, [isLoading, isAuthenticated]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -129,8 +89,9 @@ export default function Favorites() {
     <Link href={`/place/${item.id}`} asChild>
       <Pressable style={styles.listItem}>
         <Image
-          source={{ uri: Array.isArray(item.images) && item.images.length > 0 ? item.images[0] : 'https://via.placeholder.com/400' }}
+          source={{ uri: Array.isArray(item.images) ? item.images[0] : item.images }}
           style={styles.listImage}
+          onError={(e) => console.log('Failed to load image:', e.nativeEvent.error)}
         />
         <View style={styles.listContent}>
           <Text style={styles.listTitle}>{item.name}</Text>
@@ -151,7 +112,7 @@ export default function Favorites() {
   );
 
   // If still loading auth state, show loading indicator
-  if (loading) {
+  if (isLoading) {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator color="#64FFDA" size="large" />

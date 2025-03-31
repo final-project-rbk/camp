@@ -34,51 +34,24 @@ export default function FavoriteButton({ placeId, initialIsFavorite = false, sty
     }
 
     try {
-      // Make sure we're using the correct URL format
-      const apiUrl = `${EXPO_PUBLIC_API_URL}favorites/toggle`;
-      
-      const response = await fetch(apiUrl, {
+      const response = await fetch(`${EXPO_PUBLIC_API_URL}favorites/toggle`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ 
+          userId: user?.id, 
           placeId 
         }),
       });
       
-      // Handle non-OK responses
-      if (!response.ok) {
-        console.error(`Server error: ${response.status} ${response.statusText}`);
-        const errorText = await response.text();
-        console.error(`Response body: ${errorText}`);
-        throw new Error(`Server returned ${response.status}: ${errorText}`);
-      }
-      
-      // Get response as text first for debugging
-      const responseText = await response.text();
-      
-      // Parse JSON only if there's content
-      let data;
-      if (responseText.trim()) {
-        try {
-          data = JSON.parse(responseText);
-        } catch (parseError) {
-          console.error('Error parsing response:', parseError);
-          console.error('Response that failed to parse:', responseText);
-          throw new Error('Invalid JSON response from server');
-        }
-      } else {
-        console.error('Empty response from server');
-        throw new Error('Empty response from server');
-      }
-      
-      if (data && data.success) {
+      const data = await response.json();
+      if (data.success) {
         setIsFavorite(!isFavorite);
       } else {
-        console.error('Error toggling favorite:', data?.error || 'Unknown error');
-        Alert.alert("Error", data?.error || "Failed to update favorites");
+        console.error('Error toggling favorite:', data.error);
+        Alert.alert("Error", data.error || "Failed to update favorites");
       }
     } catch (error) {
       console.error('Error toggling favorite:', error);

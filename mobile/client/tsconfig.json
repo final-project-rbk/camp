@@ -12,9 +12,7 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
-    "app/.expo/types/**/*.ts",
-    "expo-env.d.ts",
-    "app/onboarding",
-    ".expo/types/**/*.ts"
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
 , "app/onboarding", "app/advisorProfile.tsx"  ]
 }

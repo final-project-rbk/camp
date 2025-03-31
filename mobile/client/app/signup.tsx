@@ -92,10 +92,12 @@ export default function SignupScreen() {
       });
 
       const data = await response.json();
+      console.log('Signup response:', data);
 
       if (data.success && data.data) {
         // Ensure onboarding is marked as seen
         await AsyncStorage.setItem('hasSeenOnboarding', 'true');
+        console.log('Signup successful, hasSeenOnboarding marked as true');
         
         // Show success message and navigate to login
         Alert.alert(

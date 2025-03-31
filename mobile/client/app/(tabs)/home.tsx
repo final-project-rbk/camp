@@ -109,34 +109,11 @@ export default function DiscoverScreen() {
       const popularPlacesData = await popularPlacesResponse.json();
       
       if (allPlacesData.success && popularPlacesData.success) {
-        // Process the places data to ensure images are properly parsed
-        const processAllPlaces = allPlacesData.data.map((place: any) => {
-          if (typeof place.images === 'string') {
-            try {
-              place.images = JSON.parse(place.images);
-            } catch (e) {
-              // Keep as string if parsing fails
-            }
-          }
-          
-          return place;
-        });
-        
-        const processPopularPlaces = popularPlacesData.data.map((place: any) => {
-          if (typeof place.images === 'string') {
-            try {
-              place.images = JSON.parse(place.images);
-            } catch (e) {
-              // Keep as string if parsing fails
-            }
-          }
-          return place;
-        });
-        
-        setAllPlaces(processAllPlaces);
-        setPlaces(processAllPlaces); // Set the main places array for filtering
-        setFilteredPlaces(processAllPlaces); // Initialize filtered places with all places
-        setPopularPlaces(processPopularPlaces);
+        const allPlacesResult = allPlacesData.data;
+        setAllPlaces(allPlacesResult);
+        setPlaces(allPlacesResult); // Set the main places array for filtering
+        setFilteredPlaces(allPlacesResult); // Initialize filtered places with all places
+        setPopularPlaces(popularPlacesData.data);
       }
     } catch (error) {
       console.error('Error fetching places:', error);
@@ -455,13 +432,7 @@ export default function DiscoverScreen() {
                           <View style={styles.imageContainer}>
                             <FavoriteButton placeId={place.id} />
                             <Image
-                              source={{ 
-                                uri: Array.isArray(place.images) && place.images.length > 0
-                                  ? place.images[0]
-                                  : (typeof place.images === 'string' && place.images 
-                                      ? place.images 
-                                      : 'https://via.placeholder.com/400') 
-                              }}
+                              source={{ uri: Array.isArray(place.images) ? place.images[0] : place.images }}
                               style={styles.destinationImage}
                             />
                             <LinearGradient
@@ -538,13 +509,7 @@ export default function DiscoverScreen() {
                             <View style={styles.imageContainer}>
                               <FavoriteButton placeId={place.id} />
                               <Image
-                                source={{ 
-                                  uri: Array.isArray(place.images) && place.images.length > 0
-                                    ? place.images[0]
-                                    : (typeof place.images === 'string' && place.images 
-                                        ? place.images 
-                                        : 'https://via.placeholder.com/400') 
-                                }}
+                                source={{ uri: Array.isArray(place.images) ? place.images[0] : place.images }}
                                 style={styles.destinationImage}
                               />
                               <LinearGradient
@@ -617,13 +582,7 @@ export default function DiscoverScreen() {
                               <View style={styles.imageContainer}>
                                 <FavoriteButton placeId={place.id} />
                                 <Image
-                                  source={{ 
-                                    uri: Array.isArray(place.images) && place.images.length > 0
-                                      ? place.images[0]
-                                      : (typeof place.images === 'string' && place.images 
-                                          ? place.images 
-                                          : 'https://via.placeholder.com/400') 
-                                  }}
+                                  source={{ uri: Array.isArray(place.images) ? place.images[0] : place.images }}
                                   style={styles.destinationImage}
                                 />
                                 <LinearGradient

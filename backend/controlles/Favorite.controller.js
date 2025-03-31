@@ -2,26 +2,12 @@ const { Favorite, Place, Media, Review } = require('../models');
 
 const favoriteController = {
   getUserFavorites: async (req, res) => {
-    console.log('==== GET USER FAVORITES API CALLED ====');
-    console.log('User from auth middleware:', req.user);
-    console.log('Request params:', req.params);
-    
     try {
       // Get userId from params, but validate against authenticated user
       const { userId } = req.params;
       
-      if (!userId) {
-        return res.status(400).json({
-          success: false,
-          error: 'Missing required userId parameter'
-        });
-      }
-
-      console.log(`Getting favorites for user ID: ${userId}`);
-      
       // Ensure user is only accessing their own favorites (if not admin)
       if (req.user && req.user.id !== parseInt(userId) && req.user.role !== 'admin') {
-        console.log(`Authorization failure: User ${req.user.id} trying to access favorites of user ${userId}`);
         return res.status(403).json({
           success: false,
           error: 'You are not authorized to view these favorites'
@@ -48,8 +34,6 @@ const favoriteController = {
           ]
         }]
       });
-
-      console.log(`Found ${favorites.length} favorites for user ${userId}`);
 
       // Format the response data
       const formattedFavorites = favorites.map(favorite => {
@@ -97,8 +81,6 @@ const favoriteController = {
             }
           } catch (e) {
             console.error('Favorites - Error processing images:', e);
-            // Ensure we have at least one image
-            images = [imageUrl];
           }
         }
 
@@ -132,10 +114,6 @@ const favoriteController = {
   },
 
   toggleFavorite: async (req, res) => {
-    console.log('==== TOGGLE FAVORITE API CALLED ====');
-    console.log('Request body:', req.body);
-    console.log('User from auth middleware:', req.user);
-    
     try {
       // Get placeId from request body
       const { placeId } = req.body;
@@ -148,8 +126,6 @@ const favoriteController = {
         });
       }
       
-      console.log(`Toggle favorite for user ID: ${req.user.id}, place ID: ${placeId}`);
-      
       const userId = req.user.id;
       
       // Validate required fields
@@ -157,15 +133,6 @@ const favoriteController = {
         return res.status(400).json({
           success: false,
           error: 'Missing required placeId'
-        });
-      }
-      
-      // Check if place exists
-      const place = await Place.findByPk(parseInt(placeId));
-      if (!place) {
-        return res.status(404).json({
-          success: false,
-          error: 'Place not found'
         });
       }
       
@@ -178,7 +145,6 @@ const favoriteController = {
 
       if (existing) {
         await existing.destroy();
-        console.log(`Removed place ${placeId} from favorites for user ${userId}`);
         res.status(200).json({
           success: true,
           message: 'Removed from favorites'
@@ -188,7 +154,6 @@ const favoriteController = {
           userId: parseInt(userId), 
           placeId: parseInt(placeId) 
         });
-        console.log(`Added place ${placeId} to favorites for user ${userId}`);
         res.status(200).json({
           success: true,
           message: 'Added to favorites'
@@ -198,8 +163,7 @@ const favoriteController = {
       console.error('Error in toggleFavorite:', error);
       res.status(500).json({
         success: false,
-        error: 'Error toggling favorite',
-        details: error.message
+        error: 'Error toggling favorite'
       });
     }
   }

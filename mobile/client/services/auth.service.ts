@@ -184,15 +184,12 @@ class AuthService {
   public async getUser(): Promise<any | null> {
     try {
       const userData = await AsyncStorage.getItem(AUTH_KEYS.USER_DATA);
-      
       return userData ? JSON.parse(userData) : null;
     } catch (error) {
       console.error('Error getting user data:', error);
       return null;
     }
-
   }
-  
 }
 
 export default AuthService.getInstance(); 

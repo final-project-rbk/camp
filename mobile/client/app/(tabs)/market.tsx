@@ -1,29 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  Image, 
-  TouchableOpacity, 
-  RefreshControl, 
-  ActivityIndicator, 
-  TextInput, 
-  Alert,
-  Platform,
-  Dimensions,
-  FlatList
-} from 'react-native';
-import { Ionicons, MaterialCommunityIcons, AntDesign, FontAwesome5 } from '@expo/vector-icons';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, RefreshControl, ActivityIndicator, TextInput, Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
 import { EXPO_PUBLIC_API_URL } from '../../config';
-
-import { useAuth as auth } from '../../context/AuthContext'
 import { useAuth } from '../../hooks/useAuth';
 import { TAB_BAR_HEIGHT } from '../../components/TabBar';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface Category {
   id: string;
@@ -64,8 +46,6 @@ interface SearchFilters {
   category?: string;
 }
 
-const DEFAULT_AVATAR = 'https://via.placeholder.com/50?text=User';
-
 export default function Market() {
   const [items, setItems] = useState<MarketplaceItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -78,7 +58,6 @@ export default function Market() {
   const [searchFilters, setSearchFilters] = useState<SearchFilters>({});
   const router = useRouter();
   const { isAuthenticated, user } = useAuth();
-   const { accessToken } = auth();
 
   const fetchCategories = async () => {
     try {
@@ -99,7 +78,7 @@ export default function Market() {
       ];
       setCategories(allCategories);
     } catch (error) {
-      // Error handling for category fetching
+      console.error('Error fetching categories:', error);
     }
   };
 
@@ -117,7 +96,7 @@ export default function Market() {
       }));
       setItems(Array.isArray(itemsWithMedia) ? itemsWithMedia : []);
     } catch (error) {
-      // Error handling for marketplace items fetching
+      console.error('Error fetching marketplace items:', error);
       setError('Failed to load items. Please try again.');
     } finally {
       setLoading(false);
@@ -153,10 +132,10 @@ export default function Market() {
         // Handle "No items found" as a success case
         setItems([]);
       } else if (axios.isAxiosError(error)) {
-        // Error handling for axios errors
+        console.error('Error searching items:', error.response?.data || error.message);
         setError(error.response?.data?.details || 'Failed to search items. Please try again.');
       } else {
-        // Error handling for other errors
+        console.error('Error searching items:', error);
         setError('Failed to search items. Please try again.');
       }
     } finally {
@@ -192,71 +171,12 @@ export default function Market() {
     fetchItems(selectedCategory).finally(() => setRefreshing(false));
   }, [selectedCategory]);
 
-  const handleChatPress = async (sellerId: number) => {
+  const handleChatPress = (sellerId: number) => {
     if (!isAuthenticated) {
       Alert.alert('Error', 'Please login to chat with sellers');
       return;
     }
-
-    if (sellerId === user?.id) {
-      Alert.alert('Error', 'You cannot chat with yourself');
-      return;
-    }
-
-    try {
-      // Show loading indicator
-      setLoading(true);
-
-      // Create or get chat room
-      const response = await axios.post(
-        `${EXPO_PUBLIC_API_URL}chat/rooms/get-or-create`,
-        { userId: sellerId },
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      const roomData = response.data;
-      const roomId = roomData.id;
-      const isNewRoom = roomData.isNew;
-
-      if (!roomId) {
-        throw new Error('Failed to get a valid room ID');
-      }
-
-      // Navigate to chat room
-      router.push({
-        pathname: "/chat/[roomId]",
-        params: {
-          roomId: roomId.toString(),
-          isNewRoom: isNewRoom ? '1' : '0'
-        }
-      });
-
-    } catch (error) {
-      // Error handling for chat
-      let errorMessage = 'Could not start chat. Please try again later.';
-      
-      if (axios.isAxiosError(error)) {
-        if (error.response?.status === 401) {
-          errorMessage = 'Your session has expired. Please login again.';
-        } else if (error.response?.data?.error) {
-          errorMessage = error.response.data.error;
-        } else if (error.message) {
-          errorMessage = error.message;
-        }
-      }
-      
-      Alert.alert(
-        'Chat Error',
-        errorMessage
-      );
-    } finally {
-      setLoading(false);
-    }
+    router.push(`/chat/${sellerId}` as any);
   };
 
   const handleNewItemPress = () => {
@@ -264,15 +184,7 @@ export default function Market() {
       Alert.alert('Error', 'Please login to create listings');
       return;
     }
-    router.push('/market/new');
-  };
-
-  const handleMyChatsPress = () => {
-    if (!isAuthenticated) {
-      Alert.alert('Error', 'Please login to view your chats');
-      return;
-    }
-    router.push('/chat/room');
+    router.push('/market/new' as any);
   };
 
   if (loading) {
@@ -284,215 +196,166 @@ export default function Market() {
   }
 
   return (
-    <View style={styles.container}>
-      {/* Header with shadow and elevation */}
+    <ScrollView 
+      style={styles.container}
+      contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT + 20 }}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
       <View style={styles.header}>
         <Text style={styles.title}>Marketplace</Text>
-        <View style={styles.headerButtons}>
-          <TouchableOpacity 
-            style={styles.headerButton}
-            onPress={handleMyChatsPress}
-          >
-            <Ionicons name="chatbubbles-outline" size={24} color="#64FFDA" />
-            <Text style={styles.headerButtonText}>My Chats</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.headerButton}
-            onPress={handleNewItemPress}
-          >
-            <Ionicons name="add-circle-outline" size={24} color="#64FFDA" />
-            <Text style={styles.headerButtonText}>Sell Item</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity 
+          style={styles.addButton}
+          onPress={handleNewItemPress}
+        >
+          <Ionicons name="add-circle-outline" size={24} color="#64FFDA" />
+          <Text style={styles.addButtonText}>Sell Item</Text>
+        </TouchableOpacity>
       </View>
-      
+
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={20} color="#8892B0" style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search items..."
+          placeholderTextColor="#8892B0"
+          value={searchQuery}
+          onChangeText={(text) => {
+            setSearchQuery(text);
+          }}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity 
+            onPress={() => {
+              setSearchQuery('');
+              setSearchFilters({});
+              fetchItems(selectedCategory);
+            }}
+            style={styles.clearButton}
+          >
+            <Ionicons name="close-circle" size={20} color="#8892B0" />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      <View style={styles.filterContainer}>
+        <TextInput
+          style={styles.priceInput}
+          placeholder="Min Price"
+          placeholderTextColor="#8892B0"
+          keyboardType="numeric"
+          value={searchFilters.minPrice}
+          onChangeText={(text) => handleFilterChange({ minPrice: text })}
+        />
+        <TextInput
+          style={styles.priceInput}
+          placeholder="Max Price"
+          placeholderTextColor="#8892B0"
+          keyboardType="numeric"
+          value={searchFilters.maxPrice}
+          onChangeText={(text) => handleFilterChange({ maxPrice: text })}
+        />
+      </View>
+
       <ScrollView 
-        contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT + 20 }}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        style={styles.categoriesContainer}
       >
-        {/* Search bar with improved styling */}
-        <View style={styles.searchSection}>
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color="#8892B0" style={styles.searchIcon} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search items..."
-              placeholderTextColor="#8892B0"
-              value={searchQuery}
-              onChangeText={(text) => {
-                setSearchQuery(text);
-              }}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity 
-                onPress={() => {
-                  setSearchQuery('');
-                  setSearchFilters({});
-                  fetchItems(selectedCategory);
-                }}
-                style={styles.clearButton}
-              >
-                <Ionicons name="close-circle" size={20} color="#8892B0" />
-              </TouchableOpacity>
+        {categories.map((category) => (
+          <TouchableOpacity
+            key={category.id}
+            style={[
+              styles.categoryButton,
+              selectedCategory === category.id && styles.categoryButtonActive
+            ]}
+            onPress={() => {
+              setSelectedCategory(category.id);
+              handleFilterChange({ category: category.id });
+            }}
+          >
+            {(category.media?.[0]?.url || category.icon) && (
+              <Image 
+                source={{ uri: category.media?.[0]?.url || category.icon }}
+                style={styles.categoryIcon}
+              />
             )}
-          </View>
-        </View>
-        
-        {/* Price range filters */}
-        <View style={styles.filterContainer}>
-          <TextInput
-            style={styles.priceInput}
-            placeholder="Min Price"
-            placeholderTextColor="#8892B0"
-            keyboardType="numeric"
-            value={searchFilters.minPrice}
-            onChangeText={(text) => handleFilterChange({ minPrice: text })}
-          />
-          <View style={styles.priceSeparator} />
-          <TextInput
-            style={styles.priceInput}
-            placeholder="Max Price"
-            placeholderTextColor="#8892B0"
-            keyboardType="numeric"
-            value={searchFilters.maxPrice}
-            onChangeText={(text) => handleFilterChange({ maxPrice: text })}
-          />
-        </View>
-
-        {/* Improved Categories Carousel */}
-        <View style={styles.categoriesSection}>
-          <FlatList
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.categoriesList}
-            data={categories}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[
-                  styles.categoryButton,
-                  selectedCategory === item.id && styles.categoryButtonActive
-                ]}
-                onPress={() => {
-                  setSelectedCategory(item.id);
-                  handleFilterChange({ category: item.id });
-                }}
-              >
-                {(item.media?.[0]?.url || item.icon) && (
-                  <Image 
-                    source={{ uri: item.media?.[0]?.url || item.icon }}
-                    style={styles.categoryIcon}
-                  />
-                )}
-                <Text style={[
-                  styles.categoryButtonText,
-                  selectedCategory === item.id && styles.categoryButtonTextActive
-                ]}>
-                  {item.name}
-                </Text>
-              </TouchableOpacity>
-            )}
-          />
-        </View>
-
-        {isSearching && (
-          <View style={styles.centerContainer}>
-            <ActivityIndicator size="large" color="#64FFDA" />
-          </View>
-        )}
-
-        {!isSearching && (
-          <View style={styles.itemsGrid}>
-            {error && (
-              <Text style={styles.errorText}>{error}</Text>
-            )}
-            
-            {items.map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                style={styles.itemCard}
-                onPress={() => router.push(`/market/${item.id}`)}
-                activeOpacity={0.9}
-              >
-                <View style={styles.itemImageContainer}>
-                  {item.media?.length > 0 ? (
-                    <Image 
-                      source={{ 
-                        uri: item.media[0].url || 'https://via.placeholder.com/400x300?text=No+Image'
-                      }}
-                      style={styles.itemImage}
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <View style={styles.noImageContainer}>
-                      <Ionicons name="image-outline" size={40} color="#1D2D50" />
-                      <Text style={styles.noImageText}>No Image</Text>
-                    </View>
-                  )}
-                  
-                  {/* Status badge for items */}
-                  {item.status !== 'available' && (
-                    <View style={[
-                      styles.statusBadge,
-                      item.status === 'sold' ? styles.soldBadge : styles.pendingBadge
-                    ]}>
-                      <Text style={styles.statusText}>
-                        {item.status === 'sold' ? 'SOLD' : 'PENDING'}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-                
-                <View style={styles.itemInfo}>
-                  <Text style={styles.itemTitle} numberOfLines={1}>{item.title}</Text>
-                  <Text style={styles.itemPrice}>${item.price}</Text>
-                  
-                  <View style={styles.sellerInfo}>
-                    <Image 
-                      source={{ 
-                        uri: item.seller?.profile_image || DEFAULT_AVATAR
-                      }}
-                      style={styles.sellerImage}
-                    />
-                    <Text style={styles.sellerName} numberOfLines={1}>
-                      {item.seller?.first_name} {item.seller?.last_name}
-                    </Text>
-                    <TouchableOpacity 
-                      style={styles.chatButton}
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        handleChatPress(item.sellerId);
-                      }}
-                    >
-                      <Ionicons name="chatbubble-outline" size={20} color="#64FFDA" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ))}
-            
-            {items.length === 0 && !error && (
-              <View style={styles.emptyState}>
-                <Ionicons name="basket-outline" size={60} color="#64FFDA" />
-                <Text style={styles.emptyStateTitle}>No items found</Text>
-                <Text style={styles.emptyStateText}>Try changing your search criteria</Text>
-              </View>
-            )}
-          </View>
-        )}
+            <Text style={[
+              styles.categoryButtonText,
+              selectedCategory === category.id && styles.categoryButtonTextActive
+            ]}>
+              {category.name}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </ScrollView>
-      
-      {/* Floating action button for adding new items */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={handleNewItemPress}
-        activeOpacity={0.8}
-      >
-        <Ionicons name="add" size={30} color="#0A192F" />
-      </TouchableOpacity>
-    </View>
+
+      {isSearching && (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#64FFDA" />
+        </View>
+      )}
+
+      {!isSearching && (
+        <View style={styles.section}>
+          {error && (
+            <Text style={styles.errorText}>{error}</Text>
+          )}
+          {items.map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              style={styles.itemCard}
+              onPress={() => router.push(`/market/${item.id}` as any)}
+            >
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                {(item.media || []).map((mediaItem) => (
+                  <Image 
+                    key={mediaItem.id}
+                    source={{ 
+                      uri: mediaItem.url || 'https://via.placeholder.com/400x300?text=No+Image'
+                    }}
+                    style={styles.itemImage}
+                    resizeMode="cover"
+                  />
+                ))}
+              </ScrollView>
+              <View style={styles.itemInfo}>
+                <Text style={styles.itemTitle}>{item.title}</Text>
+                <Text style={styles.itemPrice}>${item.price}</Text>
+                <View style={styles.sellerInfo}>
+                  <Image 
+                    source={{ 
+                      uri: item.seller?.profile_image || 'https://via.placeholder.com/50?text=User'
+                    }}
+                    style={styles.sellerImage}
+                  />
+                  <Text style={styles.sellerName}>
+                    {item.seller?.first_name} {item.seller?.last_name}
+                  </Text>
+                  <TouchableOpacity 
+                    style={styles.chatButton}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleChatPress(item.sellerId);
+                    }}
+                  >
+                    <Ionicons name="chatbubble-outline" size={20} color="#64FFDA" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
+          
+          {items.length === 0 && !error && (
+            <View style={styles.emptyState}>
+              <Ionicons name="basket-outline" size={48} color="#64FFDA" />
+              <Text style={styles.emptyStateText}>No items found</Text>
+            </View>
+          )}
+        </View>
+      )}
+    </ScrollView>
   );
 }
 
@@ -505,274 +368,149 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
   },
   header: {
+    padding: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#112240',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingTop: Platform.OS === 'ios' ? 50 : 16,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    zIndex: 10,
-  },
-  headerButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 20,
-  },
-  headerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(100, 255, 218, 0.1)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  headerButtonText: {
-    marginLeft: 8,
-    color: '#64FFDA',
-    fontWeight: '500',
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#CCD6F6',
   },
-  searchSection: {
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  addButtonText: {
+    marginLeft: 8,
+    color: '#64FFDA',
+  },
+  categoriesContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  categoryButton: {
     paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: 'rgba(17, 34, 64, 0.5)',
+    paddingVertical: 8,
+    marginRight: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  categoryButtonActive: {
+    backgroundColor: '#64FFDA',
+  },
+  categoryButtonText: {
+    color: '#8892B0',
+    fontSize: 14,
+  },
+  categoryButtonTextActive: {
+    color: '#0A192F',
+    fontWeight: 'bold',
+  },
+  section: {
+    padding: 20,
+  },
+  itemCard: {
+    backgroundColor: '#112240',
+    borderRadius: 12,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  itemImage: {
+    width: 200,
+    height: 200,
+    backgroundColor: '#1D2D50',
+    marginRight: 8,
+  },
+  itemInfo: {
+    padding: 16,
+  },
+  itemTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#CCD6F6',
+  },
+  itemPrice: {
+    fontSize: 16,
+    color: '#64FFDA',
+    marginTop: 8,
+  },
+  sellerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  sellerImage: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+  },
+  sellerName: {
+    marginLeft: 8,
+    color: '#8892B0',
+    flex: 1,
+  },
+  chatButton: {
+    padding: 8,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    marginHorizontal: 20,
+    marginBottom: 16,
     borderRadius: 12,
     paddingHorizontal: 12,
-    height: 50,
-    borderWidth: 1,
-    borderColor: 'rgba(100, 255, 218, 0.2)',
   },
   searchIcon: {
     marginRight: 8,
   },
   searchInput: {
     flex: 1,
+    height: 44,
     color: '#CCD6F6',
     fontSize: 16,
-    height: '100%',
   },
   clearButton: {
     padding: 8,
   },
   filterContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    alignItems: 'center',
-    backgroundColor: 'rgba(17, 34, 64, 0.5)',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(100, 255, 218, 0.1)',
-  },
-  priceSeparator: {
-    width: 15,
-    height: 1,
-    backgroundColor: '#8892B0',
-    marginHorizontal: 10,
+    paddingHorizontal: 20,
+    marginBottom: 16,
+    justifyContent: 'space-between',
   },
   priceInput: {
     flex: 1,
-    height: 45,
+    height: 40,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 8,
     paddingHorizontal: 12,
+    marginHorizontal: 4,
     color: '#CCD6F6',
-    borderWidth: 1,
-    borderColor: 'rgba(100, 255, 218, 0.2)',
-  },
-  categoriesSection: {
-    paddingVertical: 16,
-    backgroundColor: 'rgba(17, 34, 64, 0.3)',
-  },
-  categoriesList: {
-    paddingHorizontal: 16,
-  },
-  categoryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    marginRight: 12,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(100, 255, 218, 0.2)',
-  },
-  categoryButtonActive: {
-    backgroundColor: '#64FFDA',
-    borderColor: '#64FFDA',
-  },
-  categoryButtonText: {
-    color: '#8892B0',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  categoryButtonTextActive: {
-    color: '#0A192F',
-    fontWeight: 'bold',
   },
   categoryIcon: {
-    width: 24,
-    height: 24,
+    width: 20,
+    height: 20,
     marginRight: 8,
-    borderRadius: 12,
-  },
-  itemsGrid: {
-    padding: 16,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  itemCard: {
-    width: (SCREEN_WIDTH - 48) / 2,
-    backgroundColor: '#112240',
-    borderRadius: 16,
-    marginBottom: 16,
-    overflow: 'hidden',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    borderWidth: 1,
-    borderColor: 'rgba(100, 255, 218, 0.1)',
-  },
-  itemImageContainer: {
-    position: 'relative',
-    height: 150,
-    backgroundColor: '#1D2D50',
-  },
-  itemImage: {
-    width: '100%',
-    height: '100%',
-  },
-  noImageContainer: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  noImageText: {
-    color: '#8892B0',
-    marginTop: 8,
-  },
-  statusBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  soldBadge: {
-    backgroundColor: '#F44336',
-  },
-  pendingBadge: {
-    backgroundColor: '#FFC107',
-  },
-  statusText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  itemInfo: {
-    padding: 12,
-  },
-  itemTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#CCD6F6',
-    marginBottom: 4,
-  },
-  itemPrice: {
-    fontSize: 16,
-    color: '#64FFDA',
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  sellerInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  sellerImage: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  sellerName: {
-    color: '#8892B0',
-    fontSize: 12,
-    flex: 1,
-  },
-  chatButton: {
-    padding: 6,
-    backgroundColor: 'rgba(100, 255, 218, 0.1)',
-    borderRadius: 20,
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
     padding: 40,
-    width: '100%',
-  },
-  emptyStateTitle: {
-    color: '#CCD6F6',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: 16,
   },
   emptyStateText: {
     color: '#8892B0',
-    fontSize: 14,
-    marginTop: 8,
-    textAlign: 'center',
+    fontSize: 16,
+    marginTop: 16,
   },
   errorText: {
     color: '#FF6B6B',
     fontSize: 16,
     textAlign: 'center',
     marginBottom: 16,
-    width: '100%',
-    padding: 10,
-    backgroundColor: 'rgba(255, 107, 107, 0.1)',
-    borderRadius: 8,
-  },
-  fab: {
-    position: 'absolute',
-    right: 20,
-    bottom: TAB_BAR_HEIGHT + 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#64FFDA',
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
   },
 });

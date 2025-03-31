@@ -24,11 +24,6 @@ const PlaceCategorie = require("./PlaceCategorie")(connection,DataTypes)
 const Blog = require("./blog")(connection,DataTypes)
 const Comment = require("./Comment")(connection, DataTypes);
 
-// Add new models
-const Room = require("./Room")(connection, DataTypes);
-const RoomUser = require("./RoomUser")(connection, DataTypes);
-const Message = require("./Message")(connection, DataTypes);
-
 const MarketplaceItem = require("./marcketPlaceItem")(connection, DataTypes);
 const MarketplaceCategorie = require("./marcketPlaceCategorie")(connection, DataTypes);
 const MarketplaceItemCategorie = require("./marcketPlaceItemCategorie")(connection, DataTypes);
@@ -159,19 +154,6 @@ Favorite.belongsTo(Place, { foreignKey: "placeId" });
 
   MarketplaceItem.hasMany(Media, { foreignKey: 'marketplaceItemId', as: 'media',onDelete: 'CASCADE' });
   Media.belongsTo(MarketplaceItem, { foreignKey: 'marketplaceItemId',as: 'marketplaceItem',onDelete: 'CASCADE'});
-
-  // Chat room associations
-  Room.belongsToMany(User, { through: RoomUser, foreignKey: "roomId" });
-  User.belongsToMany(Room, { through: RoomUser, foreignKey: "userId" });
-
-  Message.belongsTo(Room, { foreignKey: "roomId" });
-  Room.hasMany(Message, { foreignKey: "roomId" });
-
-  Message.belongsTo(User, { foreignKey: "senderId", as: "sender" });
-  User.hasMany(Message, { foreignKey: "senderId", as: "sentMessages" });
-
-  Message.belongsTo(Message, { foreignKey: "replyToId", as: "replyTo" });
-  Message.hasMany(Message, { foreignKey: "replyToId", as: "replies" });
 };
 
 // Call the function to define associations
@@ -219,9 +201,5 @@ module.exports = {
   MarketplaceCategorie,
   MarketplaceItemCategorie,
   FormularAdvisor,
-  AdvisorMedia,
-  // Add new models to exports
-  Room,
-  RoomUser,
-  Message
+  AdvisorMedia
 };

@@ -11,7 +11,6 @@ module.exports = (sequelize, DataTypes) => {
       bio: { type: DataTypes.TEXT, allowNull: true },
       experience: { type: DataTypes.TEXT, allowNull: true },
       token: { type: DataTypes.STRING, allowNull: true },
-      locationPermission: { type: DataTypes.BOOLEAN, defaultValue: false, allowNull: false },
      
     
       created_at: { type: DataTypes.DATE, defaultValue: sequelize.literal('CURRENT_TIMESTAMP') },

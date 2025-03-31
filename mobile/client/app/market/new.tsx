@@ -9,18 +9,15 @@ import {
   Image,
   Alert,
   ActivityIndicator,
-  Platform,
-  KeyboardAvoidingView,
 } from 'react-native';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
 import { EXPO_PUBLIC_API_URL } from '../../config';
 import { useAuth } from '../../context/AuthContext';
-import * as Location from 'expo-location';
-import DropDownPicker from 'react-native-dropdown-picker';
+
 
 interface Category {
   id: string;
@@ -39,39 +36,19 @@ const axiosInstance = axios.create({
   }
 });
 
-const CreateListingScreen = () => {
+export default function NewItem() {
   const router = useRouter();
   const { accessToken, user } = useAuth();
-  
-  // Form states
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [location, setLocation] = useState('');
   const [images, setImages] = useState<string[]>([]);
-  const [currentLocation, setCurrentLocation] = useState(null);
-  const [errorMsg, setErrorMsg] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [useCurrentLocation, setUseCurrentLocation] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  
-  // Dropdown states for categories
-  const [open, setOpen] = useState(false);
-  const [category, setCategory] = useState(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  
-  // Validation states
-  const [errors, setErrors] = useState({
-    title: '',
-    description: '',
-    price: '',
-    location: '',
-    images: '',
-    category: ''
-  });
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   useEffect(() => {
     if (!accessToken) {
@@ -80,17 +57,6 @@ const CreateListingScreen = () => {
       return;
     }
     fetchCategories();
-    // Request permission for location
-    (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        setErrorMsg('Permission to access location was denied');
-        return;
-      }
-      
-      let location = await Location.getCurrentPositionAsync({});
-      setCurrentLocation(location);
-    })();
   }, []);
 
   const fetchCategories = async () => {
@@ -116,6 +82,8 @@ const CreateListingScreen = () => {
         { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
       );
 
+      console.log('Uploading file:', compressedImage); // Debug: Check file object
+
       const formData = new FormData();
       const ext = compressedImage.uri.split('.').pop() || 'jpg';
       
@@ -128,6 +96,8 @@ const CreateListingScreen = () => {
 
       // Use the correct unsigned upload preset
       formData.append('upload_preset', 'Ghassen123');
+
+      console.log('Starting upload to Cloudinary...'); // Debug log
 
       const response = await fetch(
         'https://api.cloudinary.com/v1_1/dqh6arave/image/upload',
@@ -142,6 +112,7 @@ const CreateListingScreen = () => {
       );
 
       const data = await response.json();
+      console.log('Cloudinary response:', data); // Debug: Check response
 
       if (!data?.secure_url) {
         console.error('Invalid Cloudinary response:', data);
@@ -159,87 +130,44 @@ const CreateListingScreen = () => {
     }
   };
 
-  const validateForm = () => {
-    let valid = true;
-    const newErrors = {
-      title: '',
-      description: '',
-      price: '',
-      location: '',
-      images: '',
-      category: ''
-    };
-    
-    // Title validation
-    if (!title.trim()) {
-      newErrors.title = 'Title is required';
-      valid = false;
-    } else if (title.length < 3) {
-      newErrors.title = 'Title must be at least 3 characters';
-      valid = false;
-    }
-    
-    // Description validation
-    if (!description.trim()) {
-      newErrors.description = 'Description is required';
-      valid = false;
-    } else if (description.length < 10) {
-      newErrors.description = 'Description must be at least 10 characters';
-      valid = false;
-    }
-    
-    // Price validation
-    if (!price.trim()) {
-      newErrors.price = 'Price is required';
-      valid = false;
-    } else if (isNaN(parseFloat(price)) || parseFloat(price) <= 0) {
-      newErrors.price = 'Price must be a valid number greater than 0';
-      valid = false;
-    }
-    
-    // Location validation
-    if (!useCurrentLocation && !location.trim()) {
-      newErrors.location = 'Location is required';
-      valid = false;
-    }
-    
-    // Image validation
-    if (images.length === 0) {
-      newErrors.images = 'At least one image is required';
-      valid = false;
-    }
-    
-    // Category validation
-    if (selectedCategories.length === 0) {
-      newErrors.category = 'Category is required';
-      valid = false;
-    }
-    
-    setErrors(newErrors);
-    return valid;
-  };
-
   const handleSubmit = async () => {
+    console.log('Current accessToken:', accessToken); // Debug log
+    console.log('Current user:', user); // Debug log
+
     if (!accessToken) {
       Alert.alert('Error', 'Please login to create an item');
       router.replace('/auth');
       return;
     }
 
-    if (!validateForm()) {
-      Alert.alert('Error', 'Please fill in all required fields and correct any errors');
+    if (!title || !description || !price || !location || selectedCategories.length === 0) {
+      Alert.alert('Error', 'Please fill in all required fields and select at least one category');
+      return;
+    }
+
+    if (images.length === 0) {
+      Alert.alert('Error', 'Please add at least one image');
       return;
     }
 
     setSubmitting(true);
     try {
+      console.log('Submitting data:', {
+        title,
+        description,
+        price,
+        location,
+        categoryIds: selectedCategories,
+        images,
+      });
+
       const response = await axiosInstance.post(
         `${EXPO_PUBLIC_API_URL}marketplace/items`,
         {
           title,
           description,
           price: parseFloat(price),
-          location: useCurrentLocation ? location : location,
+          location,
           categoryIds: selectedCategories.map(id => parseInt(id)),
           images: images,
         },
@@ -250,6 +178,8 @@ const CreateListingScreen = () => {
           }
         }
       );
+
+      console.log('Server response:', response.data); // Debug log
 
       if (response.data) {
         Alert.alert(
@@ -263,6 +193,7 @@ const CreateListingScreen = () => {
       let errorMessage = 'Failed to create item. Please try again.';
       
       if (error.response) {
+        console.log('Error response:', error.response.data);
         errorMessage = error.response.data.error || error.response.data.details || errorMessage;
       }
       
@@ -327,36 +258,6 @@ const CreateListingScreen = () => {
     );
   };
 
-  const useMyLocation = async () => {
-    if (!currentLocation) {
-      Alert.alert('Error', 'Unable to get your current location. Please enter it manually.');
-      return;
-    }
-    
-    setUseCurrentLocation(true);
-    
-    try {
-      const { coords } = currentLocation;
-      const address = await Location.reverseGeocodeAsync({
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-      });
-      
-      if (address && address.length > 0) {
-        const { city, region, country } = address[0];
-        setLocation(`${city || ''}, ${region || ''}, ${country || ''}`.trim());
-      } else {
-        setLocation('Location found (coordinates only)');
-      }
-      
-      setErrors({ ...errors, location: '' });
-    } catch (error) {
-      console.error('Error getting location details:', error);
-      Alert.alert('Error', 'Failed to get location details. Please enter manually.');
-      setUseCurrentLocation(false);
-    }
-  };
-
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -395,7 +296,6 @@ const CreateListingScreen = () => {
           placeholder="Enter item title"
           placeholderTextColor="#8892B0"
         />
-        {errors.title ? <Text style={styles.errorText}>{errors.title}</Text> : null}
 
         <Text style={styles.label}>Description*</Text>
         <TextInput
@@ -407,7 +307,6 @@ const CreateListingScreen = () => {
           multiline
           numberOfLines={4}
         />
-        {errors.description ? <Text style={styles.errorText}>{errors.description}</Text> : null}
 
         <Text style={styles.label}>Price*</Text>
         <TextInput
@@ -418,28 +317,17 @@ const CreateListingScreen = () => {
           placeholderTextColor="#8892B0"
           keyboardType="numeric"
         />
-        {errors.price ? <Text style={styles.errorText}>{errors.price}</Text> : null}
 
         <Text style={styles.label}>Location*</Text>
-        <View style={styles.locationContainer}>
-          <TextInput
-            style={[styles.locationInput, useCurrentLocation && styles.disabledInput]}
-            value={location}
-            onChangeText={setLocation}
-            placeholder="Enter location"
-            placeholderTextColor="#8892B0"
-            editable={!useCurrentLocation}
-          />
-          <TouchableOpacity 
-            style={[styles.locationButton, useCurrentLocation && styles.activeLocationButton]}
-            onPress={useMyLocation}
-          >
-            <Ionicons name="location" size={20} color={useCurrentLocation ? "#0A192F" : "#64FFDA"} />
-          </TouchableOpacity>
-        </View>
-        {errors.location ? <Text style={styles.errorText}>{errors.location}</Text> : null}
+        <TextInput
+          style={styles.input}
+          value={location}
+          onChangeText={setLocation}
+          placeholder="Enter location"
+          placeholderTextColor="#8892B0"
+        />
 
-        <Text style={styles.label}>Images*</Text>
+        <Text style={styles.label}>Images</Text>
         <ScrollView horizontal style={styles.imageContainer}>
           {images.map((uri, index) => (
             <View key={index} style={styles.imageWrapper}>
@@ -456,7 +344,6 @@ const CreateListingScreen = () => {
             <Ionicons name="camera-outline" size={40} color="#64FFDA" />
           </TouchableOpacity>
         </ScrollView>
-        {errors.images ? <Text style={styles.errorText}>{errors.images}</Text> : null}
 
         <Text style={styles.label}>Categories*</Text>
         <View style={styles.categoriesContainer}>
@@ -483,7 +370,6 @@ const CreateListingScreen = () => {
             </TouchableOpacity>
           ))}
         </View>
-        {errors.category ? <Text style={styles.errorText}>{errors.category}</Text> : null}
 
         <TouchableOpacity
           style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
@@ -545,38 +431,6 @@ const styles = StyleSheet.create({
   textArea: {
     height: 100,
     textAlignVertical: 'top',
-  },
-  locationContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  locationInput: {
-    flex: 1,
-    backgroundColor: '#112240',
-    borderRadius: 8,
-    padding: 12,
-    color: '#CCD6F6',
-    fontSize: 16,
-    borderTopRightRadius: 0,
-    borderBottomRightRadius: 0,
-  },
-  locationButton: {
-    backgroundColor: '#112240',
-    padding: 14,
-    borderTopRightRadius: 8,
-    borderBottomRightRadius: 8,
-  },
-  activeLocationButton: {
-    backgroundColor: '#64FFDA',
-  },
-  disabledInput: {
-    backgroundColor: '#0E1B36',
-    color: '#8892B0',
-  },
-  errorText: {
-    color: '#FF6B6B',
-    fontSize: 12,
-    marginTop: 4,
   },
   imageContainer: {
     flexDirection: 'row',
@@ -660,5 +514,3 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 });
-
-export default CreateListingScreen;

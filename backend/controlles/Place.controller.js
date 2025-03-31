@@ -5,8 +5,8 @@ const placeController = {
   getAllPlaces: async (req, res) => {
     try {
       const { limit, category } = req.query;
+      console.log('Fetching places with category:', category);
       
-      // Prepare include clause for eager loading
       const include = [
         {
           model: Media,
@@ -15,18 +15,17 @@ const placeController = {
         },
         {
           model: Review,
-          attributes: ['id', 'rating'],
+          attributes: ['rating'],
           required: false
         },
         {
           model: Categorie,
-          through: { attributes: [] }, // Exclude junction table attributes
-          attributes: ['id', 'name', 'icon'],
-          required: false
+          through: { attributes: [] },
+          attributes: ['name', 'icon'],
+          required: category ? true : false // Make it required only when filtering by category
         }
       ];
-      
-      // Only include approved places by default
+
       const whereClause = {
         status: 'approved'
       };
@@ -41,35 +40,14 @@ const placeController = {
         where: whereClause,
         distinct: true // Add this to avoid duplicate places
       });
-      
+
       const formattedPlaces = places.map(place => {
         // Get image from Media or fallback to images field
         let imageUrl = 'https://via.placeholder.com/400';
         let images = [imageUrl]; // Default image
         
-        // For first 3 places, prioritize images field over Media
-        if (place.id <= 3 && place.images) {
-          try {
-            // If it's a JSON string, parse it
-            if (typeof place.images === 'string') {
-              const parsedImages = JSON.parse(place.images);
-              if (Array.isArray(parsedImages) && parsedImages.length > 0) {
-                images = parsedImages;
-              } else {
-                images = [place.images]; // Treat as single image
-              }
-            } 
-            // If it's already an array
-            else if (Array.isArray(place.images) && place.images.length > 0) {
-              images = place.images;
-            }
-          } catch (e) {
-            console.error('Error parsing images:', e);
-            images = [place.images]; // Fallback to treating as single image
-          }
-        }
-        // For other places, first try getting images from Media
-        else if (place.Media && place.Media.length > 0) {
+        // First try getting images from Media
+        if (place.Media && place.Media.length > 0) {
           images = place.Media.map(media => media.url);
         } 
         // Then try the images field
@@ -162,41 +140,17 @@ const placeController = {
 
       // Handle images from both Media and images field
       let images = ['https://via.placeholder.com/400'];
-      
-      // For first 3 places, prioritize images field over Media
-      if (parseInt(id) <= 3 && place.images) {
-        try {
-          if (Array.isArray(place.images)) {
-            images = place.images.length > 0 ? place.images : images;
-          } else if (typeof place.images === 'string') {
-            // Try to parse if it looks like JSON
-            if (place.images.startsWith('[') && place.images.endsWith(']')) {
-              try {
-                const parsedImages = JSON.parse(place.images);
-                if (Array.isArray(parsedImages) && parsedImages.length > 0) {
-                  images = parsedImages;
-                }
-              } catch (parseError) {
-                console.error('Error parsing JSON images:', parseError);
-                // Fallback to treating as a single image URL
-                images = [place.images];
-              }
-            } else {
-              // Not JSON, treat as a single image URL
-              images = [place.images];
-            }
-          }
-        } catch (e) {
-          console.error('Error processing images:', e);
-          images = typeof place.images === 'string' ? [place.images] : images;
-        }
-      }
-      else if (place.Media && place.Media.length > 0) {
+      if (place.Media && place.Media.length > 0) {
         images = place.Media.map(media => media.url);
+        console.log('Using media images:', images);
       } else if (place.images) {
+        console.log('PlaceById - Raw images data type:', typeof place.images);
+        console.log('PlaceById - Raw images data:', place.images);
+        
         try {
           if (Array.isArray(place.images)) {
             images = place.images.length > 0 ? place.images : images;
+            console.log('PlaceById - Using array images:', images);
           } else if (typeof place.images === 'string') {
             // Try to parse if it looks like JSON
             if (place.images.startsWith('[') && place.images.endsWith(']')) {
@@ -204,9 +158,10 @@ const placeController = {
                 const parsedImages = JSON.parse(place.images);
                 if (Array.isArray(parsedImages) && parsedImages.length > 0) {
                   images = parsedImages;
+                  console.log('PlaceById - Successfully parsed JSON images array:', images);
                 }
               } catch (parseError) {
-                console.error('Error parsing JSON images:', parseError);
+                console.error('PlaceById - Error parsing JSON images:', parseError);
                 // Fallback to treating as a single image URL
                 images = [place.images];
               }
@@ -216,7 +171,7 @@ const placeController = {
             }
           }
         } catch (e) {
-          console.error('Error processing images:', e);
+          console.error('PlaceById - Error processing images:', e);
           images = typeof place.images === 'string' ? [place.images] : images;
         }
       }
@@ -235,8 +190,6 @@ const placeController = {
         name: place.name,
         description: place.description,
         location: place.location,
-        latitude: place.latitude,
-        longitude: place.longitude,
         images: images,
         rating: Number(
           (place.Reviews?.reduce((acc, rev) => acc + (rev.rating || 0), 0) / 
@@ -284,6 +237,8 @@ const placeController = {
         user_rating: 4.2,
         safety: ["Watch for wildlife", "Steep trails nearby"]
       };
+
+      console.log('Sending place with images:', formattedPlace.images);
 
       res.status(200).json({
         success: true,
@@ -368,11 +323,11 @@ const placeController = {
   // Get a user's rating for a specific place
   getUserPlaceRating: async (req, res) => {
     try {
-      const { id, userId } = req.params;
+      const { placeId, userId } = req.params;
       
       const review = await Review.findOne({
         where: {
-          placeId: id,
+          placeId,
           userId
         },
         attributes: ['id', 'rating', 'comment', 'created_at']

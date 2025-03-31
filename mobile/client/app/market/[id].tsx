@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, ActivityIndicator, Alert, Dimensions, Modal, Linking } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, ActivityIndicator, Alert, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -36,10 +36,6 @@ export default function MarketplaceItemDetails() {
   const [item, setItem] = useState<MarketplaceItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [imageModalVisible, setImageModalVisible] = useState(false);
-  const [expandDescription, setExpandDescription] = useState(false);
-  const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     fetchItemDetails();
@@ -58,72 +54,28 @@ export default function MarketplaceItemDetails() {
     }
   };
 
-  const handleShowFullImage = (index: number) => {
-    setCurrentImageIndex(index);
-    setImageModalVisible(true);
-  };
-
-  const handleChatPress = async () => {
+  const handleBuyItem = async () => {
     if (!accessToken) {
-      Alert.alert('Error', 'Please login to message sellers');
-      return;
-    }
-
-    if (item?.sellerId === user?.id) {
-      Alert.alert('Error', 'You cannot message yourself');
+      Alert.alert('Error', 'Please login to purchase items');
       return;
     }
 
     try {
-      setLoading(true);
-      const response = await axios.post(
-        `${EXPO_PUBLIC_API_URL}chat/rooms/get-or-create`,
-        { userId: item?.sellerId },
+      await axios.put(
+        `${EXPO_PUBLIC_API_URL}marketplace/items/${id}/buy`,
+        { itemId: id },
         {
           headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
+            'Authorization': `Bearer ${accessToken}`,
           }
         }
       );
-
-      const roomData = response.data;
-      const roomId = roomData.id;
-      const isNewRoom = roomData.isNew;
-
-      router.push({
-        pathname: "/chat/[roomId]",
-        params: {
-          roomId: roomId.toString(),
-          isNewRoom: isNewRoom ? '1' : '0'
-        }
-      });
+      Alert.alert('Success', 'Item purchased successfully!');
+      router.back();
     } catch (error) {
-      let errorMessage = 'Could not start chat. Please try again later.';
-      
-      if (axios.isAxiosError(error)) {
-        if (error.response?.status === 401) {
-          errorMessage = 'Your session has expired. Please login again.';
-        } else if (error.response?.data?.error) {
-          errorMessage = error.response.data.error;
-        }
-      }
-      
-      Alert.alert('Chat Error', errorMessage);
-    } finally {
-      setLoading(false);
+      console.error('Error buying item:', error);
+      Alert.alert('Error', 'Failed to purchase item. Please try again.');
     }
-  };
-
-  const openMap = (location: string) => {
-    const mapUrl = `https://maps.google.com/?q=${encodeURIComponent(location)}`;
-    Linking.canOpenURL(mapUrl).then(supported => {
-      if (supported) {
-        Linking.openURL(mapUrl);
-      } else {
-        Alert.alert('Error', 'Could not open maps application');
-    }
-    });
   };
 
   if (loading) {
@@ -142,16 +94,8 @@ export default function MarketplaceItemDetails() {
     );
   }
 
-  const images = item.images?.length > 0 
-    ? item.images 
-    : [item.imageURL || 'https://m.media-amazon.com/images/I/812wCS-IKuL.jpg'];
-
   return (
-    <ScrollView 
-      ref={scrollViewRef}
-      style={styles.container}
-      showsVerticalScrollIndicator={false}
-    >
+    <ScrollView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#64FFDA" />
@@ -159,81 +103,53 @@ export default function MarketplaceItemDetails() {
         <Text style={styles.title}>Item Details</Text>
       </View>
 
-      {/* Image Carousel */}
-      <View style={styles.imageContainer}>
       <ScrollView 
         horizontal 
         pagingEnabled 
         showsHorizontalScrollIndicator={false}
-          onScroll={(event) => {
-            const contentOffset = event.nativeEvent.contentOffset;
-            const viewSize = event.nativeEvent.layoutMeasurement;
-            const pageNum = Math.floor(contentOffset.x / viewSize.width);
-            setCurrentImageIndex(pageNum);
-          }}
-          scrollEventThrottle={16}
+        style={styles.imageScrollContainer}
       >
-          {images.map((image, index) => (
-            <TouchableOpacity
+        {item.images?.length > 0 ? (
+          item.images.map((image, index) => (
+            <Image
               key={index}
-              activeOpacity={0.9}
-              onPress={() => handleShowFullImage(index)}
-              style={styles.imageWrapper}
-            >
-              <Image
               source={{ uri: image }}
               style={styles.itemImage}
               resizeMode="cover"
             />
-            </TouchableOpacity>
-          ))}
+          ))
+        ) : (
+          <Image
+            source={{ uri: item.imageURL || 'https://m.media-amazon.com/images/I/812wCS-IKuL.jpg' }}
+            style={styles.itemImage}
+            resizeMode="cover"
+          />
+        )}
       </ScrollView>
-        
-        {/* Image Indicators */}
-        <View style={styles.indicatorContainer}>
-          {images.map((_, index) => (
-            <View 
-              key={index}
-              style={[
-                styles.indicator,
-                index === currentImageIndex && styles.indicatorActive
-              ]}
-            />
-          ))}
-        </View>
-      </View>
 
       <View style={styles.contentContainer}>
-        {/* Item Title and Price */}
         <Text style={styles.itemTitle}>{item.title}</Text>
         <Text style={styles.itemPrice}>${item.price}</Text>
 
-        {/* Seller Information */}
         <View style={styles.sellerContainer}>
           <Image 
             source={{ uri: item.seller?.profile_image || 'https://via.placeholder.com/50' }}
             style={styles.sellerImage}
           />
           <View style={styles.sellerInfo}>
-            <View style={styles.sellerNameRow}>
             <Text style={styles.sellerName}>
               {item.seller?.first_name} {item.seller?.last_name}
             </Text>
-              <Ionicons name="checkmark-circle" size={16} color="#64FFDA" style={styles.verifiedBadge} />
+            <Text style={styles.location}>{item.location}</Text>
           </View>
-            
-            {/* Location with Map Link */}
           <TouchableOpacity 
-              style={styles.locationRow}
-              onPress={() => item.location && openMap(item.location)}
+            style={styles.chatButton}
+            onPress={() => router.push(`/chat/${item.sellerId}` as any)}
           >
-              <Ionicons name="location-outline" size={16} color="#8892B0" />
-              <Text style={styles.location}>{item.location || 'No location specified'}</Text>
+            <Ionicons name="chatbubble-outline" size={24} color="#64FFDA" />
           </TouchableOpacity>
-          </View>
         </View>
 
-        {/* Categories */}
         <View style={styles.categoriesContainer}>
           {item.categories?.map((category) => (
             <View key={category.id} style={styles.categoryTag}>
@@ -242,65 +158,18 @@ export default function MarketplaceItemDetails() {
           ))}
         </View>
 
-        {/* Description with expandable option */}
         <Text style={styles.sectionTitle}>Description</Text>
-        <View>
-          <Text 
-            style={styles.description}
-            numberOfLines={expandDescription ? undefined : 3}
-          >
-            {item.description}
-          </Text>
-          {item.description && item.description.length > 100 && (
-            <TouchableOpacity
-              onPress={() => setExpandDescription(!expandDescription)}
-              style={styles.readMoreButton}
-            >
-              <Text style={styles.readMoreText}>
-                {expandDescription ? 'Read Less' : 'Read More'}
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        <Text style={styles.description}>{item.description}</Text>
 
-        {/* Message Seller Button */}
-        {item.sellerId !== user?.id && (
-          <TouchableOpacity 
-            style={styles.messageButton} 
-            onPress={handleChatPress}
-          >
-            <Ionicons name="chatbubble-outline" size={20} color="#0A192F" style={styles.buttonIcon} />
-            <Text style={styles.messageButtonText}>Message Seller</Text>
+        {/* {item.status === 'available' && (
+          <TouchableOpacity style={styles.buyButton} onPress={handleBuyItem}>
+            <Text style={styles.buyButtonText}>Buy Now</Text>
           </TouchableOpacity>
-        )}
+        )} */}
       </View>
-
-      {/* Image Modal for Zoomed View */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={imageModalVisible}
-        onRequestClose={() => setImageModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <TouchableOpacity
-            style={styles.closeModal}
-            onPress={() => setImageModalVisible(false)}
-          >
-            <Ionicons name="close-circle" size={36} color="#CCD6F6" />
-          </TouchableOpacity>
-          <Image
-            source={{ uri: images[currentImageIndex] }}
-            style={styles.fullImage}
-            resizeMode="contain"
-          />
-        </View>
-      </Modal>
     </ScrollView>
   );
 }
-
-const { width: screenWidth } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   container: {
@@ -326,35 +195,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#CCD6F6',
   },
-  imageContainer: {
-    position: 'relative',
-    height: 300,
-  },
-  imageWrapper: {
-    width: screenWidth,
+  imageScrollContainer: {
     height: 300,
   },
   itemImage: {
     height: 300,
-    width: screenWidth,
-  },
-  indicatorContainer: {
-    position: 'absolute',
-    bottom: 16,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    width: '100%',
-  },
-  indicator: {
-    height: 8,
-    width: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
-    marginHorizontal: 4,
-  },
-  indicatorActive: {
-    backgroundColor: '#64FFDA',
-    width: 16,
+    width: Dimensions.get('window').width,
   },
   contentContainer: {
     padding: 20,
@@ -366,10 +212,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   itemPrice: {
-    fontSize: 26,
+    fontSize: 22,
     color: '#64FFDA',
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   sellerContainer: {
     flexDirection: 'row',
@@ -377,61 +223,41 @@ const styles = StyleSheet.create({
     backgroundColor: '#112240',
     padding: 16,
     borderRadius: 12,
-    marginBottom: 20,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    marginBottom: 16,
   },
   sellerImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    borderWidth: 2,
-    borderColor: '#64FFDA',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
   },
   sellerInfo: {
     flex: 1,
-    marginLeft: 16,
-  },
-  sellerNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    marginLeft: 12,
   },
   sellerName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#CCD6F6',
-    marginRight: 6,
-  },
-  verifiedBadge: {
-    marginLeft: 4,
-  },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
   },
   location: {
     color: '#8892B0',
-    marginLeft: 4,
-    fontSize: 14,
+    marginTop: 4,
+  },
+  chatButton: {
+    padding: 8,
   },
   categoriesContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   categoryTag: {
     backgroundColor: 'rgba(100, 255, 218, 0.1)',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 20,
+    borderRadius: 16,
     marginRight: 8,
     marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#64FFDA',
   },
   categoryText: {
     color: '#64FFDA',
@@ -441,57 +267,27 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#CCD6F6',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   description: {
     fontSize: 16,
     color: '#8892B0',
     lineHeight: 24,
+    marginBottom: 24,
   },
-  readMoreButton: {
-    marginTop: 8,
-    marginBottom: 20,
-  },
-  readMoreText: {
-    color: '#64FFDA',
-    fontWeight: 'bold',
-  },
-  messageButton: {
+  buyButton: {
     backgroundColor: '#64FFDA',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
+    padding: 16,
     borderRadius: 12,
-    marginTop: 20,
-  },
-  messageButtonText: {
-    color: '#0A192F',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  buttonIcon: {
-    marginRight: 10,
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
-    justifyContent: 'center',
     alignItems: 'center',
   },
-  fullImage: {
-    width: '100%',
-    height: '80%',
-  },
-  closeModal: {
-    position: 'absolute',
-    top: 40,
-    right: 20,
-    zIndex: 10,
-  },
+  // buyButtonText: {
+  //   color: '#0A192F',
+  //   fontSize: 18,
+  //   fontWeight: 'bold',
+  // },
   errorText: {
     color: '#FF6B6B',
     fontSize: 16,
-    textAlign: 'center',
   },
 });
