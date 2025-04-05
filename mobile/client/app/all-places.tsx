@@ -81,12 +81,22 @@ export default function AllPlacesScreen() {
             try {
               place.images = JSON.parse(place.images);
             } catch (e) {
-              console.error('Error parsing images JSON:', e);
-              place.images = [];
+              // Keep original string if parsing fails
             }
           }
+          
+          // If place.images is still not an array or is an empty array, provide a fallback
+          if (!Array.isArray(place.images) || place.images.length === 0) {
+            if (typeof place.images === 'string' && place.images) {
+              place.images = [place.images]; // Convert string to array
+            } else {
+              place.images = ['https://via.placeholder.com/400']; // Use fallback
+            }
+          }
+          
           return place;
         });
+        
         setPlaces(processedPlaces);
       }
     } catch (error) {
@@ -117,9 +127,11 @@ export default function AllPlacesScreen() {
           source={{ 
             uri: Array.isArray(item.images) && item.images.length > 0 
               ? item.images[0] 
-              : (typeof item.images === 'string' ? item.images : 'https://via.placeholder.com/400') 
+              : (typeof item.images === 'string' && item.images
+                  ? item.images 
+                  : 'https://via.placeholder.com/400') 
           }} 
-          style={styles.placeImage} 
+          style={styles.placeImage}
         />
         <LinearGradient
           colors={['transparent', 'rgba(10, 25, 47, 0.8)', 'rgba(10, 25, 47, 0.95)']}
@@ -127,7 +139,7 @@ export default function AllPlacesScreen() {
         />
         <View style={styles.cardContent}>
           <View style={styles.categoryTags}>
-            {item.categories.slice(0, 2).map((cat, index) => (
+            {item.categories && item.categories.slice(0, 2).map((cat, index) => (
               <View key={index} style={styles.categoryTag}>
                 <Text style={styles.categoryTagText}>{cat.icon} {cat.name}</Text>
               </View>

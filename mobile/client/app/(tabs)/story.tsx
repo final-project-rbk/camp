@@ -10,6 +10,7 @@ import * as SecureStore from 'expo-secure-store';
 import { jwtDecode } from "jwt-decode";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import TokenDebug from '../../components/TokenDebug';
+import { useFocusEffect } from '@react-navigation/native';
 
 // Add this constant at the top of the file, after the imports
 const DEFAULT_PROFILE_IMAGE = 'https://johannesippen.com/img/blog/humans-not-users/header.jpg';
@@ -58,6 +59,7 @@ export default function Story() {
     const [refreshing, setRefreshing] = useState(false);
     const [token, setToken] = useState<string | null>(null);
     const [userId, setUserId] = useState<number | null>(null);
+    const [showOnlyMyPosts, setShowOnlyMyPosts] = useState(false);
 
     // Sort blogs by createdAt descending (newest first)
     const sortBlogs = (blogs: Blog[]) => {
@@ -108,28 +110,68 @@ export default function Story() {
     // Fetch blogs
     const fetchBlogData = async () => {
         try {
+            console.log('Starting fetchBlogData');
+            
+            // Directly retrieve token from AsyncStorage instead of relying on state
+            const storedToken = await AsyncStorage.getItem('userToken');
+            
+            if (!storedToken) {
+                console.log('No token in AsyncStorage');
+                setLoading(false);
+                router.replace('/auth');
+                return;
+            }
+            
+            console.log(`Fetching blogs with direct token: ${storedToken.substring(0, 15)}...`);
+            
+            setLoading(true);
+            
             const response = await fetch(`${EXPO_PUBLIC_API_URL}blogs/`, {
+                method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${token}`
+                    'Authorization': `Bearer ${storedToken}`,
+                    'Cache-Control': 'no-cache'
                 }
             });
+            
+            console.log('Response status:', response.status);
+            
+            if (response.status === 401) {
+                console.log('Auth failed (401) during blog fetch');
+                await AsyncStorage.removeItem('userToken');
+                setLoading(false);
+                router.replace('/auth');
+                return;
+            }
+            
             if (!response.ok) {
+                console.log('Response not OK:', response.status);
+                const errorText = await response.text();
+                console.log('Error response:', errorText);
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
+            
             const result = await response.json();
+            console.log('Blog fetch response:', result.success ? 'Success' : 'Failed');
+            
             if (result.success) {
-                // Add a 'liked' property to track local like state
-                const blogsWithLikeState = result.data.map((blog: any) => ({
-                    ...blog,
-                    liked: false, // Assume user hasn't liked it initially
-                }));
-                setBlogData(sortBlogs(blogsWithLikeState));
+                console.log(`Retrieved ${result.data.length} blogs`);
+                // Log a sample blog to verify data structure
+                if (result.data.length > 0) {
+                    console.log('Sample blog data:', JSON.stringify(result.data[0]).substring(0, 100) + '...');
+                } else {
+                    console.log('No blogs returned from API');
+                }
+                
+                // Store the data exactly as received from the API
+                setBlogData(sortBlogs(result.data));
             } else {
                 throw new Error(result.message || 'API request failed');
             }
-            setLoading(false);
-        } catch (err: unknown) {
+        } catch (err) {
+            console.error('Error fetching blogs:', err);
             setError(err instanceof Error ? err.message : 'Failed to fetch blog data');
+        } finally {
             setLoading(false);
         }
     };
@@ -246,11 +288,11 @@ export default function Story() {
         }
     };
 
-    // Delete blog
-    const deleteBlog = async (blogId: number) => {
+    // Update deleteBlog function to use disable endpoint
+    const disableBlog = async (blogId: number) => {
         try {
-            const response = await fetch(`${EXPO_PUBLIC_API_URL}blogs/${blogId}`, {
-                method: 'DELETE',
+            const response = await fetch(`${EXPO_PUBLIC_API_URL}blogs/${blogId}/disable`, {
+                method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
@@ -265,21 +307,30 @@ export default function Story() {
             if (result.success) {
                 fetchBlogData();
             } else {
-                throw new Error(result.message || 'Failed to delete blog');
+                throw new Error(result.message || 'Failed to disable blog');
             }
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Failed to delete blog');
+            setError(err instanceof Error ? err.message : 'Failed to disable blog');
         }
     };
 
-    // Confirm delete
-    const confirmDelete = (blogId: number) => {
+    // Update the confirm delete function
+    const confirmDisable = (blogId: number) => {
+        // First find the blog
+        const blog = blogData.find(b => b.id === blogId);
+        
+        // Check if this is the owner
+        if (!blog || blog.userId !== userId) {
+            Alert.alert('Access Denied', "You can only disable your own blog posts.");
+            return;
+        }
+
         Alert.alert(
-            "Confirm Delete",
-            "Are you sure you want to delete this blog?",
+            "Confirm Disable",
+            "Are you sure you want to disable this blog? It will no longer be visible to others.",
             [
                 { text: "Cancel", style: "cancel" },
-                { text: "Yes", onPress: () => deleteBlog(blogId), style: "destructive" },
+                { text: "Yes", onPress: () => disableBlog(blogId), style: "destructive" },
             ],
             { cancelable: true }
         );
@@ -338,13 +389,22 @@ export default function Story() {
         router.push(`/storydetail?id=${blogId}`);
     };
 
-    // Handle 3-dot menu click
+    // Update handleMenuPress function to only show for blog owner
     const handleMenuPress = (blogId: number) => {
-        if (dropdownVisible && selectedBlogId === blogId) {
-            setDropdownVisible(false);
-        } else {
-            setSelectedBlogId(blogId);
-            setDropdownVisible(true);
+        // Get the blog first
+        const blog = blogData.find(b => b.id === blogId);
+        
+        // Only allow if blog exists and this is the owner
+        if (blog && blog.userId === userId) {
+            if (dropdownVisible && selectedBlogId === blogId) {
+                setDropdownVisible(false);
+            } else {
+                setSelectedBlogId(blogId);
+                setDropdownVisible(true);
+            }
+        } else if (blog) {
+            // Show an alert if they try to access options on someone else's blog
+            Alert.alert('Access Denied', "You can only modify your own blog posts.");
         }
     };
 
@@ -399,8 +459,8 @@ export default function Story() {
     // Add onRefresh handler
     const onRefresh = React.useCallback(() => {
         setRefreshing(true);
-        fetchBlogData().finally(() => setRefreshing(false));
-    }, []);
+        fetchBlogData().then(() => setRefreshing(false));
+    }, [token]);
 
     // Immediately check for token on component mount - this is for debugging
     useEffect(() => {
@@ -446,6 +506,65 @@ export default function Story() {
         checkAuthentication();
     }, []);
 
+    // Add this function to check if likes have been updated
+    const checkForLikeUpdates = async () => {
+        try {
+            // Check if there's a flag indicating likes were updated
+            const likesUpdated = await AsyncStorage.getItem('likes_updated');
+            
+            if (likesUpdated === 'true') {
+                console.log('Likes were updated, refreshing blog data...');
+                // Clear the flag
+                await AsyncStorage.removeItem('likes_updated');
+                // Refresh blog data
+                fetchBlogData();
+            }
+        } catch (error) {
+            console.error('Error checking for like updates:', error);
+        }
+    };
+    
+    // Add this function to check for blog updates
+    const checkForBlogUpdates = async () => {
+        try {
+            // Check if blogs_updated flag has been set
+            const blogsUpdated = await AsyncStorage.getItem('blogs_updated');
+            console.log('Checking for blog updates:', blogsUpdated);
+            
+            if (blogsUpdated === 'true') {
+                // Clear the flag and refresh blogs
+                await AsyncStorage.setItem('blogs_updated', 'false');
+                console.log('Blogs were updated, refreshing list');
+                fetchBlogData();
+            }
+        } catch (error) {
+            console.error('Error checking for blog updates:', error);
+        }
+    };
+    
+    // Update the useFocusEffect to also check for blog updates
+    useFocusEffect(
+        React.useCallback(() => {
+            // This runs when the screen comes into focus
+            console.log('Story screen in focus, checking for updates');
+            checkForLikeUpdates();
+            checkForBlogUpdates(); // Add this new function call
+            
+            return () => {
+                // This runs when the screen loses focus
+                console.log('Story screen lost focus');
+            };
+        }, [])
+    );
+
+    // Filter blogs based on current filter setting
+    const getFilteredBlogs = () => {
+        if (showOnlyMyPosts && userId) {
+            return blogData.filter(blog => blog.userId === userId);
+        }
+        return blogData;
+    };
+
     // Loading state
     if (loading) {
         return (
@@ -470,6 +589,23 @@ export default function Story() {
     // Main content
     return (
         <View style={styles.container}>
+            {/* Add filter toggle section at the top */}
+            <View style={styles.filterContainer}>
+                <Text style={styles.filterLabel}>View: </Text>
+                <TouchableOpacity 
+                    style={[styles.filterButton, !showOnlyMyPosts && styles.activeFilterButton]} 
+                    onPress={() => setShowOnlyMyPosts(false)}
+                >
+                    <Text style={[styles.filterButtonText, !showOnlyMyPosts && styles.activeFilterText]}>All Story</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                    style={[styles.filterButton, showOnlyMyPosts && styles.activeFilterButton]} 
+                    onPress={() => setShowOnlyMyPosts(true)}
+                >
+                    <Text style={[styles.filterButtonText, showOnlyMyPosts && styles.activeFilterText]}>My Story</Text>
+                </TouchableOpacity>
+            </View>
+            
             <ScrollView 
                 contentContainerStyle={styles.scrollContent}
                 refreshControl={
@@ -482,8 +618,8 @@ export default function Story() {
                 }
             >
                 <View style={styles.content}>
-                    {blogData.length > 0 ? (
-                        sortBlogs(blogData).map((blog) => (
+                    {getFilteredBlogs().length > 0 ? (
+                        sortBlogs(getFilteredBlogs()).map((blog) => (
                             <TouchableOpacity 
                                 key={blog.id} 
                                 style={styles.blogCard}
@@ -506,7 +642,11 @@ export default function Story() {
                                         style={styles.menuButton}
                                         onPress={() => handleMenuPress(blog.id)}
                                     >
-                                        <Icon name="more-vert" size={24} color="#64FFDA" />
+                                        {blog.userId === userId ? (
+                                            <Icon name="more-vert" size={24} color="#64FFDA" />
+                                        ) : (
+                                            <Icon name="info-outline" size={24} color="#64FFDA" onPress={() => showBlogDetails(blog.id)} />
+                                        )}
                                     </TouchableOpacity>
                                 </View>
                                 {blog.image && (
@@ -516,7 +656,7 @@ export default function Story() {
                                         resizeMode="cover"
                                     />
                                 )}
-                                {dropdownVisible && selectedBlogId === blog.id && (
+                                {dropdownVisible && selectedBlogId === blog.id && blog.userId === userId && (
                                     <View style={styles.dropdownMenu}>
                                         <TouchableOpacity
                                             style={styles.dropdownItem}
@@ -532,10 +672,10 @@ export default function Story() {
                                             style={styles.dropdownItem}
                                             onPress={() => {
                                                 setDropdownVisible(false);
-                                                confirmDelete(blog.id);
+                                                confirmDisable(blog.id);
                                             }}
                                         >
-                                            <Text style={styles.dropdownText}>Delete</Text>
+                                            <Text style={styles.dropdownText}>Disable</Text>
                                         </TouchableOpacity>
                                         <TouchableOpacity
                                             style={styles.dropdownItem}
@@ -570,7 +710,9 @@ export default function Story() {
                             </TouchableOpacity>
                         ))
                     ) : (
-                        <Text style={styles.noDataText}>No blog posts available</Text>
+                        <Text style={styles.noDataText}>
+                            {showOnlyMyPosts ? 'You haven\'t created any stories yet' : 'No stories available'}
+                        </Text>
                     )}
                 </View>
             </ScrollView>
@@ -872,7 +1014,7 @@ const styles = StyleSheet.create({
     },
     fab: {
         position: 'absolute',
-        bottom: 30,
+        bottom: 80,
         right: 30,
         width: 60,
         height: 60,
@@ -881,6 +1023,11 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         elevation: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        zIndex: 999,
     },
     modalOverlay: {
         flex: 1,
@@ -933,5 +1080,48 @@ const styles = StyleSheet.create({
         height: 200,
         borderRadius: 8,
         marginBottom: 15,
+    },
+    filterContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#112240',
+        paddingVertical: 15,
+        paddingHorizontal: 20,
+        zIndex: 1,
+        marginTop: 30,
+        marginBottom: 20,
+        borderRadius: 8,
+        marginHorizontal: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 3,
+        elevation: 4,
+    },
+    filterLabel: {
+        color: '#8892B0',
+        fontSize: 16,
+        marginRight: 15,
+        fontWeight: '600',
+    },
+    filterButton: {
+        paddingVertical: 10,
+        paddingHorizontal: 18,
+        borderRadius: 25,
+        marginHorizontal: 6,
+        borderWidth: 1.5,
+        borderColor: '#64FFDA',
+    },
+    activeFilterButton: {
+        backgroundColor: '#64FFDA',
+    },
+    filterButtonText: {
+        color: '#64FFDA',
+        fontSize: 15,
+        fontWeight: '500',
+    },
+    activeFilterText: {
+        color: '#0A192F',
+        fontWeight: 'bold',
     },
 });

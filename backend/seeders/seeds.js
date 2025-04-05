@@ -65,6 +65,9 @@ const generatePlace = (id, status = 'approved') => {
     name,
     description: faker.lorem.paragraph(3),
     location,
+    // Generate random coordinates for Tunisia based on location
+    latitude: faker.number.float({ min: 30.2, max: 37.5, precision: 0.0001 }),
+    longitude: faker.number.float({ min: 7.5, max: 11.6, precision: 0.0001 }),
     images: JSON.stringify(images),
     status,
     createdAt: now,
@@ -85,8 +88,8 @@ const generateBlog = (id, userId) => {
     title: `${titlePrefix} ${topic.charAt(0).toUpperCase() + topic.slice(1)}`,
     content: faker.lorem.paragraphs(5),
     image: faker.image.url({ width: 800, height: 600, category: 'nature' }),
-    likes: faker.number.int({ min: 0, max: 200 }),
     userId,
+    disabled: false,
     createdAt: now,
     updatedAt: now
   };
@@ -156,7 +159,9 @@ module.exports = {
           name: 'Camping Sidi El Barrak',
           description: 'Beautiful lakeside camping site surrounded by pine forests. Perfect for family camping with facilities for swimming, fishing, and hiking. Features clean amenities and designated BBQ areas.',
           location: 'Nefza, Béja Governorate',
-          images: JSON.stringify(['https://tse4.mm.bing.net/th?id=OIP.4NCKP0mz0yyWSV9A0YvQUgHaEn&pid=Api&P=0&h=180']),
+          latitude: 37.1726,
+          longitude: 9.2201,
+          images: JSON.stringify(['https://picsum.photos/id/10/800/500', 'https://picsum.photos/id/11/800/500','https://picsum.photos/id/12/800/500']),
           status: 'approved',
           createdAt: now,
           updatedAt: now
@@ -166,7 +171,9 @@ module.exports = {
           name: 'Ain Draham Forest Camp',
           description: 'Mountain camping in Tunisia\'s most beautiful cork oak forest. Experience cool mountain air and stunning views. Ideal for nature lovers and hikers.',
           location: 'Ain Draham, Jendouba',
-          images: JSON.stringify(['https://tse2.mm.bing.net/th?id=OIP.K2x67hQ69-pwC-YodDsU_AHaEK&pid=Api&P=0&h=180',]),
+          latitude: 36.7720,
+          longitude: 8.6868,
+          images: JSON.stringify(['https://picsum.photos/id/13/800/500','https://picsum.photos/id/14/800/500','https://picsum.photos/id/15/800/500']),
           status: 'approved',
           createdAt: now,
           updatedAt: now
@@ -176,7 +183,9 @@ module.exports = {
           name: 'Cap Serrat Beach Camp',
           description: 'Pristine beachfront camping location with crystal clear waters. Perfect for snorkeling and beach activities. Offers both tent and cabin accommodations.',
           location: 'Cap Serrat, Bizerte',
-          images: JSON.stringify(['https://tse3.mm.bing.net/th?id=OIP.L8b9V_JBXTED_fXyo3HBMwHaEO&pid=Api&P=0&h=180']),
+          latitude: 37.2252,
+          longitude: 9.2384,
+          images: JSON.stringify(['https://picsum.photos/id/16/800/500','https://picsum.photos/id/17/800/500']),
           status: 'approved',
           createdAt: now,
           updatedAt: now
@@ -186,7 +195,9 @@ module.exports = {
           name: 'Zaghouan Mountain Retreat',
           description: 'High-altitude camping site near the ancient Roman temple. Excellent for rock climbing and mountain biking. Spectacular sunrise views over the mountains.',
           location: 'Zaghouan Mountains',
-          images: JSON.stringify(['https://tse2.mm.bing.net/th?id=OIP.kC7t2HXoLKoFb_Du_zeKjAHaEy&pid=Api&P=0&h=180']),
+          latitude: 36.3833,
+          longitude: 10.1400,
+          images: JSON.stringify(['https://images.unsplash.com/photo-1455496231601-e6195da1f841?w=500&auto=format','https://images.unsplash.com/photo-1464207687429-7505649dae38?w=500&auto=format']),
           status: 'approved',
           createdAt: now,
           updatedAt: now
@@ -196,7 +207,9 @@ module.exports = {
           name: 'El Haouaria Beach Camp',
           description: 'Coastal camping ground with views of the Mediterranean. Famous for bird watching and wind sports. Close to ancient Punic caves.',
           location: 'El Haouaria, Cap Bon',
-          images: JSON.stringify(['https://tse4.mm.bing.net/th?id=OIP.o4RErH7oNDsUEfbZuHfn2AHaE8&pid=Api&P=0&h=180']),
+          latitude: 37.0517,
+          longitude: 11.0072,
+          images: JSON.stringify(['https://images.unsplash.com/photo-1510312305653-8ed496efae75?w=500&auto=format','https://images.unsplash.com/photo-1526491109672-74740652b963?w=500&auto=format']),
           status: 'approved',
           createdAt: now,
           updatedAt: now
@@ -206,7 +219,9 @@ module.exports = {
           name: 'Ichkeul National Park Camp',
           description: 'UNESCO World Heritage site offering unique ecosystem camping. Home to diverse bird species and lake views. Educational nature trails available.',
           location: 'Ichkeul, Bizerte',
-          images: JSON.stringify(['https://tse3.mm.bing.net/th?id=OIP.008BML1vqjxr9JlRjT8vvQHaFj&pid=Api&P=0&h=180']),
+          latitude: 37.1422,
+          longitude: 9.6789,
+          images: JSON.stringify(['https://images.unsplash.com/photo-1496545672447-f699b503d270?w=500&auto=format','https://images.unsplash.com/photo-1471115853179-bb1d604434e0?w=500&auto=format']),
           status: 'approved',
           createdAt: now,
           updatedAt: now
@@ -216,7 +231,9 @@ module.exports = {
           name: 'Tabarka Pine Forest Camp',
           description: 'Seaside forest camping combining beach and woodland experiences. Close to coral reefs and historic Genoese fort. Excellent for diving enthusiasts.',
           location: 'Tabarka, Jendouba',
-          images: JSON.stringify(['https://tse1.mm.bing.net/th?id=OIP.-SRgaUg8bfBFBVg9HSVdAQHaEK&pid=Api&P=0&h=180']),
+          latitude: 36.9547,
+          longitude: 8.7594,
+          images: JSON.stringify(['https://images.unsplash.com/photo-1484960055659-a39d25adcb3c?w=500&auto=format','https://images.unsplash.com/photo-1532339142463-fd0a8979791a?w=500&auto=format']),
           status: 'approved',
           createdAt: now,
           updatedAt: now
@@ -226,7 +243,9 @@ module.exports = {
           name: 'Beni Mtir Lake Camp',
           description: 'Peaceful lakeside camping in the heart of Kroumirie. Surrounded by dense forests and offering water activities. Perfect for fishing and kayaking.',
           location: 'Beni Mtir, Jendouba',
-          images: JSON.stringify(['https://tse2.mm.bing.net/th?id=OIP.ZbLNphhEfXC_6gV2yQDpAAHaFj&pid=Api&P=0&h=180']),
+          latitude: 36.7342,
+          longitude: 8.7433,
+          images: JSON.stringify(['https://images.unsplash.com/photo-1504851149312-7a075b496cc7?w=500&auto=format','https://images.unsplash.com/photo-1537905569824-f89f14cceb68?w=500&auto=format']),
           status: 'approved',
           createdAt: now,
           updatedAt: now
@@ -236,7 +255,9 @@ module.exports = {
           name: 'Djebel Ressas Eco Camp',
           description: 'Eco-friendly mountain camping site with panoramic views of Tunis. Popular for climbing and hiking. Traditional Berber hospitality experience.',
           location: 'Djebel Ressas, Ben Arous',
-          images: JSON.stringify(['https://tse4.mm.bing.net/th?id=OIP.-A2pBpuqXaMNSFwhc6g0aAHaEK&pid=Api&P=0&h=180']),
+          latitude: 36.5989,
+          longitude: 10.3186,
+          images: JSON.stringify(['https://images.unsplash.com/photo-1414016642750-7fdd78dc33d9?w=500&auto=format','https://images.unsplash.com/photo-1515444744559-7be63e1600de?w=500&auto=format']),
           status: 'approved',
           createdAt: now,
           updatedAt: now
@@ -246,7 +267,9 @@ module.exports = {
           name: 'Bizerte Lakes Camp',
           description: 'Unique camping experience between the Mediterranean Sea and Bizerte Lake. Rich in marine life and bird watching opportunities. Water sports facilities available.',
           location: 'Bizerte',
-          images: JSON.stringify(['https://tse1.mm.bing.net/th?id=OIP.ZX7GnxeyaHJD8fLr8TlrvAAAAA&pid=Api&P=0&h=180']),
+          latitude: 37.2678,
+          longitude: 9.8724,
+          images: JSON.stringify(['https://images.unsplash.com/photo-1455763916899-e8b50eca9967?w=500&auto=format','https://images.unsplash.com/photo-1534187886935-1e1236e856c3?w=500&auto=format']),
           status: 'approved',
           createdAt: now,
           updatedAt: now
@@ -257,7 +280,9 @@ module.exports = {
           name: 'Douz Desert Camp',
           description: 'Experience authentic Sahara camping at the gateway to the desert. Sleep under the stars in traditional Bedouin tents. Camel treks and sand boarding activities available.',
           location: 'Douz, Kebili Governorate',
-          images: JSON.stringify(['https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQPGhDegWCdU9Nrpw5qLa1qJzv9TjFU4z5WIQ&s', 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQJbBFD11lDdm9jb7RMT8MZs9WmcwkVCPxcOQ&s']),
+          latitude: 33.4569,
+          longitude: 9.0203,
+          images: JSON.stringify(['https://images.unsplash.com/photo-1542401886-65d6c61db217?w=500&auto=format', 'https://images.unsplash.com/photo-1470093851219-69951fcbb533?w=500&auto=format']),
           status: 'approved',
           createdAt: now,
           updatedAt: now
@@ -267,7 +292,9 @@ module.exports = {
           name: 'Tozeur Oasis Retreat',
           description: 'Luxurious camping in the heart of Tunisia\'s most famous oasis. Palm groves, natural springs, and traditional architecture create a magical atmosphere. Guided tours of nearby film locations available.',
           location: 'Tozeur Oasis',
-          images: JSON.stringify(['https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQO88k7OZ_b8NdBfSJ-mL_yJ4al7Wg3lnFm2w&s', 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRxn8xm5TLCNF-DJZLvsaRUjYjDvLHB7UwYfQ&s']),
+          latitude: 33.9197,
+          longitude: 8.1335,
+          images: JSON.stringify(['https://images.unsplash.com/photo-1523496420900-3e6b8a2b39e4?w=500&auto=format', 'https://images.unsplash.com/photo-1604542031658-5799ca5d7936?w=500&auto=format']),
           status: 'approved',
           createdAt: now,
           updatedAt: now
@@ -277,7 +304,9 @@ module.exports = {
           name: 'Chott El Jerid Salt Lake Camp',
           description: 'Surreal camping experience on the edge of Tunisia\'s largest salt lake. Witness spectacular sunrises and sunsets over the otherworldly landscape. Stargazing and night photography paradise.',
           location: 'Chott El Jerid, Tozeur',
-          images: JSON.stringify(['https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQTAeCw-7YwfpTYaKJGDsweZT2DRkaOXv-vzQ&s', 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSPg8HvvjDBMEUkzYgGJNVxGa9A1qFnqvVNlQ&s']),
+          latitude: 33.7000,
+          longitude: 8.4000,
+          images: JSON.stringify(['https://images.unsplash.com/photo-1493246507139-91e8fad9978e?w=500&auto=format', 'https://images.unsplash.com/photo-1518623489648-a173ef7824f3?w=500&auto=format']),
           status: 'approved',
           createdAt: now,
           updatedAt: now
@@ -287,7 +316,9 @@ module.exports = {
           name: 'Matmata Cave Camping',
           description: 'Unique underground camping experience in traditional Berber cave dwellings. Featured in Star Wars films, these caves offer a cool retreat from desert heat. Cultural experiences include traditional cooking and music.',
           location: 'Matmata, Gabès Governorate',
-          images: JSON.stringify(['https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSe33EmwRaNE-xZbZ9s3FO9_QIFnKHHpnN0Fw&s', 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRZHbB14n__G4m6W1qwvYlOWvzJ_xEjkdyOYQ&s']),
+          latitude: 33.5439,
+          longitude: 9.9715,
+          images: JSON.stringify(['https://images.unsplash.com/photo-1445308394109-4ec2920981b1?w=500&auto=format', 'https://images.unsplash.com/photo-1487730116645-74489c95b41b?w=500&auto=format']),
           status: 'approved',
           createdAt: now,
           updatedAt: now
@@ -297,7 +328,9 @@ module.exports = {
           name: 'Ksar Ghilane Oasis Camp',
           description: 'Remote desert oasis camping with natural hot springs. Relax in thermal waters after a day of desert exploration. Luxury tent accommodations with authentic desert experience.',
           location: 'Ksar Ghilane, Tataouine',
-          images: JSON.stringify(['https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ0UOWl6LBC7rn03FvlMZeYX03mBq0dBhbkJQ&s', 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTEttxT5a3ekFNzbOEZmWYRxZQikY78aqrGWw&s']),
+          latitude: 32.9888,
+          longitude: 9.6336,
+          images: JSON.stringify(['https://images.unsplash.com/photo-1559521783-1d1599583485?w=500&auto=format', 'https://images.unsplash.com/photo-1533632359083-0185df1be85d?w=500&auto=format']),
           status: 'approved',
           createdAt: now,
           updatedAt: now
@@ -382,6 +415,12 @@ module.exports = {
           name: `${name} ${placeType} Camp`,
           description: faker.lorem.paragraphs(2),
           location,
+          // Generate random coordinates for Tunisia
+          // Tunisia's approximate bounds: 
+          // Latitude: 30.2 to 37.5
+          // Longitude: 7.5 to 11.6
+          latitude: faker.number.float({ min: 30.2, max: 37.5, precision: 0.0001 }),
+          longitude: faker.number.float({ min: 7.5, max: 11.6, precision: 0.0001 }),
           images: JSON.stringify(images),
           status: 'approved',
           createdAt: now,
@@ -396,8 +435,8 @@ module.exports = {
       const existingUsers = [
         {
           id: 1,
-          email: 'admin@example.com',
-          password: await bcrypt.hash('admin123', 10),
+          email: 'a@gmail.com',
+          password: await bcrypt.hash('Abc123456$', 10),
           first_name: 'Admin',
           last_name: 'User',
           role: 'admin',
@@ -410,8 +449,8 @@ module.exports = {
         },
         {
           id: 2,
-          email: 'advisor@example.com',
-          password: await bcrypt.hash('advisor123', 10),
+          email: 'b@gmail.com',
+          password: await bcrypt.hash('Abc123456$', 10),
           first_name: 'Travel',
           last_name: 'Advisor',
           role: 'advisor',
@@ -424,8 +463,8 @@ module.exports = {
         },
         {
           id: 3,
-          email: 'user@example.com',
-          password: await bcrypt.hash('user123', 10),
+          email: 'c@gmail.com',
+          password: await bcrypt.hash('Abc123456$', 10),
           first_name: 'Regular',
           last_name: 'User',
           role: 'user',
@@ -643,8 +682,8 @@ module.exports = {
           title: 'Top 10 Beach Destinations',
           content: 'Discover the most beautiful beaches...',
           image: 'https://www.visitstpeteclearwater.com/sites/default/files/styles/large_horizontal_wide/public/2021-05/STANDARD-VSPC2014-D4-Bonfire-0037_R.jpg?h=c3635fa2&itok=0lKUIJra',
-          likes: 150,
           userId: 2,
+          disabled: false,
           createdAt: now,
           updatedAt: now
         },
@@ -653,8 +692,8 @@ module.exports = {
           title: 'Best Mountain Trails',
           content: 'Explore the top mountain trails...',
           image: 'https://bloghiiker.files.wordpress.com/2023/07/shutterstock_688964890.jpg',
-          likes: 75,
           userId: 3,
+          disabled: false,
           createdAt: now,
           updatedAt: now
         },
@@ -663,8 +702,8 @@ module.exports = {
           title: 'Desert Camping Guide',
           content: 'Everything you need to know about camping in the Sahara...',
           image: 'https://mybayutcdn.bayut.com/mybayut/wp-content/uploads/shutterstock_1056187661-1024x640.jpg',
-          likes: 120,
           userId: 2,
+          disabled: false,
           createdAt: now,
           updatedAt: now
         },
@@ -673,8 +712,8 @@ module.exports = {
           title: 'Best Camping Gear 2024',
           content: 'A comprehensive guide to essential camping equipment...',
           image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT9t8gqLxbqLmVVPQzNbZbAU2k8lDBwTHj7Gg&s',
-          likes: 95,
           userId: 4,
+          disabled: false,
           createdAt: now,
           updatedAt: now
         },
@@ -683,8 +722,8 @@ module.exports = {
           title: 'Hidden Gems: Secret Camping Spots',
           content: 'Discover Tunisia\'s lesser-known camping locations...',
           image: 'https://www.usatoday.com/gcdn/-mm-/0fda231a973d99460286fb318b4ecb54f1a3418f/c=0-484-3985-2736/local/-/media/2017/08/17/USATODAY/USATODAY/636385814865818731-20170609-USAT-0376.jpg?width=1733&height=975&fit=crop&format=pjpg&auto=webp',
-          likes: 180,
           userId: 5,
+          disabled: false,
           createdAt: now,
           updatedAt: now
         },
@@ -693,8 +732,8 @@ module.exports = {
           title: 'Beginner\'s Guide to Coastal Camping',
           content: 'Tips and tricks for your first beach camping adventure...',
           image: 'https://www.trespass.com/advice/wp-content/uploads/2018/08/Top-Tips-to-Survive-Family-Camping-Trips-1200x900.png',
-          likes: 85,
           userId: 1,
+          disabled: false,
           createdAt: now,
           updatedAt: now
         },
@@ -703,8 +742,8 @@ module.exports = {
           title: 'Wildlife Watching While Camping',
           content: 'Best spots and safety tips for observing wildlife...',
           image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS8Rb6HKLXokRV1uLpdg2ExWiInSeaJJPNtyg&s',
-          likes: 110,
           userId: 2,
+          disabled: false,
           createdAt: now,
           updatedAt: now
         },
@@ -713,8 +752,8 @@ module.exports = {
           title: 'Eco-Friendly Camping Practices',
           content: 'How to camp sustainably and leave no trace...',
           image: 'https://www.undp.org/sites/g/files/zskgke326/files/migration/pk/PK-Eco-Camping.jpg',
-          likes: 145,
           userId: 3,
+          disabled: false,
           createdAt: now,
           updatedAt: now
         },
@@ -723,8 +762,8 @@ module.exports = {
           title: 'Winter Camping Essentials',
           content: 'Stay warm and safe during cold-weather camping...',
           image: 'https://www.miyaradventures.com/wp-content/uploads/2022/02/img1.jpg',
-          likes: 90,
           userId: 4,
+          disabled: false,
           createdAt: now,
           updatedAt: now
         },
@@ -733,8 +772,8 @@ module.exports = {
           title: 'Stargazing Camping Spots',
           content: 'Best locations for night sky observation while camping...',
           image: 'https://cdn.mos.cms.futurecdn.net/Yad64zizbbNCtXS5eZGMgB.jpg',
-          likes: 130,
           userId: 5,
+          disabled: false,
           createdAt: now,
           updatedAt: now
         },
@@ -743,8 +782,8 @@ module.exports = {
           title: 'Family Camping Adventures',
           content: 'How to plan a fun camping trip with kids...',
           image: 'https://www.mbizi.co.za/wp-content/uploads/2024/12/family-camping-checklist.png',
-          likes: 105,
           userId: 1,
+          disabled: false,
           createdAt: now,
           updatedAt: now
         },
@@ -753,8 +792,8 @@ module.exports = {
           title: 'Cooking Outdoors: Best Camping Recipes',
           content: 'Delicious meals to make over a campfire...',
           image: 'https://intrepidcampgear.com/cdn/shop/articles/iStock-965001994.jpg?v=1648255865',
-          likes: 125,
           userId: 2,
+          disabled: false,
           createdAt: now,
           updatedAt: now
         },
@@ -763,8 +802,8 @@ module.exports = {
           title: 'Solo Camping: Tips for Safety and Fun',
           content: 'Guide to enjoying a solo camping experience...',
           image: 'https://cdn.sanity.io/images/a8njjy3d/production/11524d7a6ce22ae75c8abab6ec4fcfbf27b812eb-2000x1061.jpg?fm=webp&q=80&auto=format',
-          likes: 80,
           userId: 3,
+          disabled: false,
           createdAt: now,
           updatedAt: now
         },
@@ -773,8 +812,8 @@ module.exports = {
           title: 'Photography Tips for Camping',
           content: 'Capture stunning nature shots on your next trip...',
           image: 'https://www.bestoflanka.com/images/camp1.jpg',
-          likes: 115,
           userId: 4,
+          disabled: false,
           createdAt: now,
           updatedAt: now
         },
@@ -783,8 +822,8 @@ module.exports = {
           title: 'Camping with Pets: What You Need to Know',
           content: 'Bringing your furry friends along for the adventure...',
           image: 'https://theexpertcamper.co.uk/wp-content/uploads/2024/06/tips-for-camping-with-dogs-what-you-need-to-know-pE.jpeg',
-          likes: 95,
           userId: 5,
+          disabled: false,
           createdAt: now,
           updatedAt: now
         }
@@ -1148,217 +1187,336 @@ module.exports = {
         { name: 'Silver', targetPoints: 500, totalPoints: 250, advisorId: 1, createdAt: now, updatedAt: now }
       ]);
 
-      // Comments for blogs
+      // Comments
       console.log('Seeding comments...');
       await queryInterface.bulkInsert('comments', [
         {
+          id: 1,
+          content: 'This is a great post! I love the beach destinations you mentioned.',
+          userId: 3,
+          blogId: 1,
+          disabled: false,
+          created_at: now,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          id: 2,
+          content: 'I hiked on some of these trails last year. Amazing views!',
+          userId: 4,
+          blogId: 2,
+          disabled: false,
+          created_at: now,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          id: 3,
+          content: 'Do you have any tips for first-time desert campers?',
+          userId: 5,
+          blogId: 3,
+          disabled: false,
+          created_at: now,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          id: 4,
           content: 'Great article!',
           userId: 1,
           blogId: 1,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 5,
           content: 'Very helpful',
           userId: 3,
           blogId: 1,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 6,
           content: 'Amazing views!',
           userId: 2,
           blogId: 2,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 7,
           content: 'This desert guide saved my trip!',
           userId: 4,
           blogId: 3,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 8,
           content: 'Thanks for the gear recommendations',
           userId: 5,
           blogId: 4,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 9,
           content: 'I visited one of these hidden spots - amazing!',
           userId: 1,
           blogId: 5,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 10,
           content: 'Great tips for beginners',
           userId: 3,
           blogId: 4,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 11,
           content: 'Planning to visit next month',
           userId: 2,
           blogId: 5,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 12,
           content: 'Perfect guide for my first camping trip!',
           userId: 4,
           blogId: 6,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 13,
           content: 'Saw amazing birds thanks to this!',
           userId: 5,
           blogId: 7,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 14,
           content: 'Love the eco-friendly tips',
           userId: 1,
           blogId: 8,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 15,
           content: 'These winter tips are spot on',
           userId: 2,
           blogId: 9,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 16,
           content: 'Cant wait to try these stargazing spots',
           userId: 3,
           blogId: 10,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 17,
           content: 'Really helpful sustainability advice',
           userId: 4,
           blogId: 8,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 18,
           content: 'The wildlife safety tips were great',
           userId: 5,
           blogId: 7,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 19,
           content: 'Adding these to my camping list!',
           userId: 1,
           blogId: 10,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 20,
           content: 'My kids loved the ideas in this post!',
           userId: 2,
           blogId: 11,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 21,
           content: 'These recipes are a game-changer',
           userId: 3,
           blogId: 12,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 22,
           content: 'Solo camping feels less daunting now',
           userId: 4,
           blogId: 13,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 23,
           content: 'Got some amazing shots thanks to this!',
           userId: 5,
           blogId: 14,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 24,
           content: 'Perfect for my dogs first camping trip',
           userId: 1,
           blogId: 15,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 25,
           content: 'Cant wait to try the campfire stew',
           userId: 4,
           blogId: 12,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 26,
           content: 'Great advice for family outings',
           userId: 5,
           blogId: 11,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 27,
           content: 'These photo tips are awesome',
           userId: 2,
           blogId: 14,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 28,
           content: 'Feeling more confident going solo',
           userId: 1,
           blogId: 13,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 29,
           content: 'My cat will love this trip!',
           userId: 3,
           blogId: 15,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         }
+      ]);
+
+      console.log('Seeding blog likes...');
+      await queryInterface.bulkInsert('blog_likes', [
+        // Admin likes several blogs
+        { blogId: 1, userId: 1, createdAt: now, updatedAt: now },
+        { blogId: 3, userId: 1, createdAt: now, updatedAt: now },
+        { blogId: 5, userId: 1, createdAt: now, updatedAt: now },
+        
+        // Advisor likes some blogs
+        { blogId: 2, userId: 2, createdAt: now, updatedAt: now },
+        { blogId: 4, userId: 2, createdAt: now, updatedAt: now },
+        { blogId: 6, userId: 2, createdAt: now, updatedAt: now },
+        
+        // Regular users like various blogs
+        { blogId: 1, userId: 3, createdAt: now, updatedAt: now },
+        { blogId: 2, userId: 3, createdAt: now, updatedAt: now },
+        { blogId: 7, userId: 3, createdAt: now, updatedAt: now },
+        
+        { blogId: 3, userId: 4, createdAt: now, updatedAt: now },
+        { blogId: 5, userId: 4, createdAt: now, updatedAt: now },
+        { blogId: 8, userId: 4, createdAt: now, updatedAt: now },
+        
+        { blogId: 2, userId: 5, createdAt: now, updatedAt: now },
+        { blogId: 4, userId: 5, createdAt: now, updatedAt: now },
+        { blogId: 6, userId: 5, createdAt: now, updatedAt: now },
+        
+        // Add some popular blogs with multiple likes
+        { blogId: 10, userId: 1, createdAt: now, updatedAt: now },
+        { blogId: 10, userId: 2, createdAt: now, updatedAt: now },
+        { blogId: 10, userId: 3, createdAt: now, updatedAt: now },
+        { blogId: 10, userId: 4, createdAt: now, updatedAt: now },
+        { blogId: 10, userId: 5, createdAt: now, updatedAt: now },
+        
+        { blogId: 15, userId: 1, createdAt: now, updatedAt: now },
+        { blogId: 15, userId: 3, createdAt: now, updatedAt: now },
+        { blogId: 15, userId: 5, createdAt: now, updatedAt: now }
       ]);
 
       console.log('✅ Seeding completed successfully!');
@@ -1375,13 +1533,15 @@ module.exports = {
         'event_ratings',
         'favorites',
         'critiria',
-        'chats',
         'media',
         'reviews',
         'placeUsers',
         'placeCategories',
         'marketplace_item_categories',
+        'chats',
         'marketplace_items',
+        'marketplace_categorie',
+        'blog_likes',
         'comments',
         'blogs',
         'events',
