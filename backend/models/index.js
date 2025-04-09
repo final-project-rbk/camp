@@ -36,6 +36,9 @@ const MarketplaceItemCategorie = require("./marcketPlaceItemCategorie")(connecti
 const FormularAdvisor = require("./FormularAdvisor")(connection, DataTypes);
 const AdvisorMedia = require("./AdvisorMedia")(connection, DataTypes);
 
+// Add the new BlogLike model
+const BlogLike = require("./BlogLike")(connection, DataTypes);
+
 // Define relationships
 const defineAssociations = () => {
   // User relationships
@@ -87,14 +90,14 @@ const defineAssociations = () => {
   User.hasMany(Blog, { foreignKey: "userId" });
   Blog.belongsTo(User, { foreignKey: "userId" });
 
-Blog.hasMany(Comment, { foreignKey: "blogId" });
-Comment.belongsTo(Blog, { foreignKey: "blogId" });
+  Blog.hasMany(Comment, { foreignKey: "blogId" });
+  Comment.belongsTo(Blog, { foreignKey: "blogId" });
 
-User.hasMany(Comment, { foreignKey: "userId" });
-Comment.belongsTo(User, { foreignKey: "userId" });
+  User.hasMany(Comment, { foreignKey: "userId" });
+  Comment.belongsTo(User, { foreignKey: "userId" });
 
-User.hasMany(MarketplaceItem, { foreignKey: 'sellerId', as: 'itemsSold' });
-MarketplaceItem.belongsTo(User, { foreignKey: 'sellerId', as: 'seller' });
+  User.hasMany(MarketplaceItem, { foreignKey: 'sellerId', as: 'itemsSold' });
+  MarketplaceItem.belongsTo(User, { foreignKey: 'sellerId', as: 'seller' });
 
   User.hasMany(MarketplaceItem, { foreignKey: "buyerId", as: "itemsBought" });
   MarketplaceItem.belongsTo(User, { foreignKey: "buyerId", as: "buyer" });
@@ -136,20 +139,21 @@ MarketplaceItem.belongsTo(User, { foreignKey: 'sellerId', as: 'seller' });
   // Chat relationships for marketplace
   MarketplaceItem.hasMany(Chat, { foreignKey: "itemId", onDelete: "CASCADE" });
   Chat.belongsTo(MarketplaceItem, { foreignKey: "itemId" });
-// FormularAdvisor associations
-User.hasOne(FormularAdvisor, { foreignKey: "userId" });
-FormularAdvisor.belongsTo(User, { foreignKey: "userId" });
 
-// AdvisorMedia associations
-FormularAdvisor.hasOne(AdvisorMedia, { foreignKey: "formularId" });
-AdvisorMedia.belongsTo(FormularAdvisor, { foreignKey: "formularId" });
+  // FormularAdvisor associations
+  User.hasOne(FormularAdvisor, { foreignKey: "userId" });
+  FormularAdvisor.belongsTo(User, { foreignKey: "userId" });
 
-// Link FormularAdvisor to Advisor
-Advisor.hasOne(FormularAdvisor, { foreignKey: "advisorId" });
-FormularAdvisor.belongsTo(Advisor, { foreignKey: "advisorId" });
+  // AdvisorMedia associations
+  FormularAdvisor.hasOne(AdvisorMedia, { foreignKey: "formularId" });
+  AdvisorMedia.belongsTo(FormularAdvisor, { foreignKey: "formularId" });
 
-Place.hasMany(Favorite, { foreignKey: "placeId" });
-Favorite.belongsTo(Place, { foreignKey: "placeId" });
+  // Link FormularAdvisor to Advisor
+  Advisor.hasOne(FormularAdvisor, { foreignKey: "advisorId" });
+  FormularAdvisor.belongsTo(Advisor, { foreignKey: "advisorId" });
+
+  Place.hasMany(Favorite, { foreignKey: "placeId" });
+  Favorite.belongsTo(Place, { foreignKey: "placeId" });
 
   User.hasMany(Chat, { foreignKey: "senderId", as: "sentChats" });
   Chat.belongsTo(User, { foreignKey: "senderId", as: "sender" });
@@ -172,6 +176,13 @@ Favorite.belongsTo(Place, { foreignKey: "placeId" });
 
   Message.belongsTo(Message, { foreignKey: "replyToId", as: "replyTo" });
   Message.hasMany(Message, { foreignKey: "replyToId", as: "replies" });
+
+  // Add new BlogLike associations
+  Blog.belongsToMany(User, { through: BlogLike, foreignKey: "blogId", as: "likedBy" });
+  User.belongsToMany(Blog, { through: BlogLike, foreignKey: "userId", as: "likedBlogs" });
+
+  BlogLike.belongsTo(Blog, { foreignKey: "blogId" });
+  BlogLike.belongsTo(User, { foreignKey: "userId" });
 };
 
 // Call the function to define associations
@@ -223,5 +234,6 @@ module.exports = {
   // Add new models to exports
   Room,
   RoomUser,
-  Message
+  Message,
+  BlogLike
 };

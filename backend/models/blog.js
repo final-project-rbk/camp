@@ -1,4 +1,4 @@
-    module.exports = (sequelize, DataTypes) => {
+module.exports = (sequelize, DataTypes) => {
     const Blog = sequelize.define('blog', {
         title: { 
             type: DataTypes.STRING, 
@@ -12,9 +12,13 @@
             type: DataTypes.STRING, 
             allowNull: false 
         },
-        likes: { 
-            type: DataTypes.INTEGER, 
-            allowNull: true 
+        userId: {
+            type: DataTypes.INTEGER,
+            allowNull: false
+        },
+        disabled: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false
         }
     });
 

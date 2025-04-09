@@ -633,64 +633,39 @@ export default function AdvisorDashboardScreen() {
     try {
       const token = await AuthService.getToken();
       
-      // Format API URL
-      let baseUrl = EXPO_PUBLIC_API_URL;
-      if (baseUrl.endsWith('/')) {
-        baseUrl = baseUrl.slice(0, -1);
-      }
+      // Create a function to properly format API URLs
+      const getApiUrl = (endpoint) => {
+        const baseUrl = EXPO_PUBLIC_API_URL.endsWith('/')
+          ? EXPO_PUBLIC_API_URL.slice(0, -1)
+          : EXPO_PUBLIC_API_URL;
+        
+        return `${baseUrl}/advisor/dashboard/stats`;
+      };
       
-      let apiBasePath;
-      if (baseUrl.includes('/api')) {
-        apiBasePath = baseUrl.replace('/api', ''); 
-      } else {
-        apiBasePath = baseUrl;
-      }
-      
-      const endpoint = `${apiBasePath}/api/advisor/dashboard/stats`;
+      const endpoint = getApiUrl('advisor/dashboard/stats');
       console.log('Fetching stats from:', endpoint);
       
-      try {
-        const response = await fetch(endpoint, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        console.log('Stats response status:', response.status);
-        
-        if (response.ok) {
-          const data = await response.json();
-          return data.data;
-        } else {
-          console.log('Stats endpoint not available, using default data');
-          // Return default stats to prevent app from crashing
-          return {
-            totalEvents: 0,
-            myEvents: 0,
-            totalPlaces: 0,
-            myPlaces: 0
-          };
+      const response = await fetch(endpoint, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
-      } catch (error) {
-        console.log('Error fetching stats, using default data:', error);
-        // Return default stats to prevent app from crashing
-        return {
-          totalEvents: 0,
-          myEvents: 0,
-          totalPlaces: 0,
-          myPlaces: 0
-        };
+      });
+      
+      console.log('Stats response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch stats: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('Stats data:', data);
+      
+      if (data.success) {
+        setStats(data.data);
       }
     } catch (error) {
-      console.error('Error in fetchStats:', error);
-      // Return default stats even if the outer try-catch fails
-      return {
-        totalEvents: 0,
-        myEvents: 0,
-        totalPlaces: 0,
-        myPlaces: 0
-      };
+      console.error('Error fetching stats:', error);
     }
   };
 
@@ -701,22 +676,18 @@ export default function AdvisorDashboardScreen() {
     try {
       const token = await AuthService.getToken();
       
-      let baseUrl = EXPO_PUBLIC_API_URL;
-      if (baseUrl.endsWith('/')) {
-        baseUrl = baseUrl.slice(0, -1);
-      }
-      
-      // Fix the URLs by checking if baseUrl already has /api
-      let apiBasePath;
-      if (baseUrl.includes('/api')) {
-        apiBasePath = baseUrl.replace('/api', ''); // Remove existing /api
-      } else {
-        apiBasePath = baseUrl;
-      }
+      // Create a utility function for API URLs
+      const getApiUrl = (path) => {
+        const baseUrl = EXPO_PUBLIC_API_URL.endsWith('/')
+          ? EXPO_PUBLIC_API_URL.slice(0, -1)
+          : EXPO_PUBLIC_API_URL;
+        
+        return `${baseUrl}/${path}`;
+      };
       
       // Always fetch both "my places" and "all places" to determine ownership
-      const myPlacesPath = `${apiBasePath}/api/advisor/dashboard/places/mine`;
-      const allPlacesPath = `${apiBasePath}/api/advisor/dashboard/places/all`;
+      const myPlacesPath = getApiUrl('advisor/dashboard/places/mine');
+      const allPlacesPath = getApiUrl('advisor/dashboard/places/all');
       
       const fetchPath = showMyPlaces ? myPlacesPath : allPlacesPath;
       console.log('Fetching places from:', fetchPath);
@@ -790,21 +761,18 @@ export default function AdvisorDashboardScreen() {
     try {
       const token = await AuthService.getToken();
       
-      // Format API URL
-      let baseUrl = EXPO_PUBLIC_API_URL;
-      if (baseUrl.endsWith('/')) {
-        baseUrl = baseUrl.slice(0, -1);
-      }
+      // Format API URL consistently
+      const getApiUrl = (path) => {
+        const baseUrl = EXPO_PUBLIC_API_URL.endsWith('/')
+          ? EXPO_PUBLIC_API_URL.slice(0, -1)
+          : EXPO_PUBLIC_API_URL;
+        
+        return `${baseUrl}/${path}`;
+      };
       
-      let apiBasePath;
-      if (baseUrl.includes('/api')) {
-        apiBasePath = baseUrl.replace('/api', ''); 
-      } else {
-        apiBasePath = baseUrl;
-      }
-      
-      // We know the /all endpoint works, so always use that for now
-      const endpoint = `${apiBasePath}/api/advisor/dashboard/events/all`;
+      const endpoint = showMyEvents 
+        ? getApiUrl('advisor/dashboard/events/mine')
+        : getApiUrl('advisor/dashboard/events/all');
       
       console.log('Fetching events from:', endpoint);
       
@@ -817,31 +785,26 @@ export default function AdvisorDashboardScreen() {
       
       console.log('Events response status:', response.status);
       
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Events data:', JSON.stringify(data).substring(0, 100) + '...');
-        
-        // If we're supposed to show only "my events", filter the results client-side
-        if (showMyEvents) {
-          // This is a workaround since the /mine endpoint doesn't exist
-          // You'll need to filter based on the advisorId or whatever field indicates ownership
-          // This is a placeholder - adjust based on your actual data structure
-          const myEvents = data.data.filter(event => {
-            // Check if the event belongs to the current advisor
-            // Add your filtering logic here
-            // For example: return event.advisorId === currentAdvisorId;
-            return true; // For now, return all events as if they're yours
-          });
-          return myEvents;
+      if (!response.ok) {
+        if (response.status === 500) {
+          console.log('Server error for events, using empty array as fallback');
+          // Use fallback data until the server issue is fixed
+          setEvents([]);
+          return;
         }
-        
-        return data.data;
-      } else {
         throw new Error(`Failed to fetch events: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('Events data:', JSON.stringify(data).substring(0, 100) + '...');
+      
+      if (data.success) {
+        setEvents(data.data);
       }
     } catch (error) {
       console.error('Error fetching events:', error);
-      throw error;
+      // Set events to empty array in case of error
+      setEvents([]);
     }
   };
 
@@ -1084,20 +1047,16 @@ export default function AdvisorDashboardScreen() {
       setAddingPlace(true);
       const token = await AuthService.getToken();
       
-      let baseUrl = EXPO_PUBLIC_API_URL;
-      if (baseUrl.endsWith('/')) {
-        baseUrl = baseUrl.slice(0, -1);
-      }
+      // Use consistent API URL formatting
+      const getApiUrl = (path) => {
+        const baseUrl = EXPO_PUBLIC_API_URL.endsWith('/')
+          ? EXPO_PUBLIC_API_URL.slice(0, -1)
+          : EXPO_PUBLIC_API_URL;
+        
+        return `${baseUrl}/${path}`;
+      };
       
-      let apiBasePath;
-      if (baseUrl.includes('/api')) {
-        apiBasePath = baseUrl.replace('/api', '');
-      } else {
-        apiBasePath = baseUrl;
-      }
-      
-      const endpoint = `${apiBasePath}/api/advisor/dashboard/places`;
-      
+      const endpoint = getApiUrl('advisor/dashboard/places');
       console.log('Creating place at endpoint:', endpoint);
       
       const requestData = {
@@ -1215,20 +1174,16 @@ export default function AdvisorDashboardScreen() {
               setDeletingPlace(true);
               const token = await AuthService.getToken();
               
-              let baseUrl = EXPO_PUBLIC_API_URL;
-              if (baseUrl.endsWith('/')) {
-                baseUrl = baseUrl.slice(0, -1);
-              }
+              // Use consistent API URL formatting
+              const getApiUrl = (path) => {
+                const baseUrl = EXPO_PUBLIC_API_URL.endsWith('/')
+                  ? EXPO_PUBLIC_API_URL.slice(0, -1)
+                  : EXPO_PUBLIC_API_URL;
+                
+                return `${baseUrl}/${path}`;
+              };
               
-              let apiBasePath;
-              if (baseUrl.includes('/api')) {
-                apiBasePath = baseUrl.replace('/api', ''); 
-              } else {
-                apiBasePath = baseUrl;
-              }
-              
-              const endpoint = `${apiBasePath}/api/advisor/dashboard/places/${currentPlaceId}`;
-              
+              const endpoint = getApiUrl(`advisor/dashboard/places/${currentPlaceId}`);
               console.log('Delete endpoint:', endpoint);
               
               const response = await fetch(endpoint, {
@@ -1290,23 +1245,20 @@ export default function AdvisorDashboardScreen() {
       setAddingPlace(true);
       const token = await AuthService.getToken();
       
-      let baseUrl = EXPO_PUBLIC_API_URL;
-      if (baseUrl.endsWith('/')) {
-        baseUrl = baseUrl.slice(0, -1);
-      }
-      
-      let apiBasePath;
-      if (baseUrl.includes('/api')) {
-        apiBasePath = baseUrl.replace('/api', '');
-      } else {
-        apiBasePath = baseUrl;
-      }
+      // Use consistent API URL formatting
+      const getApiUrl = (path) => {
+        const baseUrl = EXPO_PUBLIC_API_URL.endsWith('/')
+          ? EXPO_PUBLIC_API_URL.slice(0, -1)
+          : EXPO_PUBLIC_API_URL;
+        
+        return `${baseUrl}/${path}`;
+      };
       
       // Log current place ID for debugging
       console.log('Current place ID for update:', currentPlaceId);
       
       // Proceed with the update
-      const updateEndpoint = `${apiBasePath}/api/advisor/dashboard/places/${currentPlaceId}`;
+      const updateEndpoint = getApiUrl(`advisor/dashboard/places/${currentPlaceId}`);
       console.log('Update endpoint:', updateEndpoint);
       
       // Match the shape expected by the backend
@@ -1364,7 +1316,7 @@ export default function AdvisorDashboardScreen() {
                 onPress: async () => {
                   try {
                     // Create a new place with the same details
-                    const createEndpoint = `${apiBasePath}/api/advisor/dashboard/places`;
+                    const createEndpoint = getApiUrl('advisor/dashboard/places');
                     
                     console.log('Trying to create instead at:', createEndpoint);
                     
@@ -1547,22 +1499,16 @@ export default function AdvisorDashboardScreen() {
       // Get token from AuthService
       const token = await AuthService.getToken();
       
-      // Format the API URL correctly
-      let baseUrl = EXPO_PUBLIC_API_URL;
-      if (baseUrl.endsWith('/')) {
-        baseUrl = baseUrl.slice(0, -1);
-      }
+      // Use consistent API URL formatting
+      const getApiUrl = (path) => {
+        const baseUrl = EXPO_PUBLIC_API_URL.endsWith('/')
+          ? EXPO_PUBLIC_API_URL.slice(0, -1)
+          : EXPO_PUBLIC_API_URL;
+        
+        return `${baseUrl}/${path}`;
+      };
       
-      let apiBasePath;
-      if (baseUrl.includes('/api')) {
-        apiBasePath = baseUrl.replace('/api', ''); 
-      } else {
-        apiBasePath = baseUrl;
-      }
-      
-      // Construct the proper endpoint URL
-      const endpoint = `${apiBasePath}/api/advisor/dashboard/events`;
-      
+      const endpoint = getApiUrl('advisor/dashboard/events');
       console.log('Creating event at endpoint:', endpoint);
       console.log('Event data:', { title, description, location, date });
       
@@ -1801,21 +1747,16 @@ export default function AdvisorDashboardScreen() {
     if (selectedEvent) {
       console.log('Updating event with ID:', selectedEvent.id);
       try {
-        // Format the API URL correctly
-        let baseUrl = EXPO_PUBLIC_API_URL;
-        if (baseUrl.endsWith('/')) {
-          baseUrl = baseUrl.slice(0, -1);
-        }
+        // Use consistent API URL formatting
+        const getApiUrl = (path) => {
+          const baseUrl = EXPO_PUBLIC_API_URL.endsWith('/')
+            ? EXPO_PUBLIC_API_URL.slice(0, -1)
+            : EXPO_PUBLIC_API_URL;
+          
+          return `${baseUrl}/${path}`;
+        };
         
-        let apiBasePath;
-        if (baseUrl.includes('/api')) {
-          apiBasePath = baseUrl.replace('/api', '');
-        } else {
-          apiBasePath = baseUrl;
-        }
-        
-        // Construct the proper endpoint URL
-        const endpoint = `${apiBasePath}/api/advisor/dashboard/events/${selectedEvent.id}`;
+        const endpoint = getApiUrl(`advisor/dashboard/events/${selectedEvent.id}`);
         
         console.log('Update endpoint:', endpoint);
         
@@ -1986,7 +1927,72 @@ export default function AdvisorDashboardScreen() {
     }
   };
 
-  // Add this function to your component for new event image selection
+  // Add this function to handle creating a new event
+  const handleCreateEvent = async () => {
+    try {
+      // Validate form fields
+      if (!newEventForm.title || !newEventForm.description || !newEventForm.location || !newEventForm.date) {
+        Alert.alert('Validation Error', 'Please fill in all required fields');
+        return;
+      }
+      
+      // Prepare API data
+      const eventData = {
+        title: newEventForm.title,
+        description: newEventForm.description,
+        location: newEventForm.location,
+        date: newEventForm.date,
+        image: newEventForm.image || ''
+      };
+      
+      console.log('Creating new event with data:', eventData);
+      
+      // Use consistent API URL formatting
+      const getApiUrl = (path) => {
+        const baseUrl = EXPO_PUBLIC_API_URL.endsWith('/')
+          ? EXPO_PUBLIC_API_URL.slice(0, -1)
+          : EXPO_PUBLIC_API_URL;
+        
+        return `${baseUrl}/${path}`;
+      };
+      
+      const endpoint = getApiUrl('advisor/dashboard/events');
+      
+      console.log('Create event endpoint:', endpoint);
+      
+      const token = await AuthService.getToken();
+      
+      const response = await axios.post(endpoint, eventData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.data.success) {
+        console.log('Event created successfully:', response.data);
+        // Reset form and close modal
+        setNewEventForm({
+          title: '',
+          description: '',
+          location: '',
+          date: new Date().toISOString().split('T')[0],
+          image: ''
+        });
+        setAddEventModalVisible(false);
+        fetchEvents(); // Refresh events list
+        Alert.alert('Success', 'Event created successfully');
+      } else {
+        console.error('Failed to create event:', response.data.error);
+        Alert.alert('Error', response.data.error || 'Failed to create event');
+      }
+    } catch (error) {
+      console.error('Error creating event:', error);
+      Alert.alert('Error', error.response?.data?.error || error.message || 'An error occurred while creating the event');
+    }
+  };
+
+  // Add this function for event image uploading
   const pickNewEventImage = async () => {
     try {
       Alert.alert(
@@ -2056,12 +2062,12 @@ export default function AdvisorDashboardScreen() {
       formData.append('file', {
         uri,
         type: 'image/jpeg',
-        name: 'new-event-image.jpg',
+        name: 'event-image.jpg',
       } as any);
       formData.append('upload_preset', 'Ghassen123');
       formData.append('cloud_name', 'dqh6arave');
 
-      console.log('Uploading new event image to Cloudinary...');
+      console.log('Uploading image to Cloudinary...');
       const response = await fetch(
         'https://api.cloudinary.com/v1_1/dqh6arave/image/upload',
         {
@@ -2075,15 +2081,14 @@ export default function AdvisorDashboardScreen() {
       );
 
       const data = await response.json();
-      console.log('Cloudinary response for new event:', data);
+      console.log('Cloudinary response:', data);
 
       if (data.secure_url) {
-        // Update the new event form with the image URL
         setNewEventForm({
           ...newEventForm,
           image: data.secure_url
         });
-        console.log('New event image uploaded successfully:', data.secure_url);
+        console.log('Image uploaded successfully:', data.secure_url);
       } else {
         console.error('Upload error:', data);
         Alert.alert('Error', 'Failed to upload image');
@@ -2093,61 +2098,6 @@ export default function AdvisorDashboardScreen() {
       Alert.alert('Error', 'Failed to upload image');
     } finally {
       setUploading(false);
-    }
-  };
-
-  // Update the handleCreateEvent function to show success message
-  const handleCreateEvent = async () => {
-    try {
-      // Validate form fields
-      if (!newEventForm.title || !newEventForm.description || !newEventForm.location || !newEventForm.date) {
-        Alert.alert('Validation Error', 'Please fill in all required fields');
-        return;
-      }
-      
-      // Prepare API data for logging
-      const eventData = {
-        title: newEventForm.title,
-        description: newEventForm.description,
-        location: newEventForm.location,
-        date: newEventForm.date,
-        image: newEventForm.image || ''
-      };
-      
-      console.log('Creating new event with data:', eventData);
-      
-      // Create a mock event to add to the UI
-      const newEvent = {
-        id: `temp-${Date.now()}`,
-        title: eventData.title,
-        description: eventData.description,
-        location: eventData.location,
-        date: eventData.date,
-        image: eventData.image,
-        createdAt: new Date().toISOString(),
-        tempEvent: true // Flag to identify temporary events
-      };
-      
-      // Add the new event to the displayed list
-      setEvents(prevEvents => [newEvent, ...prevEvents]);
-      
-      // Reset form and close modal
-      setNewEventForm({
-        title: '',
-        description: '',
-        location: '',
-        date: new Date().toISOString().split('T')[0],
-        image: ''
-      });
-      setAddEventModalVisible(false);
-      
-      // Show success message
-      Alert.alert('Success', 'Event created successfully!');
-      console.log('Event added to UI:', newEvent);
-      
-    } catch (error) {
-      console.error('Error in event creation UI flow:', error);
-      Alert.alert('Error', 'An unexpected error occurred in the application');
     }
   };
 

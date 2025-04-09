@@ -88,8 +88,8 @@ const generateBlog = (id, userId) => {
     title: `${titlePrefix} ${topic.charAt(0).toUpperCase() + topic.slice(1)}`,
     content: faker.lorem.paragraphs(5),
     image: faker.image.url({ width: 800, height: 600, category: 'nature' }),
-    likes: faker.number.int({ min: 0, max: 200 }),
     userId,
+    disabled: false,
     createdAt: now,
     updatedAt: now
   };
@@ -435,8 +435,8 @@ module.exports = {
       const existingUsers = [
         {
           id: 1,
-          email: 'admin@example.com',
-          password: await bcrypt.hash('admin123', 10),
+          email: 'a@gmail.com',
+          password: await bcrypt.hash('Abc123456$', 10),
           first_name: 'Admin',
           last_name: 'User',
           role: 'admin',
@@ -449,8 +449,8 @@ module.exports = {
         },
         {
           id: 2,
-          email: 'advisor@example.com',
-          password: await bcrypt.hash('advisor123', 10),
+          email: 'b@gmail.com',
+          password: await bcrypt.hash('Abc123456$', 10),
           first_name: 'Travel',
           last_name: 'Advisor',
           role: 'advisor',
@@ -463,8 +463,8 @@ module.exports = {
         },
         {
           id: 3,
-          email: 'user@example.com',
-          password: await bcrypt.hash('user123', 10),
+          email: 'c@gmail.com',
+          password: await bcrypt.hash('Abc123456$', 10),
           first_name: 'Regular',
           last_name: 'User',
           role: 'user',
@@ -682,8 +682,8 @@ module.exports = {
           title: 'Top 10 Beach Destinations',
           content: 'Discover the most beautiful beaches...',
           image: 'https://www.visitstpeteclearwater.com/sites/default/files/styles/large_horizontal_wide/public/2021-05/STANDARD-VSPC2014-D4-Bonfire-0037_R.jpg?h=c3635fa2&itok=0lKUIJra',
-          likes: 150,
           userId: 2,
+          disabled: false,
           createdAt: now,
           updatedAt: now
         },
@@ -692,8 +692,8 @@ module.exports = {
           title: 'Best Mountain Trails',
           content: 'Explore the top mountain trails...',
           image: 'https://bloghiiker.files.wordpress.com/2023/07/shutterstock_688964890.jpg',
-          likes: 75,
           userId: 3,
+          disabled: false,
           createdAt: now,
           updatedAt: now
         },
@@ -702,8 +702,8 @@ module.exports = {
           title: 'Desert Camping Guide',
           content: 'Everything you need to know about camping in the Sahara...',
           image: 'https://mybayutcdn.bayut.com/mybayut/wp-content/uploads/shutterstock_1056187661-1024x640.jpg',
-          likes: 120,
           userId: 2,
+          disabled: false,
           createdAt: now,
           updatedAt: now
         },
@@ -712,8 +712,8 @@ module.exports = {
           title: 'Best Camping Gear 2024',
           content: 'A comprehensive guide to essential camping equipment...',
           image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT9t8gqLxbqLmVVPQzNbZbAU2k8lDBwTHj7Gg&s',
-          likes: 95,
           userId: 4,
+          disabled: false,
           createdAt: now,
           updatedAt: now
         },
@@ -722,8 +722,8 @@ module.exports = {
           title: 'Hidden Gems: Secret Camping Spots',
           content: 'Discover Tunisia\'s lesser-known camping locations...',
           image: 'https://www.usatoday.com/gcdn/-mm-/0fda231a973d99460286fb318b4ecb54f1a3418f/c=0-484-3985-2736/local/-/media/2017/08/17/USATODAY/USATODAY/636385814865818731-20170609-USAT-0376.jpg?width=1733&height=975&fit=crop&format=pjpg&auto=webp',
-          likes: 180,
           userId: 5,
+          disabled: false,
           createdAt: now,
           updatedAt: now
         },
@@ -732,8 +732,8 @@ module.exports = {
           title: 'Beginner\'s Guide to Coastal Camping',
           content: 'Tips and tricks for your first beach camping adventure...',
           image: 'https://www.trespass.com/advice/wp-content/uploads/2018/08/Top-Tips-to-Survive-Family-Camping-Trips-1200x900.png',
-          likes: 85,
           userId: 1,
+          disabled: false,
           createdAt: now,
           updatedAt: now
         },
@@ -742,8 +742,8 @@ module.exports = {
           title: 'Wildlife Watching While Camping',
           content: 'Best spots and safety tips for observing wildlife...',
           image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS8Rb6HKLXokRV1uLpdg2ExWiInSeaJJPNtyg&s',
-          likes: 110,
           userId: 2,
+          disabled: false,
           createdAt: now,
           updatedAt: now
         },
@@ -752,8 +752,8 @@ module.exports = {
           title: 'Eco-Friendly Camping Practices',
           content: 'How to camp sustainably and leave no trace...',
           image: 'https://www.undp.org/sites/g/files/zskgke326/files/migration/pk/PK-Eco-Camping.jpg',
-          likes: 145,
           userId: 3,
+          disabled: false,
           createdAt: now,
           updatedAt: now
         },
@@ -762,8 +762,8 @@ module.exports = {
           title: 'Winter Camping Essentials',
           content: 'Stay warm and safe during cold-weather camping...',
           image: 'https://www.miyaradventures.com/wp-content/uploads/2022/02/img1.jpg',
-          likes: 90,
           userId: 4,
+          disabled: false,
           createdAt: now,
           updatedAt: now
         },
@@ -772,8 +772,8 @@ module.exports = {
           title: 'Stargazing Camping Spots',
           content: 'Best locations for night sky observation while camping...',
           image: 'https://cdn.mos.cms.futurecdn.net/Yad64zizbbNCtXS5eZGMgB.jpg',
-          likes: 130,
           userId: 5,
+          disabled: false,
           createdAt: now,
           updatedAt: now
         },
@@ -782,8 +782,8 @@ module.exports = {
           title: 'Family Camping Adventures',
           content: 'How to plan a fun camping trip with kids...',
           image: 'https://www.mbizi.co.za/wp-content/uploads/2024/12/family-camping-checklist.png',
-          likes: 105,
           userId: 1,
+          disabled: false,
           createdAt: now,
           updatedAt: now
         },
@@ -792,8 +792,8 @@ module.exports = {
           title: 'Cooking Outdoors: Best Camping Recipes',
           content: 'Delicious meals to make over a campfire...',
           image: 'https://intrepidcampgear.com/cdn/shop/articles/iStock-965001994.jpg?v=1648255865',
-          likes: 125,
           userId: 2,
+          disabled: false,
           createdAt: now,
           updatedAt: now
         },
@@ -802,8 +802,8 @@ module.exports = {
           title: 'Solo Camping: Tips for Safety and Fun',
           content: 'Guide to enjoying a solo camping experience...',
           image: 'https://cdn.sanity.io/images/a8njjy3d/production/11524d7a6ce22ae75c8abab6ec4fcfbf27b812eb-2000x1061.jpg?fm=webp&q=80&auto=format',
-          likes: 80,
           userId: 3,
+          disabled: false,
           createdAt: now,
           updatedAt: now
         },
@@ -812,8 +812,8 @@ module.exports = {
           title: 'Photography Tips for Camping',
           content: 'Capture stunning nature shots on your next trip...',
           image: 'https://www.bestoflanka.com/images/camp1.jpg',
-          likes: 115,
           userId: 4,
+          disabled: false,
           createdAt: now,
           updatedAt: now
         },
@@ -822,8 +822,8 @@ module.exports = {
           title: 'Camping with Pets: What You Need to Know',
           content: 'Bringing your furry friends along for the adventure...',
           image: 'https://theexpertcamper.co.uk/wp-content/uploads/2024/06/tips-for-camping-with-dogs-what-you-need-to-know-pE.jpeg',
-          likes: 95,
           userId: 5,
+          disabled: false,
           createdAt: now,
           updatedAt: now
         }
@@ -1187,217 +1187,336 @@ module.exports = {
         { name: 'Silver', targetPoints: 500, totalPoints: 250, advisorId: 1, createdAt: now, updatedAt: now }
       ]);
 
-      // Comments for blogs
+      // Comments
       console.log('Seeding comments...');
       await queryInterface.bulkInsert('comments', [
         {
+          id: 1,
+          content: 'This is a great post! I love the beach destinations you mentioned.',
+          userId: 3,
+          blogId: 1,
+          disabled: false,
+          created_at: now,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          id: 2,
+          content: 'I hiked on some of these trails last year. Amazing views!',
+          userId: 4,
+          blogId: 2,
+          disabled: false,
+          created_at: now,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          id: 3,
+          content: 'Do you have any tips for first-time desert campers?',
+          userId: 5,
+          blogId: 3,
+          disabled: false,
+          created_at: now,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          id: 4,
           content: 'Great article!',
           userId: 1,
           blogId: 1,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 5,
           content: 'Very helpful',
           userId: 3,
           blogId: 1,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 6,
           content: 'Amazing views!',
           userId: 2,
           blogId: 2,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 7,
           content: 'This desert guide saved my trip!',
           userId: 4,
           blogId: 3,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 8,
           content: 'Thanks for the gear recommendations',
           userId: 5,
           blogId: 4,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 9,
           content: 'I visited one of these hidden spots - amazing!',
           userId: 1,
           blogId: 5,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 10,
           content: 'Great tips for beginners',
           userId: 3,
           blogId: 4,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 11,
           content: 'Planning to visit next month',
           userId: 2,
           blogId: 5,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 12,
           content: 'Perfect guide for my first camping trip!',
           userId: 4,
           blogId: 6,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 13,
           content: 'Saw amazing birds thanks to this!',
           userId: 5,
           blogId: 7,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 14,
           content: 'Love the eco-friendly tips',
           userId: 1,
           blogId: 8,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 15,
           content: 'These winter tips are spot on',
           userId: 2,
           blogId: 9,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 16,
           content: 'Cant wait to try these stargazing spots',
           userId: 3,
           blogId: 10,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 17,
           content: 'Really helpful sustainability advice',
           userId: 4,
           blogId: 8,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 18,
           content: 'The wildlife safety tips were great',
           userId: 5,
           blogId: 7,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 19,
           content: 'Adding these to my camping list!',
           userId: 1,
           blogId: 10,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 20,
           content: 'My kids loved the ideas in this post!',
           userId: 2,
           blogId: 11,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 21,
           content: 'These recipes are a game-changer',
           userId: 3,
           blogId: 12,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 22,
           content: 'Solo camping feels less daunting now',
           userId: 4,
           blogId: 13,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 23,
           content: 'Got some amazing shots thanks to this!',
           userId: 5,
           blogId: 14,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 24,
           content: 'Perfect for my dogs first camping trip',
           userId: 1,
           blogId: 15,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 25,
           content: 'Cant wait to try the campfire stew',
           userId: 4,
           blogId: 12,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 26,
           content: 'Great advice for family outings',
           userId: 5,
           blogId: 11,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 27,
           content: 'These photo tips are awesome',
           userId: 2,
           blogId: 14,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 28,
           content: 'Feeling more confident going solo',
           userId: 1,
           blogId: 13,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         },
         {
+          id: 29,
           content: 'My cat will love this trip!',
           userId: 3,
           blogId: 15,
+          disabled: false,
           created_at: now,
           createdAt: now,
           updatedAt: now
         }
+      ]);
+
+      console.log('Seeding blog likes...');
+      await queryInterface.bulkInsert('blog_likes', [
+        // Admin likes several blogs
+        { blogId: 1, userId: 1, createdAt: now, updatedAt: now },
+        { blogId: 3, userId: 1, createdAt: now, updatedAt: now },
+        { blogId: 5, userId: 1, createdAt: now, updatedAt: now },
+        
+        // Advisor likes some blogs
+        { blogId: 2, userId: 2, createdAt: now, updatedAt: now },
+        { blogId: 4, userId: 2, createdAt: now, updatedAt: now },
+        { blogId: 6, userId: 2, createdAt: now, updatedAt: now },
+        
+        // Regular users like various blogs
+        { blogId: 1, userId: 3, createdAt: now, updatedAt: now },
+        { blogId: 2, userId: 3, createdAt: now, updatedAt: now },
+        { blogId: 7, userId: 3, createdAt: now, updatedAt: now },
+        
+        { blogId: 3, userId: 4, createdAt: now, updatedAt: now },
+        { blogId: 5, userId: 4, createdAt: now, updatedAt: now },
+        { blogId: 8, userId: 4, createdAt: now, updatedAt: now },
+        
+        { blogId: 2, userId: 5, createdAt: now, updatedAt: now },
+        { blogId: 4, userId: 5, createdAt: now, updatedAt: now },
+        { blogId: 6, userId: 5, createdAt: now, updatedAt: now },
+        
+        // Add some popular blogs with multiple likes
+        { blogId: 10, userId: 1, createdAt: now, updatedAt: now },
+        { blogId: 10, userId: 2, createdAt: now, updatedAt: now },
+        { blogId: 10, userId: 3, createdAt: now, updatedAt: now },
+        { blogId: 10, userId: 4, createdAt: now, updatedAt: now },
+        { blogId: 10, userId: 5, createdAt: now, updatedAt: now },
+        
+        { blogId: 15, userId: 1, createdAt: now, updatedAt: now },
+        { blogId: 15, userId: 3, createdAt: now, updatedAt: now },
+        { blogId: 15, userId: 5, createdAt: now, updatedAt: now }
       ]);
 
       console.log('✅ Seeding completed successfully!');
@@ -1422,6 +1541,7 @@ module.exports = {
         'chats',
         'marketplace_items',
         'marketplace_categorie',
+        'blog_likes',
         'comments',
         'blogs',
         'events',

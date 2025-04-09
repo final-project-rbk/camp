@@ -39,6 +39,11 @@ module.exports = (sequelize, DataTypes) => {
                 model: 'events',
                 key: 'id'
             }
+        },
+        disabled: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false,
+            allowNull: false
         }
     });
 
