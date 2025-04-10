@@ -46,7 +46,7 @@ export default function MarketplaceManagement() {
   const [categories, setCategories] = useState<{id: string, name: string}[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
-  const API_URL = process.env.NEXT_PUBLIC_API_URL;
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/';
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);

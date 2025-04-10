@@ -834,117 +834,103 @@ module.exports = {
       const existingItems = await queryInterface.bulkInsert('marketplaceitems', [
         {
           id: 1,
-          title: 'Two-Person Camping Tent',
-          description: 'Lightweight and durable tent, perfect for backpacking in the mountains or beaches.',
-          imageURL: 'https://example.com/tent.jpg',
-          price: 49.99,
-          status: 'available',
-          sellerId: 3, // Regular User
-          buyerId: null,
-          location: 'Bizerte',
-          createdAt: now,
-          updatedAt: now
-        },
-        {
-          id: 2,
           title: 'Portable Camping Stove',
           description: 'Compact gas stove with wind protection, ideal for outdoor cooking.',
-          imageURL: 'https://example.com/stove.jpg',
+          imageURL: 'https://scontent.ftun16-1.fna.fbcdn.net/v/t45.5328-4/474974329_2439868456357340_6004575026370459160_n.jpg?stp=dst-jpg_s960x960_tt6&_nc_cat=104&ccb=1-7&_nc_sid=247b10&_nc_ohc=IE3HsUiBMpAQ7kNvwHCEcP1&_nc_oc=AdmNEuNJCXRRIU06DfREb6K6-YhfEj13MPwgTnZstm14RKRfy1tQN0vDb1sCld9cTkM&_nc_zt=23&_nc_ht=scontent.ftun16-1.fna&_nc_gid=oVwsp70DL9v_IUET2oIxkA&oh=00_AfHP24smspBiB_U91aeIoWqeqveP-hiV5dyc6KovYF1KYA&oe=67FCF204',
           price: 29.50,
           status: 'sold',
-          sellerId: 2, // Travel Advisor
-          buyerId: 1, // Admin
+          sellerId: 2,
+          buyerId: 1,
           location: 'Ain Draham, Jendouba',
           createdAt: now,
           updatedAt: now
         },
         {
-          id: 3,
+          id: 2,
           title: 'Sleeping Bag (-5°C)',
           description: 'Warm and cozy sleeping bag for cold mountain nights.',
-          imageURL: 'https://example.com/sleeping-bag.jpg',
+          imageURL: 'https://scontent.ftun16-1.fna.fbcdn.net/v/t45.5328-4/474368049_1140266557759964_8641816073624392036_n.jpg?stp=dst-jpg_p720x720_tt6&_nc_cat=111&ccb=1-7&_nc_sid=247b10&_nc_ohc=ibg_5a5c-r8Q7kNvwHBHGpQ&_nc_oc=AdlYW6cn11qJcgPJJrSBB2xZLR2NCxOeXjorCJE1Tg7cmTeXHNfTr-gfUnvynVHNbRw&_nc_zt=23&_nc_ht=scontent.ftun16-1.fna&_nc_gid=JCwhBcDZvHbp0hbI53OXlQ&oh=00_AfGJ0ewK-w0fQ3W-HbNQwWAElBRQMtAwp0yHz8JWEs_SmA&oe=67FCC727',
           price: 39.99,
           status: 'pending',
-          sellerId: 3, // Regular User
-          buyerId: 2, // Travel Advisor
+          sellerId: 3,
+          buyerId: 2,
           location: 'Zaghouan',
           createdAt: now,
           updatedAt: now
         },
         {
-          id: 4,
+          id: 3,
           title: 'Camping Cookware Set',
           description: 'Lightweight aluminum cookware set including pots and pans.',
-          imageURL: 'https://example.com/cookware.jpg',
+          imageURL: 'https://scontent.ftun16-1.fna.fbcdn.net/v/t45.5328-4/464678295_438502655955170_567627676550909839_n.jpg?stp=dst-jpg_s960x960_tt6&_nc_cat=107&ccb=1-7&_nc_sid=247b10&_nc_ohc=oymmdQ5--CkQ7kNvwHadBE4&_nc_oc=AdlFxKFWunb86v96vxaxL9K-8q36M5Pt4fcfH-XoLwrSzKIhx_SCTk2Hh8nbWj2wEtw&_nc_zt=23&_nc_ht=scontent.ftun16-1.fna&_nc_gid=48bBtmj49tIMnUBji7CTOQ&oh=00_AfGsmdDtoVRLLen3oNPyaVnkOKcyf_0piGvRiniEeYiFCg&oe=67FCE662',
           price: 25.00,
           status: 'available',
-          sellerId: 1, // Admin
+          sellerId: 1,
           buyerId: null,
           location: 'Tabarka, Jendouba',
           createdAt: now,
           updatedAt: now
         },
-        // New desert camping specialized gear
         {
-          id: 5,
+          id: 4,
           title: 'Desert Trekking Tent',
           description: 'Specialized tent with UV protection and enhanced ventilation, designed for desert conditions. Sand-resistant zippers and reinforced stakes for secure anchoring in sand.',
-          imageURL: 'https://example.com/desert-tent.jpg',
+          imageURL: 'https://m.media-amazon.com/images/I/71tGPr6WCTL._AC_UF1000,1000_QL80_.jpg',
           price: 89.99,
           status: 'available',
-          sellerId: 2, // Travel Advisor
+          sellerId: 2,
           buyerId: null,
           location: 'Tozeur',
           createdAt: now,
           updatedAt: now
         },
         {
-          id: 6,
+          id: 5,
           title: 'Desert Hydration System',
           description: '3L capacity hydration backpack with insulated tubes to keep water cool in hot conditions. Built-in filtration system.',
-          imageURL: 'https://example.com/hydration-pack.jpg',
+          imageURL: 'https://cdn11.bigcommerce.com/s-jkwzatsr05/images/stencil/1280x1280/products/360/2176/img2085__16851.1673921189.jpg?c=2',
           price: 45.00,
           status: 'available',
-          sellerId: 4, // Sarah
+          sellerId: 4,
           buyerId: null,
           location: 'Douz',
           createdAt: now,
           updatedAt: now
         },
         {
-          id: 7,
+          id: 6,
           title: 'Sand Protection Kit',
           description: 'Complete set for protecting gear from sand, includes covers for electronics, special bags for clothing, and anti-sand mats for tent entrances.',
-          imageURL: 'https://example.com/sand-kit.jpg',
+          imageURL: 'https://m.media-amazon.com/images/I/717cxFF6X2L._AC_UF894,1000_QL80_.jpg',
           price: 35.50,
           status: 'available',
-          sellerId: 5, // Mike
+          sellerId: 5,
           buyerId: null,
           location: 'Matmata',
           createdAt: now,
           updatedAt: now
         },
         {
-          id: 8,
+          id: 7,
           title: 'Solar Camping Shower',
           description: 'Portable shower that heats water using solar energy, perfect for desert camping where water is scarce but sun is plentiful.',
-          imageURL: 'https://example.com/solar-shower.jpg',
+          imageURL: 'https://scontent.ftun16-1.fna.fbcdn.net/v/t39.30808-6/487344574_10238417336398677_1799390328818583113_n.jpg?_nc_cat=110&ccb=1-7&_nc_sid=aa7b47&_nc_ohc=E3UU7-iGrSoQ7kNvwEf9Nd2&_nc_oc=AdmvoDToYOUB5OTn_PEGZ3CP25jBp1lRd38hHrjLECLNRzgMKUMzb2M4ka4YyBTends&_nc_zt=23&_nc_ht=scontent.ftun16-1.fna&_nc_gid=onc5Fco5vISgyO8t44WULw&oh=00_AfFPg5wC0A7TGA1QJACubnfPWRrHBRXrHtC5KglleHLhjw&oe=67FCCC7E',
           price: 28.99,
           status: 'available',
-          sellerId: 3, // Regular User
+          sellerId: 3,
           buyerId: null,
           location: 'Ksar Ghilane',
           createdAt: now,
           updatedAt: now
         },
         {
-          id: 9,
+          id: 8,
           title: 'Bedouin-Style Camping Rug',
           description: 'Traditional Tunisian handwoven rug, perfect for desert camping. Adds comfort and authentic style to your desert experience.',
-          imageURL: 'https://example.com/bedouin-rug.jpg',
+          imageURL: 'https://belltent.co.uk/cdn/shop/files/carpet-hand-loomed-patterned-moroccan_1600x.jpg',
           price: 55.00,
           status: 'available',
-          sellerId: 2, // Travel Advisor
+          sellerId: 2,
           buyerId: null,
           location: 'Douz',
           createdAt: now,
@@ -1400,6 +1386,476 @@ module.exports = {
         }
       ]);
 
+      // Seed hints/tutorials data
+      console.log('Seeding hints/tutorials...');
+      await queryInterface.bulkInsert('hints', [
+        // Fire category hints
+        {
+          id: 1,
+          title: "5 Ways to Start a Fire Without Matches",
+          description: "Master the art of fire starting using natural materials and basic tools. This comprehensive guide covers friction methods, solar ignition, chemical reactions, and more to ensure you can always create fire in survival situations.",
+          difficulty: "intermediate",
+          timeToComplete: "15-20 mins",
+          image: "https://images.unsplash.com/photo-1475738972911-5b44ce984c42?w=800&auto=format",
+          gallerySteps: JSON.stringify([
+            {
+              step: 1,
+              title: "Gather Materials",
+              description: "Start by gathering dry tinder like small twigs, dry leaves, and bark. Look for materials that catch fire easily.",
+              image: "https://images.unsplash.com/photo-1478131143081-80f7f84ca84d?w=600&auto=format"
+            },
+            {
+              step: 2,
+              title: "Create a Fire Bow",
+              description: "Create a fire bow using a flexible branch and a shoelace or strong cord. This will be your tool for creating friction.",
+              image: "https://images.unsplash.com/photo-1510239792459-a4cdbef71a5e?w=600&auto=format"
+            },
+            {
+              step: 3,
+              title: "Build Your Setup",
+              description: "Position the spindle and apply downward pressure while moving the bow back and forth to create friction.",
+              image: "https://images.unsplash.com/photo-1479741044197-d28dfb400181?w=600&auto=format"
+            },
+            {
+              step: 4,
+              title: "Create an Ember",
+              description: "Use the ember to ignite your tinder bundle by gently blowing on it to provide oxygen.",
+              image: "https://images.unsplash.com/photo-1519616425099-4d4a2f0eada1?w=600&auto=format"
+            },
+            {
+              step: 5,
+              title: "Build Your Fire",
+              description: "Carefully nurture the flame with small kindling, gradually adding larger pieces as the fire grows.",
+              image: "https://images.unsplash.com/photo-1567446190843-a45f19ad7503?w=600&auto=format"
+            }
+          ]),
+          views: 127,
+          category: 'fire',
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          id: 2,
+          title: "How to Build a Campfire That Lasts All Night",
+          description: "Learn to build a long-lasting, safe campfire using the teepee method. Perfect for beginners who want to enjoy warmth throughout the night without constant maintenance.",
+          difficulty: "beginner",
+          timeToComplete: "10-15 mins",
+          image: "https://images.unsplash.com/photo-1497906539264-eb74442e37a9?w=800&auto=format",
+          gallerySteps: JSON.stringify([
+            {
+              step: 1,
+              title: "Choose the Right Location",
+              description: "Find a safe spot away from trees and brush. Use an existing fire ring if available.",
+              image: "https://images.unsplash.com/photo-1542332213-7b40ced7b7c6?w=600&auto=format"
+            },
+            {
+              step: 2,
+              title: "Gather Your Materials",
+              description: "Collect tinder (dry leaves, paper), kindling (small sticks), and fuel (larger logs).",
+              image: "https://images.unsplash.com/photo-1580286923998-09fb2cc928dc?w=600&auto=format"
+            },
+            {
+              step: 3,
+              title: "Build the Teepee Structure",
+              description: "Create a teepee structure with your kindling around a core of tinder.",
+              image: "https://images.unsplash.com/photo-1475003087144-7bca17597d2c?w=600&auto=format"
+            },
+            {
+              step: 4,
+              title: "Light the Tinder",
+              description: "Carefully light the tinder at the base of your teepee.",
+              image: "https://images.unsplash.com/photo-1543466375-e6676802eff9?w=600&auto=format"
+            },
+            {
+              step: 5,
+              title: "Add Larger Logs",
+              description: "Once the kindling catches, add larger logs to the outside of the teepee.",
+              image: "https://images.unsplash.com/photo-1576710139879-3db3737346a5?w=600&auto=format"
+            },
+            {
+              step: 6,
+              title: "Maintain Your Fire",
+              description: "For an all-night fire, add large logs in a star pattern and push them into the center as they burn.",
+              image: "https://images.unsplash.com/photo-1490635230914-6b21f6633068?w=600&auto=format"
+            }
+          ]),
+          views: 245,
+          category: 'fire',
+          createdAt: now,
+          updatedAt: now
+        },
+        
+        // Shelter category hints
+        {
+          id: 3,
+          title: "Emergency Shelter Building Techniques",
+          description: "Create a weatherproof shelter using natural materials found in different environments. These survival skills could be essential in emergency situations to protect yourself from the elements.",
+          difficulty: "advanced",
+          timeToComplete: "30-45 mins",
+          image: "https://images.unsplash.com/photo-1532339142463-fd0a8979791a?w=800&auto=format",
+          gallerySteps: JSON.stringify([
+            {
+              step: 1,
+              title: "Select Your Location",
+              description: "Find a suitable location away from hazards like dead trees, flash flood zones, and animal paths.",
+              image: "https://images.unsplash.com/photo-1590003273241-11e84268401a?w=600&auto=format"
+            },
+            {
+              step: 2,
+              title: "Gather Materials",
+              description: "Collect long branches for the frame, smaller branches for supports, and leaves, grass, or pine needles for insulation.",
+              image: "https://images.unsplash.com/photo-1633439038840-992e5dcf4ff9?w=600&auto=format"
+            },
+            {
+              step: 3,
+              title: "Build the Frame",
+              description: "Create an A-frame structure by leaning branches against a support like a fallen tree or between two trees.",
+              image: "https://images.unsplash.com/photo-1558030006-450675393462?w=600&auto=format"
+            },
+            {
+              step: 4,
+              title: "Add Cross Supports",
+              description: "Layer smaller branches horizontally across your frame to create a lattice structure.",
+              image: "https://images.unsplash.com/photo-1588668214407-6109f3e2c86a?w=600&auto=format"
+            },
+            {
+              step: 5,
+              title: "Add Insulation",
+              description: "Cover your frame with leaves, grass, or pine needles, starting from the bottom and working upward like shingles.",
+              image: "https://images.unsplash.com/photo-1571687949921-1306bfb24b72?w=600&auto=format"
+            },
+            {
+              step: 6,
+              title: "Create a Thick Layer",
+              description: "Add at least 6-12 inches of insulating material to keep you warm and dry.",
+              image: "https://images.unsplash.com/photo-1583003250278-3a62805e4ce5?w=600&auto=format"
+            },
+            {
+              step: 7,
+              title: "Prepare the Interior",
+              description: "Create a bed of insulating material inside to keep you off the cold ground.",
+              image: "https://images.unsplash.com/photo-1603379050995-607571ddf5bf?w=600&auto=format"
+            }
+          ]),
+          views: 168,
+          category: 'shelter',
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          id: 4,
+          title: "Quick Tarp Shelter Setups",
+          description: "Learn five different ways to set up a tarp shelter quickly and effectively. Protect yourself from rain, wind, and sun with minimal equipment.",
+          difficulty: "beginner",
+          timeToComplete: "5-10 mins",
+          image: "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=800&auto=format",
+          gallerySteps: JSON.stringify([
+            {
+              step: 1,
+              title: "A-Frame Shelter",
+              description: "The most basic and versatile setup - string a ridgeline between two trees and drape your tarp over it.",
+              image: "https://images.unsplash.com/photo-1567639044414-1e12dfe89c65?w=600&auto=format"
+            },
+            {
+              step: 2,
+              title: "Lean-To Shelter",
+              description: "Quick protection from wind and rain from one direction - anchor one side to the ground and elevate the other.",
+              image: "https://images.unsplash.com/photo-1581230141647-d7b04e5c2ea2?w=600&auto=format"
+            },
+            {
+              step: 3,
+              title: "Diamond Shelter",
+              description: "Excellent rain protection with good airflow - anchor opposite corners to the ground and elevate the other two.",
+              image: "https://images.unsplash.com/photo-1524656855800-59465ebcec69?w=600&auto=format"
+            },
+            {
+              step: 4,
+              title: "Arrow Head Shelter",
+              description: "Great for high winds - create a pointed front facing into the wind with a more spacious rear area.",
+              image: "https://images.unsplash.com/photo-1590496793923-d4244a4040d6?w=600&auto=format"
+            },
+            {
+              step: 5,
+              title: "C-Fly Shelter",
+              description: "Curved setup that provides excellent protection from wind while maximizing interior space.",
+              image: "https://images.unsplash.com/photo-1563299796-17596ed6b017?w=600&auto=format"
+            }
+          ]),
+          views: 203,
+          category: 'shelter',
+          createdAt: now,
+          updatedAt: now
+        },
+        
+        // Food category hints
+        {
+          id: 5,
+          title: "3 One-Pot Camping Meals Anyone Can Make",
+          description: "Master the basics of cooking delicious meals over a campfire with these simple one-pot recipes that require minimal equipment and ingredients.",
+          difficulty: "beginner",
+          timeToComplete: "20-25 mins",
+          image: "https://images.unsplash.com/photo-1523987355523-c7b5b0dd90a7?w=800&auto=format",
+          gallerySteps: JSON.stringify([
+            {
+              step: 1,
+              title: "Campfire Chili",
+              description: "Cook ground beef, add canned beans, tomatoes, and spices. Simmer until thickened for a hearty meal.",
+              image: "https://images.unsplash.com/photo-1540914124281-342587941389?w=600&auto=format"
+            },
+            {
+              step: 2,
+              title: "Veggie Pasta Primavera",
+              description: "Boil pasta, add olive oil, pre-chopped vegetables, and pre-grated cheese for a quick and satisfying meal.",
+              image: "https://images.unsplash.com/photo-1499296668315-d819885aabad?w=600&auto=format"
+            },
+            {
+              step: 3,
+              title: "Breakfast Skillet",
+              description: "Cook potatoes until crispy, add eggs, pre-cooked meat, and cheese for a filling start to your day.",
+              image: "https://images.unsplash.com/photo-1559054663-e8d23213f55c?w=600&auto=format"
+            }
+          ]),
+          views: 312,
+          category: 'food',
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          id: 6,
+          title: "Foraging for Wild Edibles: What's Safe and What's Not",
+          description: "Learn to identify common wild edible plants that can supplement your camping meals, with clear guidance on look-alikes to avoid.",
+          difficulty: "intermediate",
+          timeToComplete: "An ongoing skill",
+          image: "https://images.unsplash.com/photo-1565789559254-4233d2061af9?w=800&auto=format",
+          gallerySteps: JSON.stringify([
+            {
+              step: 1,
+              title: "Blackberries & Raspberries",
+              description: "Easy to identify, these berries grow on thorny canes and are safe to eat when ripe.",
+              image: "https://images.unsplash.com/photo-1615485925600-97237c4fc1ec?w=600&auto=format"
+            },
+            {
+              step: 2,
+              title: "Dandelions",
+              description: "Entirely edible from root to flower. Young leaves are less bitter and great in salads.",
+              image: "https://images.unsplash.com/photo-1553921162-c4d037b7f329?w=600&auto=format"
+            },
+            {
+              step: 3,
+              title: "Chickweed",
+              description: "Look for the single line of hairs along the stem and white star-shaped flowers. Tastes like mild spinach.",
+              image: "https://images.unsplash.com/photo-1589045366481-28dcad6a6e59?w=600&auto=format"
+            },
+            {
+              step: 4,
+              title: "Pine Needles",
+              description: "Rich in vitamin C, they can be steeped to make tea. Avoid yew trees which look similar but are toxic!",
+              image: "https://images.unsplash.com/photo-1481232927785-53b3a8f5c5fb?w=600&auto=format"
+            },
+            {
+              step: 5,
+              title: "CAUTION: Proper Identification",
+              description: "Never eat anything you cannot identify with 100% certainty. Consult multiple reliable sources.",
+              image: "https://images.unsplash.com/photo-1588099636131-4930ddd7889b?w=600&auto=format"
+            }
+          ]),
+          views: 189,
+          category: 'food',
+          createdAt: now,
+          updatedAt: now
+        },
+        
+        // Gear category hints
+        {
+          id: 7,
+          title: "Essential Gear Maintenance",
+          description: "Keep your camping gear in top condition with these maintenance tips to extend the life of your equipment and ensure it's ready when you need it.",
+          difficulty: "intermediate",
+          timeToComplete: "25-30 mins",
+          image: "https://images.unsplash.com/photo-1445308394109-4ec2920981b1?w=800&auto=format",
+          gallerySteps: JSON.stringify([
+            {
+              step: 1,
+              title: "Tent Care",
+              description: "Clean and dry tent after each use. Never store wet or dirty. Repair small holes immediately with repair tape.",
+              image: "https://images.unsplash.com/photo-1510312305653-8ed496efae75?w=600&auto=format"
+            },
+            {
+              step: 2,
+              title: "Sleeping Bag Maintenance",
+              description: "Air out after each trip. Store uncompressed in a large cotton bag. Clean according to manufacturer's instructions.",
+              image: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600&auto=format"
+            },
+            {
+              step: 3,
+              title: "Backpack Care",
+              description: "Empty completely after trips. Hand wash with mild soap when dirty. Check and tighten loose stitching.",
+              image: "https://images.unsplash.com/photo-1494029722188-672a328c4d65?w=600&auto=format"
+            },
+            {
+              step: 4,
+              title: "Cooking Equipment",
+              description: "Thoroughly clean after each use. Remove all food residue. Check fuel lines for leaks on stoves.",
+              image: "https://images.unsplash.com/photo-1623461487986-9400110de28e?w=600&auto=format"
+            },
+            {
+              step: 5,
+              title: "Footwear Maintenance",
+              description: "Clean and dry boots after each trip. Apply appropriate waterproofing. Replace insoles as needed.",
+              image: "https://images.unsplash.com/photo-1520219306100-ec294a8a1370?w=600&auto=format"
+            },
+            {
+              step: 6,
+              title: "Tools and Knives",
+              description: "Clean, dry, and oil metal tools after use. Sharpen blades regularly. Remove any rust immediately.",
+              image: "https://images.unsplash.com/photo-1551431009-a802eeec77b1?w=600&auto=format"
+            }
+          ]),
+          views: 234,
+          category: 'gear',
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          id: 8,
+          title: "Choosing the Right Backpack",
+          description: "Learn how to select the perfect backpack for your camping and hiking needs, focusing on fit, capacity, and features.",
+          difficulty: "beginner",
+          timeToComplete: "15 mins",
+          image: "https://images.unsplash.com/photo-1501554728187-ce583db33af7?w=800&auto=format",
+          gallerySteps: JSON.stringify([
+            {
+              step: 1,
+              title: "Determine Your Needs",
+              description: "Day hiking: 20-35L, Weekend trip: 35-50L, Multi-day backpacking: 50-70L, Extended trips: 70L+",
+              image: "https://images.unsplash.com/photo-1539635278303-d4002c07eae3?w=600&auto=format"
+            },
+            {
+              step: 2,
+              title: "Getting the Right Fit",
+              description: "Measure your torso length and hip size. The backpack should match your torso length for proper weight distribution.",
+              image: "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=600&auto=format"
+            },
+            {
+              step: 3,
+              title: "Frame Types",
+              description: "Internal frames: Better balance and stability. External frames: Better ventilation and carrying capacity.",
+              image: "https://images.unsplash.com/photo-1594494842862-ee71a755e4d7?w=600&auto=format"
+            },
+            {
+              step: 4,
+              title: "Essential Features",
+              description: "Look for adjustable suspension, padded hip belt, multiple compartments, and external attachment points.",
+              image: "https://images.unsplash.com/photo-1580913428023-02c695666d61?w=600&auto=format"
+            },
+            {
+              step: 5,
+              title: "Try Before You Buy",
+              description: "Load the pack with 15-20 pounds and walk around to test comfort. Pay attention to pressure points.",
+              image: "https://images.unsplash.com/photo-1624777904860-ba41c9aa45a9?w=600&auto=format"
+            }
+          ]),
+          views: 278,
+          category: 'gear',
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          id: 9,
+          title: "Water Purification Methods in the Wild",
+          description: "Learn different techniques to make water safe for drinking when camping in remote areas. Protect yourself from waterborne illnesses with these proven methods.",
+          difficulty: "intermediate",
+          timeToComplete: "10-30 mins depending on method",
+          image: "https://images.unsplash.com/photo-1590322356624-00a400b9fb21?w=800&auto=format",
+          gallerySteps: JSON.stringify([
+            {
+              step: 1,
+              title: "Boiling",
+              description: "The most reliable method. Bring water to a rolling boil for 1 minute (3 minutes at high altitudes).",
+              image: "https://images.unsplash.com/photo-1616668983570-1556a107cd9c?w=600&auto=format"
+            },
+            {
+              step: 2,
+              title: "Chemical Treatment",
+              description: "Use iodine or chlorine tablets following package instructions. Wait the full recommended time.",
+              image: "https://images.unsplash.com/photo-1550834777-dd411d209b9c?w=600&auto=format"
+            },
+            {
+              step: 3,
+              title: "Water Filters",
+              description: "Pump or gravity filters remove particles and many pathogens. Check the micron rating for effectiveness.",
+              image: "https://images.unsplash.com/photo-1523362289600-a70b4a0e09aa?w=600&auto=format"
+            },
+            {
+              step: 4,
+              title: "UV Purifiers",
+              description: "Handheld UV devices disrupt the DNA of pathogens. Requires clear water to be effective.",
+              image: "https://images.unsplash.com/photo-1536939459926-301728717817?w=600&auto=format"
+            },
+            {
+              step: 5,
+              title: "Emergency Solar Disinfection",
+              description: "Fill clear plastic bottles and expose to full sunlight for at least 6 hours (or 2 days if cloudy).",
+              image: "https://images.unsplash.com/photo-1593076867932-fafe4291a160?w=600&auto=format"
+            }
+          ]),
+          views: 195,
+          category: 'gear',
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          id: 10,
+          title: "Navigation Without GPS",
+          description: "Essential wilderness navigation skills using map, compass, and natural indicators. Be prepared for when technology fails or batteries die.",
+          difficulty: "advanced",
+          timeToComplete: "Practice regularly",
+          image: "https://images.unsplash.com/photo-1518542928841-2c99f8992d7d?w=800&auto=format",
+          gallerySteps: JSON.stringify([
+            {
+              step: 1,
+              title: "Map Reading Basics",
+              description: "Learn to interpret topographic features, contour lines, and map symbols. Always orient your map to north.",
+              image: "https://images.unsplash.com/photo-1439857271264-8ea0641273d3?w=600&auto=format"
+            },
+            {
+              step: 2,
+              title: "Compass Navigation",
+              description: "Take and follow bearings. Learn to account for magnetic declination in your area.",
+              image: "https://images.unsplash.com/photo-1615486203993-c39caba63a7b?w=600&auto=format"
+            },
+            {
+              step: 3,
+              title: "Sun Navigation",
+              description: "The sun rises in the east and sets in the west. At noon in the northern hemisphere, it's directly south.",
+              image: "https://images.unsplash.com/photo-1504387103978-e4ee71100c68?w=600&auto=format"
+            },
+            {
+              step: 4,
+              title: "Star Navigation",
+              description: "Find the North Star (Polaris) by locating the Big Dipper and following the pointer stars.",
+              image: "https://images.unsplash.com/photo-1528196471972-3e4c4d85c8b0?w=600&auto=format"
+            },
+            {
+              step: 5,
+              title: "Natural Indicators",
+              description: "Moss often grows on the north side of trees in the northern hemisphere. Snow melts faster on south-facing slopes.",
+              image: "https://images.unsplash.com/photo-1472897248068-3273ef004bb8?w=600&auto=format"
+            },
+            {
+              step: 6,
+              title: "Triangulation",
+              description: "Locate your position by taking bearings to three known landmarks and finding where they intersect on your map.",
+              image: "https://images.unsplash.com/photo-1501909694088-56913151bb7c?w=600&auto=format"
+            }
+          ]),
+          views: 167,
+          category: 'gear',
+          createdAt: now,
+          updatedAt: now
+        }
+      ]);
+
       console.log('✅ Seeding completed successfully!');
     } catch (error) {
       console.error('❌ Seeding failed:', error);
@@ -1425,6 +1881,7 @@ module.exports = {
         'comments',
         'blogs',
         'events',
+        'hints',
         'places',
         'categories',
         'advisors',

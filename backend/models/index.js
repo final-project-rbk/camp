@@ -36,6 +36,9 @@ const MarketplaceItemCategorie = require("./marcketPlaceItemCategorie")(connecti
 const FormularAdvisor = require("./FormularAdvisor")(connection, DataTypes);
 const AdvisorMedia = require("./AdvisorMedia")(connection, DataTypes);
 
+// Add Hint model
+const Hint = require("./Hint")(connection, DataTypes);
+
 // Define relationships
 const defineAssociations = () => {
   // User relationships
@@ -223,5 +226,6 @@ module.exports = {
   // Add new models to exports
   Room,
   RoomUser,
-  Message
+  Message,
+  Hint
 };

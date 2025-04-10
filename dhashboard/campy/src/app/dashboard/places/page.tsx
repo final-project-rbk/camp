@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import Image from 'next/image';
+import CloudinaryScript from '@/components/CloudinaryScript';
 
 interface Category {
   id: number;
@@ -54,7 +55,7 @@ export default function PlaceManagement() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const API_URL = process.env.NEXT_PUBLIC_API_URL;
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/';
   const [activeStatus, setActiveStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [totalCounts, setTotalCounts] = useState({
     all: 0,
@@ -135,7 +136,7 @@ export default function PlaceManagement() {
   // Proxy function to handle API calls
   const proxyFetch = async (endpoint: string, options: RequestInit) => {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, ''); // Remove trailing slash if present
+      const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:3000/api'.replace(/\/$/, ''); // Remove trailing slash if present
       const response = await fetch(`${API_URL}/${endpoint}`, {  // Add slash between API_URL and endpoint
         ...options,
         headers: {
@@ -522,109 +523,112 @@ export default function PlaceManagement() {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#0A192F]">
-      <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
-      
-      <div className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-16'} p-8`}>
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-[#64FFDA]">Place Management</h1>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="px-4 py-2 bg-[#64FFDA] text-[#0A192F] rounded-lg hover:bg-opacity-90"
-          >
-            Add New Place
-          </button>
-        </div>
-
-        {/* Status Filter Buttons */}
-        <div className="mb-6 flex space-x-4">
-          {(['all', 'pending', 'approved', 'rejected'] as const).map((status) => (
+    <>
+      <CloudinaryScript />
+      <div className="flex min-h-screen bg-[#0A192F]">
+        <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
+        
+        <div className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-16'} p-8`}>
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold text-[#64FFDA]">Place Management</h1>
             <button
-              key={status}
-              onClick={() => handleStatusChange(status)}
-              className={`px-4 py-2 rounded-lg transition-colors ${
-                activeStatus === status
-                  ? 'bg-[#64FFDA] text-[#0A192F]'
-                  : 'bg-[#112240] text-[#CCD6F6] hover:bg-[#1D2D50]'
-              }`}
+              onClick={() => setShowAddModal(true)}
+              className="px-4 py-2 bg-[#64FFDA] text-[#0A192F] rounded-lg hover:bg-opacity-90"
             >
-              {status.charAt(0).toUpperCase() + status.slice(1)}
-              <span className="ml-2 px-2 py-1 rounded-full bg-[#1D2D50] text-[#64FFDA] text-sm">
-                {totalCounts[status]}
-              </span>
+              Add New Place
             </button>
-          ))}
-        </div>
+          </div>
 
-        {/* Places Grid */}
-        <div className="space-y-4">
-          {sortedPlaces.map((place) => (
-            <div
-              key={place.id}
-              className="bg-[#112240] rounded-lg overflow-hidden border-l-4 border-[#64FFDA]"
-            >
-              <div className="p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="text-xl font-semibold text-[#64FFDA] mb-2">{place.name}</h3>
-                    <p className="text-[#8892B0] mb-2">{place.location}</p>
-                    <span className="px-3 py-1 bg-[#1D2D50] text-[#F44336] rounded-full text-sm">
-                      {place.status || 'Unknown'}
-                    </span>
+          {/* Status Filter Buttons */}
+          <div className="mb-6 flex space-x-4">
+            {(['all', 'pending', 'approved', 'rejected'] as const).map((status) => (
+              <button
+                key={status}
+                onClick={() => handleStatusChange(status)}
+                className={`px-4 py-2 rounded-lg transition-colors ${
+                  activeStatus === status
+                    ? 'bg-[#64FFDA] text-[#0A192F]'
+                    : 'bg-[#112240] text-[#CCD6F6] hover:bg-[#1D2D50]'
+                }`}
+              >
+                {status.charAt(0).toUpperCase() + status.slice(1)}
+                <span className="ml-2 px-2 py-1 rounded-full bg-[#1D2D50] text-[#64FFDA] text-sm">
+                  {totalCounts[status]}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Places Grid */}
+          <div className="space-y-4">
+            {sortedPlaces.map((place) => (
+              <div
+                key={place.id}
+                className="bg-[#112240] rounded-lg overflow-hidden border-l-4 border-[#64FFDA]"
+              >
+                <div className="p-6">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="text-xl font-semibold text-[#64FFDA] mb-2">{place.name}</h3>
+                      <p className="text-[#8892B0] mb-2">{place.location}</p>
+                      <span className="px-3 py-1 bg-[#1D2D50] text-[#F44336] rounded-full text-sm">
+                        {place.status || 'Unknown'}
+                      </span>
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleStatusUpdate(place.id, 'pending')}
+                        className={`px-4 py-2 bg-[#FFA500] text-white rounded-lg hover:bg-opacity-90 ${
+                          place.status === 'pending' ? 'bg-[#FFA500]' : 'bg-[#112240]'
+                        }`}
+                      >
+                        Pending
+                      </button>
+                      <button
+                        onClick={() => handleStatusUpdate(place.id, 'approved')}
+                        className={`px-4 py-2 bg-[#4CAF50] text-white rounded-lg hover:bg-opacity-90 ${
+                          place.status === 'approved' ? 'bg-[#4CAF50]' : 'bg-[#112240]'
+                        }`}
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => handleStatusUpdate(place.id, 'rejected')}
+                        className={`px-4 py-2 bg-[#F44336] text-white rounded-lg hover:bg-opacity-90 ${
+                          place.status === 'rejected' ? 'bg-[#F44336]' : 'bg-[#112240]'
+                        }`}
+                      >
+                        Reject
+                      </button>
+                      <button
+                        onClick={() => handleEditClick(place)}
+                        className="px-4 py-2 bg-[#64FFDA] text-[#0A192F] rounded-lg hover:bg-opacity-90"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => {
+                          setPlaceToDelete(place.id);
+                          setShowDeleteModal(true);
+                        }}
+                        className="px-4 py-2 bg-[#F44336] text-white rounded-lg hover:bg-opacity-90"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => handleStatusUpdate(place.id, 'pending')}
-                      className={`px-4 py-2 bg-[#FFA500] text-white rounded-lg hover:bg-opacity-90 ${
-                        place.status === 'pending' ? 'bg-[#FFA500]' : 'bg-[#112240]'
-                      }`}
-                    >
-                      Pending
-                    </button>
-                    <button
-                      onClick={() => handleStatusUpdate(place.id, 'approved')}
-                      className={`px-4 py-2 bg-[#4CAF50] text-white rounded-lg hover:bg-opacity-90 ${
-                        place.status === 'approved' ? 'bg-[#4CAF50]' : 'bg-[#112240]'
-                      }`}
-                    >
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => handleStatusUpdate(place.id, 'rejected')}
-                      className={`px-4 py-2 bg-[#F44336] text-white rounded-lg hover:bg-opacity-90 ${
-                        place.status === 'rejected' ? 'bg-[#F44336]' : 'bg-[#112240]'
-                      }`}
-                    >
-                      Reject
-                    </button>
-                    <button
-                      onClick={() => handleEditClick(place)}
-                      className="px-4 py-2 bg-[#64FFDA] text-[#0A192F] rounded-lg hover:bg-opacity-90"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => {
-                        setPlaceToDelete(place.id);
-                        setShowDeleteModal(true);
-                      }}
-                      className="px-4 py-2 bg-[#F44336] text-white rounded-lg hover:bg-opacity-90"
-                    >
-                      Delete
-                    </button>
-                  </div>
+                  <p className="text-[#CCD6F6]">{place.description}</p>
+                  {place.image && (
+                    <img
+                      src={place.image}
+                      alt={place.name}
+                      className="w-full h-64 object-cover rounded-lg mt-4"
+                    />
+                  )}
                 </div>
-                <p className="text-[#CCD6F6]">{place.description}</p>
-                {place.image && (
-                  <img
-                    src={place.image}
-                    alt={place.name}
-                    className="w-full h-64 object-cover rounded-lg mt-4"
-                  />
-                )}
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 
@@ -889,6 +893,6 @@ export default function PlaceManagement() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }   

@@ -22,7 +22,7 @@ export default function AdminProfile() {
   const [userData, setUserData] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState<Partial<User>>({});
-  const API_URL = process.env.NEXT_PUBLIC_API_URL;
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/';
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);

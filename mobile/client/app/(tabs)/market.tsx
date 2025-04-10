@@ -56,6 +56,7 @@ interface MarketplaceItem {
     url: string;
     type: string;
   }[];
+  imageURL?: string;
 }
 
 interface SearchFilters {
@@ -421,6 +422,14 @@ export default function Market() {
                     <Image 
                       source={{ 
                         uri: item.media[0].url || 'https://via.placeholder.com/400x300?text=No+Image'
+                      }}
+                      style={styles.itemImage}
+                      resizeMode="cover"
+                    />
+                  ) : item.imageURL ? (
+                    <Image 
+                      source={{ 
+                        uri: item.imageURL
                       }}
                       style={styles.itemImage}
                       resizeMode="cover"

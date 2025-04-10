@@ -16,6 +16,7 @@ const userRoutes = require('./routes/user.routes');
 const formularAdvisorRoutes = require('./routes/formularAdvisor.routes');
 const authRoutes = require('./routes/auth.routes');
 const chatRoutes = require('./routes/chat.routes');
+const hintRoutes = require('./routes/hint.routes');
 const jwt = require('jsonwebtoken');
 
 // const advisorMediaRoutes = require('./routes/advisorMedia.routes');
@@ -427,6 +428,7 @@ app.use('/api/marketplace', marcketPlaceRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/favorites', require('./routes/Favorite.routes'));
 app.use('/api/advisor', advisorRoutes);
+app.use('/api/hints', hintRoutes);
 // Add advisor dashboard routes
 app.use('/api/advisor/dashboard', advisorDashboardRoutes);
 

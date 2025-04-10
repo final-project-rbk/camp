@@ -1,8 +1,8 @@
 'use client';
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+import api, { API_URL } from "../utils/api";
+import axios, { AxiosError } from "axios";
 
 export default function AdminLogin() {
   const router = useRouter();
@@ -21,21 +21,20 @@ export default function AdminLogin() {
     try {
       if (!formData.email || !formData.password) {
         setError('Please fill in all fields');
+        setLoading(false);
         return;
       }
 
-      const response = await fetch(`${API_URL}auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: formData.email.toLowerCase().trim(),
-          password: formData.password
-        }),
+      console.log('Attempting login with API URL:', API_URL);
+      
+      const response = await api.post('auth/login', {
+        email: formData.email.toLowerCase().trim(),
+        password: formData.password
       });
-
-      const data = await response.json();
+      
+      console.log('Response status:', response.status);
+      const data = response.data;
+      console.log('Response data:', data);
 
       if (data.success) {
         if (data.data.user.role !== 'admin') {
@@ -50,9 +49,27 @@ export default function AdminLogin() {
       } else {
         setError(data.error || data.message || 'Login failed');
       }
-    } catch (error) {
-      console.error('Login error:', error);
-      setError('Login failed. Please check your credentials.');
+    } catch (err) {
+      console.error('Login error:', err);
+      // Type guard to handle Axios errors
+      if (axios.isAxiosError(err)) {
+        const error = err as AxiosError;
+        if (error.response) {
+          // Server returned an error response
+          const errorData = error.response.data as any;
+          const errorMessage = errorData?.message || errorData?.error || 'Authentication failed';
+          setError(errorMessage);
+        } else if (error.request) {
+          // Request was made but no response received
+          setError('Server is not responding. Please check if the backend is running.');
+        } else {
+          // Error setting up the request
+          setError('Login failed. Please check server connection and try again.');
+        }
+      } else {
+        // Non-Axios error
+        setError('Login failed. Please check server connection and try again.');
+      }
     } finally {
       setLoading(false);
     }
